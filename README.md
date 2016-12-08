@@ -1,5 +1,5 @@
 # lunch
 Graphical app launcher for X with little dependencies
 
-!(/example_screenshot.png)
+![Screenshot](/example_screenshot.png?raw=true "Screenshot")
 
