@@ -1,0 +1,4 @@
+#!/bin/bash
+rm ./lunch
+gcc launcher.c -o launcher -L/usr/lib/i386-linux-gnu -lImlib2 -lX11 -lXcursor
+./lunch
