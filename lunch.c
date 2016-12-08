@@ -1,5 +1,3 @@
-// compile this way: gcc lunch.c -o lunch -L/usr/lib/i386-linux-gnu -lImlib2 -lX11 -lXcursor
-
 // this code is not optimal in many ways, but works just nicely.
 // Licence: GNU GPL v3
 // Author: Tomas M <www.slax.org>
@@ -246,7 +244,7 @@ int cleanup()
 void parse_config()
 {
    FILE * fp;
-   fp=fopen("/a/conf","rb");
+   fp=fopen("conf","rb");
    if (fp==NULL) { printf("error opening config file\n"); return; }
 
    char title[255];
