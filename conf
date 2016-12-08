@@ -1,14 +1,11 @@
 Startup;/usr/share/icons/hicolor/48x48/apps/xfce4-session.png;xfce4-session-settings
 Calendar;/usr/share/icons/hicolor/48x48/apps/xfcalendar.png;orage
-Panel;/usr/share/icons/hicolor/48x48/apps/xfce4-panel.png;xfce4-panel --preferences
-Thunar;/usr/share/icons/hicolor/48x48/apps/Thunar.png;thunar %F
-Globaltime;/usr/share/icons/hicolor/48x48/apps/orage_globaltime.png;globaltime
 UXTerm;/usr/share/icons/hicolor/48x48/apps/xterm-color.png;uxterm
 Vim;/usr/share/icons/hicolor/48x48/apps/vim.png;xterm -e vim %F
+Thunar;/usr/share/icons/hicolor/48x48/apps/Thunar.png;thunar %F
 Workspaces;/usr/share/icons/hicolor/48x48/apps/xfce4-workspaces.png;xfwm4-workspace-settings
 Fixrefox;/usr/share/icons/hicolor/48x48/apps/firefox-esr.png;firefox-esr %u
 Pidgin;/usr/share/icons/hicolor/48x48/apps/pidgin.png;pidgin
 Applications;/usr/share/icons/hicolor/48x48/apps/preferences-desktop-default-applications.png;exo-preferred-applications
-ImageMagick;/usr/share/icons/hicolor/48x48/apps/display-im6.q16.png;/usr/lib/i386-linux-gnu/ImageMagick-6.8.9/bin-Q16/display %f
 WM Tweaks;/usr/share/icons/hicolor/48x48/apps/wmtweaks.png;xfwm4-tweaks-settings
 WM;/usr/share/icons/hicolor/48x48/apps/xfwm4.png;xfwm4-settings
