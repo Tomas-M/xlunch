@@ -13,7 +13,7 @@ Commandline options:
     -i [i]     icon size (integer) in pixels
     -c [file]  path to config file which describes titles, icons and commands.
     -f         Disable fullscreen
-    -t         Top position (integer) in pixels for the Run commandline
+    -t [i]     Top position (integer) in pixels for the Run commandline
     -x [text]  String to display instead of 'Run: '
 
 

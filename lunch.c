@@ -151,7 +151,7 @@ void init(int argc, char **argv)
           fprintf (stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint (optopt))
         {
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+          fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n", optopt);
           fprintf (stderr,"\nAvailable options:\n\n");
           fprintf (stderr,"   -r         use root window's background image\n");
           fprintf (stderr,"              Fails if your root window has no image set\n");
@@ -162,7 +162,7 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
           fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
           fprintf (stderr,"   -f         Disable fullscreen\n");
-          fprintf (stderr,"   -t         Top position (integer) in pixels for the Run commandline\n");
+          fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
           fprintf (stderr,"   -x [text]  String to display instead of 'Run: '\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
@@ -330,7 +330,7 @@ int cleanup()
    XCloseDisplay(disp);
 }
 
-void parse_config()
+void parse_app_icons()
 {
    FILE * fp;
    if (strlen(conffile)==0) conffile="/etc/.lunch/icons.conf";
@@ -629,7 +629,7 @@ int main(int argc, char **argv)
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
 
    // parse config file
-   parse_config();
+   parse_app_icons();
 
 
    /* infinite event loop */
