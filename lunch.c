@@ -626,6 +626,8 @@ int main(int argc, char **argv)
    ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
    if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
+
+   // I noticed this sometimes fails. Should we somehow wait for the window to appear or process some events before we do this?
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
 
    // parse config file
