@@ -1,6 +1,7 @@
 # lunch
-Graphical app launcher for X with little dependencies.
-Should require only Imlib2
+Graphical app launcher for X, using pure Xlib and Imlib2. It allows you to run a program by clicking its icon. Alternatively
+you can just type any command using your keyboard. UTF8 is supported.
+The Run commandline also works as a filter for the icons, as long as any title matches, icon is visible.
 
 ![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
 

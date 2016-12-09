@@ -333,7 +333,7 @@ int cleanup()
 void parse_app_icons()
 {
    FILE * fp;
-   if (strlen(conffile)==0) conffile="/etc/.lunch/icons.conf";
+   if (strlen(conffile)==0) conffile="/etc/lunch/icons.conf";
    fp=fopen(conffile,"rb");
    if (fp==NULL)
    {
@@ -440,7 +440,7 @@ void filter_apps()
 
    while (current != NULL)
    {
-      if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL) current->hidden=0;
+      if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
       else current->hidden=1;
       current=current->next;
    }
@@ -544,6 +544,7 @@ int main(int argc, char **argv)
    imlib_set_font_cache_size(512 * screen_width);
    /* add the ttf fonts dir to our font path */
    imlib_add_path_to_font_path("~/.fonts");
+   imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
