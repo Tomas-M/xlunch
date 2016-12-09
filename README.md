@@ -2,6 +2,11 @@
 Graphical app launcher for X with little dependencies.
 Should require only Imlib2
 
+![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
+
+![Screenshot](/../Screenshot/screenshot2.png?raw=true "Screenshot")
+
+
 Commandline options:
 
     -r         use root window's background image
@@ -28,9 +33,10 @@ Current version has the following limitations:
 - font is hardcoded to DejaVuSans
 - config file must be generated manually or by running ./genconf > /etc/lunch/icons.conf
 
-![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
+Best practice is when you have a keyboard shortcut to start lunch, such as Alt+F2
+Or have a button in taskbar to run it.
 
-![Screenshot](/../Screenshot/screenshot2.png?raw=true "Screenshot")
+To start lunch on i3wm for example, add this line to ~/.i3/config:
 
-TODO:
-add here examples how to configure lunch to start on Alt+F2 on openbox, i3wm, etc
+    bindsym $mod+F2 exec /usr/bin/lunch
+
