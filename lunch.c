@@ -3,6 +3,7 @@
 // Author: Tomas M <www.slax.org>
 
 
+#define _GNU_SOURCE
 /* include X11 stuff */
 #include <X11/Xlib.h>
 /* include Imlib2 stuff */
@@ -30,7 +31,7 @@ Visual  *vis;
 Colormap cm;
 int      depth;
 
-int fullscreen=1;
+int fullscreen=0;
 
 XIM im;
 XIC ic;
@@ -81,6 +82,8 @@ int cmdx;
 int cmdy;
 int cmdw;
 int cmdh;
+char * bgfile="";
+char * conffile="";
 
 int mouse_x = 0, mouse_y = 0;
 
@@ -97,19 +100,19 @@ void init(int argc, char **argv)
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f")) != -1)
    switch (c)
    {
+      case 'r':
+      useRootImg=1;
+      break;
+
       case 'm':
       margin=atoi(optarg);
       break;
 
       case 'p':
       padding=atoi(optarg);
-      break;
-
-      case 'r':
-      useRootImg=1;
       break;
 
       case 'i':
@@ -121,11 +124,15 @@ void init(int argc, char **argv)
       break;
 
       case 'g':
-      border=atoi(optarg);
+      bgfile=optarg;
+      break;
+
+      case 'c':
+      conffile=optarg;
       break;
 
       case 'f':
-//        cvalue = optarg;
+      fullscreen=0;
       break;
 
       case '?':
@@ -136,12 +143,15 @@ void init(int argc, char **argv)
         {
           fprintf (stderr, "Unknown option `-%c'.\n", optopt);
           fprintf (stderr,"\nAvailable options:\n\n");
-          fprintf (stderr,"   -r      use root window's background image.\n");
-          fprintf (stderr,"           Fails if your root window has no image set.\n");
-          fprintf (stderr,"   -m [i]  margin (integer) specifies margin in pixels between icons\n");
-          fprintf (stderr,"   -p [i]  padding (integer) specifies padding inside icons in pixels\n");
-          fprintf (stderr,"   -b [i]  border (integer) specifies spacing border size in pixels\n");
-          fprintf (stderr,"   -i [i]  icon size (integer) in pixels\n");
+          fprintf (stderr,"   -r         use root window's background image\n");
+          fprintf (stderr,"              Fails if your root window has no image set\n");
+          fprintf (stderr,"   -g [file]  Image to set as background (jpg/png)\n");
+          fprintf (stderr,"   -m [i]     margin (integer) specifies margin in pixels between icons\n");
+          fprintf (stderr,"   -p [i]     padding (integer) specifies padding inside icons in pixels\n");
+          fprintf (stderr,"   -b [i]     border (integer) specifies spacing border size in pixels\n");
+          fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
+          fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
+          fprintf (stderr,"   -f         Disable fullscreen\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
 //          fprintf (stderr,"   -f [name]  font name\n");
@@ -157,6 +167,11 @@ void init(int argc, char **argv)
 
    /* connect to X */
    disp = XOpenDisplay(NULL);
+   if (!disp)
+   {
+      fprintf(stderr,"Cannot connect to DISPLAY\n");
+      exit(2);
+   }
 
    /* get default visual , colormap etc. you could ask imlib2 for what it */
    /* thinks is the best, but this example is intended to be simple */
@@ -307,8 +322,17 @@ int cleanup()
 void parse_config()
 {
    FILE * fp;
-   fp=fopen("/a/conf","rb");
-   if (fp==NULL) { printf("error opening config file\n"); return; }
+   if (strlen(conffile)==0) conffile="/etc/.lunch/icons.conf";
+   fp=fopen(conffile,"rb");
+   if (fp==NULL)
+   {
+      printf("error opening config file %s\n",conffile);
+      printf("Icon file format is following:\n");
+      printf("title;icon_path;command\n");
+      printf("title;icon_path;command\n");
+      printf("title;icon_path;command\n");
+      return;
+   }
 
    char title[255];
    char icon[255];
@@ -548,10 +572,11 @@ int main(int argc, char **argv)
       }
    }
    else // load background from file
+   if (strlen(bgfile)>0)
    {
-      image = imlib_load_image("bg.png");
+      image = imlib_load_image(bgfile);
       imlib_context_set_image(image);
-      if (image) 
+      if (image)
       {
          w = imlib_image_get_width();
          h = imlib_image_get_height();
