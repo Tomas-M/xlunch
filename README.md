@@ -11,3 +11,6 @@ Current version has the following limitations:
 ![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
 
 ![Screenshot](/../Screenshot/screenshot2.png?raw=true "Screenshot")
+
+TODO:
+add here examples how to configure lunch to start on Alt+F2 on openbox, i3wm, etc
