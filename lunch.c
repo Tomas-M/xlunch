@@ -20,7 +20,8 @@
 /* X utils */
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
-
+/* parse commandline arguments */
+#include <ctype.h>
 
 /* some globals for our window & X display */
 Display *disp;
@@ -83,8 +84,77 @@ int cmdh;
 
 int mouse_x = 0, mouse_y = 0;
 
-void init()
+void init(int argc, char **argv)
 {
+   // defaults
+   useRootImg=0;
+   icon_size=48;
+   padding=20;
+   margin=2;
+   border=140;
+   font_height=20;
+
+   int c;
+
+   opterr = 0;
+   while ((c = getopt(argc, argv, "rm:p:i:b:")) != -1)
+   switch (c)
+   {
+      case 'm':
+      margin=atoi(optarg);
+      break;
+
+      case 'p':
+      padding=atoi(optarg);
+      break;
+
+      case 'r':
+      useRootImg=1;
+      break;
+
+      case 'i':
+      icon_size=atoi(optarg);
+      break;
+
+      case 'b':
+      border=atoi(optarg);
+      break;
+
+      case 'g':
+      border=atoi(optarg);
+      break;
+
+      case 'f':
+//        cvalue = optarg;
+      break;
+
+      case '?':
+      {
+        if (optopt == 'c')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+        {
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+          fprintf (stderr,"\nAvailable options:\n\n");
+          fprintf (stderr,"   -r      use root window's background image.\n");
+          fprintf (stderr,"           Fails if your root window has no image set.\n");
+          fprintf (stderr,"   -m [i]  margin (integer) specifies margin in pixels between icons\n");
+          fprintf (stderr,"   -p [i]  padding (integer) specifies padding inside icons in pixels\n");
+          fprintf (stderr,"   -b [i]  border (integer) specifies spacing border size in pixels\n");
+          fprintf (stderr,"   -i [i]  icon size (integer) in pixels\n");
+
+//          fprintf (stderr,"   -d [x]  gradient color\n");
+//          fprintf (stderr,"   -f [name]  font name\n");
+//          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
+          fprintf (stderr,"\n");
+          exit(1);
+        }
+        else
+          fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
+        exit(1);
+      }
+   }
+
    /* connect to X */
    disp = XOpenDisplay(NULL);
 
@@ -98,13 +168,6 @@ void init()
    /* get screen size */
    screen_width=DisplayWidth(disp,screen);
    screen_height=DisplayHeight(disp,screen);
-
-   useRootImg=1;
-   icon_size=48;
-   padding=20;
-   margin=2;
-   border=140;
-   font_height=20;
 
    cell_width=icon_size+padding*2+margin*2;
    cell_height=icon_size+padding*2+margin*2+font_height;
@@ -244,7 +307,7 @@ int cleanup()
 void parse_config()
 {
    FILE * fp;
-   fp=fopen("conf","rb");
+   fp=fopen("/a/conf","rb");
    if (fp==NULL) { printf("error opening config file\n"); return; }
 
    char title[255];
@@ -424,7 +487,7 @@ int main(int argc, char **argv)
    int w, h;
 
    // set initial variables now
-   init();
+   init(argc, argv);
    joincmdlinetext();
 
    // previous window handle
