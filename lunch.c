@@ -31,7 +31,7 @@ Visual  *vis;
 Colormap cm;
 int      depth;
 
-int fullscreen=0;
+int fullscreen=1;
 
 XIM im;
 XIC ic;
