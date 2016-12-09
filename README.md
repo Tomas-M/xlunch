@@ -1,5 +1,6 @@
 # lunch
-Graphical app launcher for X with little dependencies
+Graphical app launcher for X with little dependencies.
+Should require only Imlib2
 
 Commandline options:
 
