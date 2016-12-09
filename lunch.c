@@ -84,6 +84,7 @@ int cmdw;
 int cmdh;
 char * bgfile="";
 char * conffile="";
+char * runT="";
 
 int mouse_x = 0, mouse_y = 0;
 
@@ -96,11 +97,12 @@ void init(int argc, char **argv)
    margin=2;
    border=140;
    font_height=20;
+   cmdy=100;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:ft:x:")) != -1)
    switch (c)
    {
       case 'r':
@@ -135,6 +137,14 @@ void init(int argc, char **argv)
       fullscreen=0;
       break;
 
+      case 't':
+      cmdy=atoi(optarg);
+      break;
+
+      case 'x':
+      runT=optarg;
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -152,6 +162,8 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
           fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
           fprintf (stderr,"   -f         Disable fullscreen\n");
+          fprintf (stderr,"   -t         Top position (integer) in pixels for the Run commandline\n");
+          fprintf (stderr,"   -x [text]  String to display instead of 'Run: '\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
 //          fprintf (stderr,"   -f [name]  font name\n");
@@ -190,7 +202,6 @@ void init(int argc, char **argv)
    cell_width=(screen_width-border*2)/n; // rounded
 
    cmdx=border+cell_width/2-icon_size/2;
-   cmdy=100;
    cmdw=screen_width-cmdx;
    cmdh=40;
 }
@@ -475,7 +486,8 @@ void joincmdline()
 
 void joincmdlinetext()
 {
-   strcpy(commandlinetext,"Run:  ");
+   if (strlen(runT)==0) runT="Run:  ";
+   strcpy(commandlinetext,runT);
 
    keynode_t * current = cmdline;
 
