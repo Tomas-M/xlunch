@@ -18,9 +18,10 @@ Commandline options:
     -b [i]     border (integer) specifies spacing border size in pixels
     -i [i]     icon size (integer) in pixels
     -c [file]  path to config file which describes titles, icons and commands.
-    -f         Disable fullscreen
+    -n         Disable fullscreen
     -t [i]     Top position (integer) in pixels for the Run commandline
     -x [text]  String to display instead of 'Run: '
+    -f [name]  font name including size after slash, for example: DejaVuSans/10
 
 
     Format of config file (default is /etc/lunch/icons.conf) is:
