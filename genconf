@@ -18,7 +18,7 @@ find $APPS | fgrep .desktop | while read DESKTOPFILE; do
    fi
 
    if [ "$ICON" != "" ]; then
-      ICON=$(find $ICONS | grep $SIZE"x"$SIZE | grep $ICON"[.]png")
+      ICON=$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICON"[.]png" | head -n 1)
       if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
          echo "$NAME;$ICON;$EXEC"
       fi
