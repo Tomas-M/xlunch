@@ -24,7 +24,8 @@ Commandline options:
     -f [name]  font name including size after slash, for example: DejaVuSans/10
 
 
-    Format of config file (default is /etc/lunch/icons.conf) is:
+Format of config file (default is /etc/lunch/icons.conf) is:
+
     title;icon_path;cmd
     title;icon_path;cmd
     title;icon_path;cmd
