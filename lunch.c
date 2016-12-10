@@ -40,8 +40,6 @@ int screen;
 int screen_width;
 int screen_height;
 
-char kbdbuf[20];
-
 Window prev;
 int revert_to;
 
@@ -191,6 +189,9 @@ void init(int argc, char **argv)
    vis   = DefaultVisual(disp, screen);
    depth = DefaultDepth(disp, screen);
    cm    = DefaultColormap(disp, screen);
+
+   // previous window handle
+   XGetInputFocus(disp,&prev,&revert_to);
 
    /* get screen size */
    screen_width=DisplayWidth(disp,screen);
@@ -526,9 +527,6 @@ int main(int argc, char **argv)
    init(argc, argv);
    joincmdlinetext();
 
-   // previous window handle
-   XGetInputFocus(disp,&prev,&revert_to);
-
    // fullscreen
    unsigned long valuemask = CWOverrideRedirect;
    XSetWindowAttributes attributes;
@@ -628,7 +626,9 @@ int main(int argc, char **argv)
    if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
 
-   // I noticed this sometimes fails. Should we somehow wait for the window to appear or process some events before we do this?
+   // I noticed this sometimes fails with BadMatch (invalid parameter attributes).
+   // Should we somehow wait for the window to appear or process some events before we do this?
+   // In all cases I do not understand what's wrong here.
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
 
    // parse config file
@@ -689,9 +689,10 @@ int main(int argc, char **argv)
                {
                   // keyboard events
                   int count = 0;
-                  KeySym keysym = 0;
+                  KeySym keycode = 0;
                   Status status = 0;
-                  count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keysym, &status);
+                  char kbdbuf[20];
+                  count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
 
                   if (count==1 && kbdbuf[0]==27) // Esc key
                   {
@@ -704,16 +705,21 @@ int main(int argc, char **argv)
                      run_command(commandline,0);
                   }
 
+                  if (count==1 && kbdbuf[0]==9) // Tab key
+                  {
+                     // TODO do something
+                  }
+
                   if (count==1 && kbdbuf[0]==8) // Backspace key
                      pop_key();
                   else
-                     if (status==4) push_key(kbdbuf);
+                     if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
+                        push_key(kbdbuf);
 
                   joincmdline();
                   joincmdlinetext();
                   filter_apps();
                   arrange_positions();
-
 
                   updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
 /*
@@ -721,9 +727,8 @@ int main(int argc, char **argv)
                   if (status==XBufferOverflow)  printf("BufferOverflow\n");
 
                   if (count)  printf("buffer: %.*s\n", count, kbdbuf);
-
                   if (status == XLookupKeySym || status == XLookupBoth) printf("status: %d\n", status);
-                  printf("pressed KEY: %d\n", (int)keysym);
+                  printf("pressed KEY code: %d\n", (int)keycode);
 */
                   break;
                }
