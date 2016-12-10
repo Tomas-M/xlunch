@@ -8,7 +8,7 @@ The Run commandline also works as a filter for the icons, as long as the title o
 ![Screenshot](/../Screenshot/screenshot2.png?raw=true "Screenshot")
 
 
-Commandline options:
+**Commandline options:**
 
     -r         use root window's background image
                Fails if your root window has no image set
@@ -24,7 +24,7 @@ Commandline options:
     -f [name]  font name including size after slash, for example: DejaVuSans/10
 
 
-Format of config file (default is /etc/lunch/icons.conf) is:
+**Format of config file (default is /etc/lunch/icons.conf) is:**
 
     title;icon_path;cmd
     title;icon_path;cmd
@@ -32,7 +32,7 @@ Format of config file (default is /etc/lunch/icons.conf) is:
     title;icon_path;cmd
 
 
-Compile:
+**Compile:**
 
     gcc lunch.c -o lunch -lImlib2 -lX11 -lXcursor
 
