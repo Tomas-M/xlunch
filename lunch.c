@@ -83,6 +83,7 @@ int cmdh;
 char * bgfile="";
 char * conffile="";
 char * runT="";
+char * fontname="";
 
 int mouse_x = 0, mouse_y = 0;
 
@@ -100,7 +101,7 @@ void init(int argc, char **argv)
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:ft:x:")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:n")) != -1)
    switch (c)
    {
       case 'r':
@@ -131,7 +132,7 @@ void init(int argc, char **argv)
       conffile=optarg;
       break;
 
-      case 'f':
+      case 'n':
       fullscreen=0;
       break;
 
@@ -141,6 +142,10 @@ void init(int argc, char **argv)
 
       case 'x':
       runT=optarg;
+      break;
+
+      case 'f':
+      fontname=optarg;
       break;
 
       case '?':
@@ -159,12 +164,12 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -b [i]     border (integer) specifies spacing border size in pixels\n");
           fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
           fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
-          fprintf (stderr,"   -f         Disable fullscreen\n");
+          fprintf (stderr,"   -n         Disable fullscreen\n");
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
           fprintf (stderr,"   -x [text]  String to display instead of 'Run: '\n");
+          fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
-//          fprintf (stderr,"   -f [name]  font name\n");
 //          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
           fprintf (stderr,"\n");
           exit(1);
@@ -501,6 +506,16 @@ void joincmdlinetext()
 }
 
 
+Imlib_Font loadfont()
+{
+   if (strlen(fontname)==0) fontname="OpenSans-Regular/10";
+   Imlib_Font font;
+   font=imlib_load_font(fontname);
+   if (!font) font=imlib_load_font("DejaVuSans/10");
+   return font;
+}
+
+
 /* the program... */
 int main(int argc, char **argv)
 {
@@ -546,6 +561,7 @@ int main(int argc, char **argv)
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
+   imlib_add_path_to_font_path(".");
    /* set the maximum number of colors to allocate for 8bpp and less to 128 */
    imlib_set_color_usage(128);
    /* dither for depths < 24bpp */
@@ -799,7 +815,7 @@ int main(int argc, char **argv)
                                                   current->x - up_x + cell_width/2-icon_size/2, current->y - up_y +padding+margin, icon_size, icon_size);
 
                       /* draw text under icon */
-                      font = imlib_load_font("DejaVuSans/10");
+                      font = loadfont();
                       if (font)
                       {
                          int text_w; int text_h;
@@ -807,7 +823,9 @@ int main(int argc, char **argv)
                          imlib_context_set_font(font);
                          imlib_get_text_size(current->title, &text_w, &text_h); 
 
-                         imlib_context_set_color(0, 0, 0, 100);
+                         imlib_context_set_color(0, 0, 0, 70);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +1, current->title); 
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +2, current->title); 
                          imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +2, current->title); 
 
                          imlib_context_set_color(255, 255, 255, 255);
@@ -830,7 +848,7 @@ int main(int argc, char **argv)
              imlib_context_set_image(buffer);
 
              /* draw text */
-             font = imlib_load_font("DejaVuSans/10");
+             font = loadfont();
              if (font)
              {
                 int text_w; int text_h;
@@ -838,8 +856,10 @@ int main(int argc, char **argv)
                 imlib_context_set_font(font);
                 imlib_get_text_size(commandlinetext, &text_w, &text_h); 
 
-                imlib_context_set_color(0, 0, 0, 100);
-                imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext); 
+                imlib_context_set_color(0, 0, 0, 70);
+                imlib_text_draw(cmdx+1 - up_x, cmdy+1 - up_y, commandlinetext);
+                imlib_text_draw(cmdx+1 - up_x, cmdy+2 - up_y, commandlinetext);
+                imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext);
 
                 imlib_context_set_color(255, 255, 255, 255);
                 imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext); 
