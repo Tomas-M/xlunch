@@ -353,7 +353,7 @@ int cleanup()
 void parse_app_icons()
 {
    FILE * fp;
-   if (strlen(conffile)==0) conffile="/etc/lunch/icons.conf";
+   if (strlen(conffile)==0) conffile="/etc/xlunch/icons.conf";
    fp=fopen(conffile,"rb");
    if (fp==NULL)
    {

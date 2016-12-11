@@ -1,4 +1,4 @@
 #!/bin/bash
-rm ./lunch
-gcc lunch.c -o lunch -lImlib2 -lX11 -lXcursor
-./lunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg
+rm ./xlunch
+gcc xlunch.c -o xlunch -lImlib2 -lX11 -lXcursor
+./xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg
