@@ -31,8 +31,6 @@ Visual  *vis;
 Colormap cm;
 int      depth;
 
-int fullscreen=1;
-
 XIM im;
 XIC ic;
 
@@ -50,6 +48,8 @@ typedef struct node {
     char title[255];
     char icon[255];
     char cmd[255];
+    int hovered;
+    int clicked;
     int hidden;
     int x;
     int y;
@@ -84,8 +84,12 @@ char * bgfile="";
 char * conffile="";
 char * runT="";
 char * fontname="";
+int fullscreen=1;
+int useIsTyping=0;
 
-int mouse_x = 0, mouse_y = 0;
+/* areas to update */
+Imlib_Updates updates, current_update;
+
 
 void init(int argc, char **argv)
 {
@@ -305,6 +309,8 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
        apps->x=0;
        apps->y=0;
        apps->hidden=0;
+       apps->hovered=0;
+       apps->clicked=0;
        apps->next = NULL;
        return;
     }
@@ -321,6 +327,8 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
     current->next->x=x;
     current->next->y=y;
     current->next->hidden=0;
+    current->next->hovered=0;
+    current->next->clicked=0;
     current->next->next = NULL;
 }
 
@@ -366,7 +374,7 @@ void parse_app_icons()
 }
 
 
-int mouse_over_cell(node_t * current)
+int mouse_over_cell(node_t * current, int mouse_x, int mouse_y)
 {
      if (mouse_x>=current->x+margin
       && mouse_x<=current->x+cell_width-margin
@@ -447,7 +455,7 @@ void filter_apps()
    while (current != NULL)
    {
       if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
-      else current->hidden=1;
+      else { current->hidden=1; current->hovered=0; current->clicked=0; }
       current=current->next;
    }
 }
@@ -506,6 +514,22 @@ void joincmdlinetext()
 }
 
 
+void sethover(node_t * cell, int hover)
+{
+    if (cell->hidden) return;
+    if (cell->hovered!=hover) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
+    cell->hovered=hover;
+}
+
+void setclicked(node_t * cell, int clicked)
+{
+    if (cell->hidden) return;
+    if (cell->clicked!=clicked) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
+    cell->clicked=clicked;
+}
+
+
+
 Imlib_Font loadfont()
 {
    if (strlen(fontname)==0) fontname="OpenSans-Regular/10";
@@ -521,8 +545,6 @@ int main(int argc, char **argv)
 {
    /* events we get from X */
    XEvent ev;
-   /* areas to update */
-   Imlib_Updates updates, current_update;
    /* our virtual framebuffer image we draw into */
    Imlib_Image buffer;
    /* our background image, rendered only once */
@@ -674,21 +696,30 @@ int main(int argc, char **argv)
                   updates = imlib_update_append_rect(updates, ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
                   break;
 
-               case ButtonRelease:
+               case ButtonPress:
                {
-
-                  mouse_x = ev.xmotion.x;
-                  mouse_y = ev.xmotion.y;
                   node_t * current = apps;
 
-                  // if we lost focus, gain it back
-                  XSetInputFocus(disp,win,RevertToNone,CurrentTime);
+                  while (current != NULL)
+                  {
+                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) setclicked(current,1);
+                      else setclicked(current,0);
+                      current = current->next;
+                  }
+
+                  break;
+               }
+
+               case ButtonRelease:
+               {
+                  node_t * current = apps;
 
                   while (current != NULL)
                   {
                       if (!current->hidden)
                       {
-                         if (mouse_over_cell(current)) run_command(current->cmd,1);
+                         if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd,1);
+                         current->clicked=0;
                       }
                       current = current->next;
                   }
@@ -744,6 +775,7 @@ int main(int argc, char **argv)
 
                   if (count)  printf("buffer: %.*s\n", count, kbdbuf);
                   if (status == XLookupKeySym || status == XLookupBoth) printf("status: %d\n", status);
+                  printf("pressed KEY code: %d\n", kbdbuf[0]);
                   printf("pressed KEY code: %d\n", (int)keycode);
 */
                   break;
@@ -753,10 +785,16 @@ int main(int argc, char **argv)
                   break;
 
                case MotionNotify:
-                  updates = imlib_update_append_rect(updates,  mouse_x - (cell_width), mouse_y - (cell_height), cell_width*2, cell_height*2);
-                  mouse_x = ev.xmotion.x;
-                  mouse_y = ev.xmotion.y;
-                  updates = imlib_update_append_rect(updates,  mouse_x - (cell_width), mouse_y - (cell_height), cell_width*2, cell_height*2);
+               {
+                  node_t * current = apps;
+
+                  while (current != NULL)
+                  {
+                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) sethover(current,1);
+                      else { sethover(current,0); setclicked(current,0); }
+                      current = current->next;
+                  }
+               }
                default:
                   /* any other events - do nothing */
                   break;
@@ -788,7 +826,6 @@ int main(int argc, char **argv)
              /* blend background image onto the buffer */
              imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
-
              node_t * current = apps;
              Cursor c = XcursorLibraryLoadCursor(disp,"top_left_arrow");
 
@@ -804,15 +841,17 @@ int main(int argc, char **argv)
                       h = imlib_image_get_height();
                       imlib_context_set_image(buffer);
 
-                      if (mouse_over_cell(current))
+                      if (current->hovered)
                       {
                          c = XcursorLibraryLoadCursor(disp,"hand1");
-                         /* draw the range */
                          imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
                       }
 
+                      int d;
+                      if (current->clicked) d=2; else d=0;
+
                       imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                  current->x - up_x + cell_width/2-icon_size/2, current->y - up_y +padding+margin, icon_size, icon_size);
+                                                  current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
 
                       /* draw text under icon */
                       font = loadfont();
@@ -821,15 +860,17 @@ int main(int argc, char **argv)
                          int text_w; int text_h;
 
                          imlib_context_set_font(font);
-                         imlib_get_text_size(current->title, &text_w, &text_h); 
+                         imlib_get_text_size(current->title, &text_w, &text_h);
+                         int d;
+                         if (current->clicked==1) d=4; else d=0;
 
-                         imlib_context_set_color(0, 0, 0, 70);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +1, current->title); 
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +2, current->title); 
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - font_height/2 - text_h - up_y - padding/2 +2, current->title); 
+                         imlib_context_set_color(0, 0, 0, 30);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, current->title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, current->title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, current->title);
 
                          imlib_context_set_color(255, 255, 255, 255);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - font_height/2 - text_h - up_y - padding/2, current->title); 
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, current->title);
 
                          /* free the font */
                          imlib_free_font();
@@ -851,12 +892,8 @@ int main(int argc, char **argv)
              font = loadfont();
              if (font)
              {
-                int text_w; int text_h;
-
                 imlib_context_set_font(font);
-                imlib_get_text_size(commandlinetext, &text_w, &text_h); 
-
-                imlib_context_set_color(0, 0, 0, 70);
+                imlib_context_set_color(0, 0, 0, 30);
                 imlib_text_draw(cmdx+1 - up_x, cmdy+1 - up_y, commandlinetext);
                 imlib_text_draw(cmdx+1 - up_x, cmdy+2 - up_y, commandlinetext);
                 imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext);
