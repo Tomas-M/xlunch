@@ -86,6 +86,12 @@ char * runT="";
 char * fontname="";
 int fullscreen=1;
 int useIsTyping=0;
+int columns;
+
+#define MOUSE 1
+#define KEYBOARD 2
+int hoverset=MOUSE;
+
 
 /* areas to update */
 Imlib_Updates updates, current_update;
@@ -208,8 +214,8 @@ void init(int argc, char **argv)
 
    cell_width=icon_size+padding*2+margin*2;
    cell_height=icon_size+padding*2+margin*2+font_height;
-   int n=(screen_width-border*2)/cell_width;
-   cell_width=(screen_width-border*2)/n; // rounded
+   columns=(screen_width-border*2)/cell_width;
+   cell_width=(screen_width-border*2)/columns; // rounded
 
    cmdx=border+cell_width/2-icon_size/2;
    cmdw=screen_width-cmdx;
@@ -374,13 +380,15 @@ void parse_app_icons()
 }
 
 
-int mouse_over_cell(node_t * current, int mouse_x, int mouse_y)
+int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
-     if (mouse_x>=current->x+margin
-      && mouse_x<=current->x+cell_width-margin
-      && mouse_y>=current->y+margin
-      && mouse_y<=current->y+cell_height-margin) return 1;
-     else return 0;
+   if (cell->hidden) return 0;
+
+   if (mouse_x>=cell->x+margin
+      && mouse_x<=cell->x+cell_width-margin
+      && mouse_y>=cell->y+margin
+      && mouse_y<=cell->y+cell_height-margin) return 1;
+   else return 0;
 }
 
 
@@ -516,18 +524,19 @@ void joincmdlinetext()
 
 void sethover(node_t * cell, int hover)
 {
-    if (cell->hidden) return;
-    if (cell->hovered!=hover) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
-    cell->hovered=hover;
+   if (cell==NULL) return;
+   if (cell->hidden) return;
+   if (cell->hovered!=hover) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
+   cell->hovered=hover;
 }
 
 void setclicked(node_t * cell, int clicked)
 {
-    if (cell->hidden) return;
-    if (cell->clicked!=clicked) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
-    cell->clicked=clicked;
+   if (cell==NULL) return;
+   if (cell->hidden) return;
+   if (cell->clicked!=clicked) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
+   cell->clicked=clicked;
 }
-
 
 
 Imlib_Font loadfont()
@@ -716,11 +725,8 @@ int main(int argc, char **argv)
 
                   while (current != NULL)
                   {
-                      if (!current->hidden)
-                      {
-                         if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd,1);
-                         current->clicked=0;
-                      }
+                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd,1);
+                      setclicked(current,0); // button release means all cells are not clicked
                       current = current->next;
                   }
 
@@ -738,26 +744,73 @@ int main(int argc, char **argv)
                   int count = 0;
                   KeySym keycode = 0;
                   Status status = 0;
-                  char kbdbuf[20];
+                  char kbdbuf[20]={0};
                   count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
 
-                  if (count==1 && kbdbuf[0]==27) // Esc key
+                  if (keycode==XK_Escape)
                   {
                      cleanup();
                      exit(0);
                   }
 
-                  if (count==1 && kbdbuf[0]==13) // Enter key
+                  if (keycode==XK_Return || keycode==XK_KP_Enter)
                   {
-                     run_command(commandline,0);
+                     // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
+                     node_t * current = apps;
+                     node_t * selected = NULL;
+                     while (current != NULL)
+                     {
+                        if (!current->hidden && current->hovered) selected=current;
+                        current=current->next;
+                     }
+                     if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,0);
+                     else run_command(commandline,0);
                   }
 
-                  if (count==1 && kbdbuf[0]==9) // Tab key
+                  if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
+                  || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right)
                   {
-                     // TODO do something
+                     int i=0;
+                     if (keycode==XK_Tab || keycode==XK_KP_Left || keycode==XK_Left) i=-1;
+                     if (keycode==XK_Up || keycode==XK_KP_Up) i=-columns;
+                     if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
+                     if (keycode==XK_Right || keycode==XK_KP_Right) i=1;
+
+                     int j=0,n=0;
+                     node_t * current = apps;
+                     node_t * selected = NULL;
+                     while (current != NULL)
+                     {
+                        if (!current->hidden)
+                        {
+                           n++;
+                           if (selected==NULL) j++;
+                           if (current->hovered) selected=current;
+                           sethover(current,0);
+                        }
+                        current=current->next;
+                     }
+
+                     if (selected==NULL) { selected=apps; i=0; j=0; }
+                     current=apps;
+
+                     int k=i+j;
+                     if (k>n) k=n;
+                     if (k<1) k=1;
+                     while (current != NULL)
+                     {
+                        if (!current->hidden)
+                        {
+                           k--;
+                           if (k==0) { sethover(current,1); hoverset=KEYBOARD; }
+                        }
+                        current=current->next;
+                     }
+
+                     continue; // do not conitnue
                   }
 
-                  if (count==1 && kbdbuf[0]==8) // Backspace key
+                  if (keycode==XK_Delete || keycode==XK_BackSpace)
                      pop_key();
                   else
                      if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
@@ -768,16 +821,16 @@ int main(int argc, char **argv)
                   filter_apps();
                   arrange_positions();
 
-                  updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-/*
-                  printf("count: %d\n", count);
-                  if (status==XBufferOverflow)  printf("BufferOverflow\n");
+                  // we used keyboard to type command. So unselect all icons.
+                  node_t * current = apps;
+                  while (current != NULL)
+                  {
+                     sethover(current,0);
+                     setclicked(current,0);
+                     current = current->next;
+                  }
 
-                  if (count)  printf("buffer: %.*s\n", count, kbdbuf);
-                  if (status == XLookupKeySym || status == XLookupBoth) printf("status: %d\n", status);
-                  printf("pressed KEY code: %d\n", kbdbuf[0]);
-                  printf("pressed KEY code: %d\n", (int)keycode);
-*/
+                  updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
                   break;
                }
 
@@ -790,11 +843,14 @@ int main(int argc, char **argv)
 
                   while (current != NULL)
                   {
-                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) sethover(current,1);
+                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) { sethover(current,1); hoverset=MOUSE; }
                       else { sethover(current,0); setclicked(current,0); }
                       current = current->next;
                   }
+
+                  break;
                }
+
                default:
                   /* any other events - do nothing */
                   break;
