@@ -768,12 +768,13 @@ int main(int argc, char **argv)
                   }
 
                   if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
-                  || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right)
+                  || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right
+                  || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
                   {
                      int i=0;
                      if (keycode==XK_Tab || keycode==XK_KP_Left || keycode==XK_Left) i=-1;
-                     if (keycode==XK_Up || keycode==XK_KP_Up) i=-columns;
-                     if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
+                     if (keycode==XK_Up || keycode==XK_KP_Up || keycode==XK_Page_Up) i=-columns;
+                     if (keycode==XK_Down || keycode==XK_KP_Down || keycode==XK_Page_Down) i=columns;
                      if (keycode==XK_Right || keycode==XK_KP_Right) i=1;
 
                      int j=0,n=0;
@@ -795,8 +796,8 @@ int main(int argc, char **argv)
                      current=apps;
 
                      int k=i+j;
-                     if (k>n) k=n;
-                     if (k<1) k=1;
+                     if (k>n || keycode==XK_End) k=n;
+                     if (k<1 || keycode==XK_Home) k=1;
                      while (current != NULL)
                      {
                         if (!current->hidden)
