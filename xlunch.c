@@ -662,7 +662,7 @@ int main(int argc, char **argv)
 
 
    /* tell X what events we are interested in */
-   XSelectInput(disp, win, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask);
+   XSelectInput(disp, win, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
    /* show the window */
    XMapRaised(disp, win);
 
@@ -675,8 +675,6 @@ int main(int argc, char **argv)
    if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
 
-   // I noticed this sometimes fails with BadMatch (invalid parameter attributes).
-   // So lets call it only if fullscreen mode is active
    if (fullscreen)
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
 
@@ -706,6 +704,18 @@ int main(int argc, char **argv)
                   /* rectangles we need to re-render */
                   updates = imlib_update_append_rect(updates, ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
                   break;
+
+               case FocusIn:
+               break;
+
+               case FocusOut:
+                  // if running in fullscreen, force TOP
+                  if (fullscreen)
+                  {
+                     XSetInputFocus(disp,win,RevertToNone,CurrentTime);
+                     XRaiseWindow(disp,win);
+                  }
+               break;
 
                case ButtonPress:
                {
@@ -850,7 +860,6 @@ int main(int argc, char **argv)
                       else { sethover(current,0); setclicked(current,0); }
                       current = current->next;
                   }
-
                   break;
                }
 
