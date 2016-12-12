@@ -205,6 +205,8 @@ void init(int argc, char **argv)
    depth = DefaultDepth(disp, screen);
    cm    = DefaultColormap(disp, screen);
 
+   XSynchronize(disp,True);
+
    // previous window handle
    XGetInputFocus(disp,&prev,&revert_to);
 
