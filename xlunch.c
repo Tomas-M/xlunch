@@ -84,6 +84,7 @@ char * bgfile="";
 char * conffile="";
 char * runT="";
 char * fontname="";
+int disableprompt;
 int fullscreen=1;
 int useIsTyping=0;
 int columns;
@@ -107,11 +108,12 @@ void init(int argc, char **argv)
    border=140;
    font_height=20;
    cmdy=100;
+   disableprompt=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:n")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nk")) != -1)
    switch (c)
    {
       case 'r':
@@ -158,6 +160,10 @@ void init(int argc, char **argv)
       fontname=optarg;
       break;
 
+      case 'k':
+      disableprompt=1;
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -176,8 +182,9 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
           fprintf (stderr,"   -n         Disable fullscreen\n");
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
-          fprintf (stderr,"   -x [text]  String to display instead of 'Run: '\n");
+          fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
+          fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
 //          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
@@ -510,6 +517,7 @@ void joincmdline()
 
 void joincmdlinetext()
 {
+   if (disableprompt) return;
    if (strlen(runT)==0) runT="Run:  ";
    strcpy(commandlinetext,runT);
 
@@ -776,7 +784,8 @@ int main(int argc, char **argv)
                         current=current->next;
                      }
                      if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,0);
-                     else run_command(commandline,0);
+                     // else run the command entered by commandline, if the command prompt is used
+                     else if (!disableprompt) run_command(commandline,0);
                   }
 
                   if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
@@ -827,7 +836,7 @@ int main(int argc, char **argv)
                      pop_key();
                   else
                      if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
-                        push_key(kbdbuf);
+                        if (!disableprompt) push_key(kbdbuf);
 
                   joincmdline();
                   joincmdlinetext();

@@ -22,6 +22,7 @@ The Run commandline also works as a filter for the icons, as long as the title o
     -t [i]     Top position (integer) in pixels for the Run commandline
     -x [text]  String to display instead of 'Run: '
     -f [name]  font name including size after slash, for example: DejaVuSans/10
+    -k         kiosk mode, disable Run prompt, allow user to only run by icon
 
 
 **Format of config file (default is /etc/xlunch/icons.conf) is:**
