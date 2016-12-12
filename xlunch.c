@@ -676,8 +676,8 @@ int main(int argc, char **argv)
    XSetICFocus(ic);
 
    // I noticed this sometimes fails with BadMatch (invalid parameter attributes).
-   // Should we somehow wait for the window to appear or process some events before we do this?
-   // In all cases I do not understand what's wrong here.
+   // So lets call it only if fullscreen mode is active
+   if (fullscreen)
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
 
    // parse config file
