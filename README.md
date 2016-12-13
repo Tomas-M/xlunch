@@ -6,11 +6,13 @@ The Run commandline also works as a filter for the icons, as long as the title o
 **Available Modes**
 
 - Kiosk mode - in this mode, the Run comand is disabled, thus user cannot
-    type any command. He can only select icons to run
+    type any command. He can only select icons to run. Input focus is not
+    affected by this mode
 - Fork mode - in this mode, the started commands are run as new process
-    and the launcher keeps running
+    and the launcher keeps running. Input focus is not affected by this mode
 - Desktop mode - in this mode, the launcher sends itself to lowest position,
     so all other windows are above it. This emulates desktop with icons.
+    Input focus is affected in the way that the launcher never gets focus.
 
 It is possible to combine all modes together.
 
