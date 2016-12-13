@@ -13,9 +13,9 @@ The Run commandline also works as a filter for the icons, as long as the title o
     Input focus is not affected by this mode at all.
 - Fork mode - in this mode, the commands or apps are started as new process
     and the launcher keeps running. Input focus is not affected by this mode at all.
-    Note that unless you use Desktop mode which sends the launcher to back,
-    the forked app window will most likely end up behind the launcher
-    so it will look like nothing was started. Consider using both modes simulatenously.
+    Note that unless you combine fork mode with desktop mode (see below),
+    your forked application window will most likely end up behind the launcher
+    so it will look like nothing was started.
 - Desktop mode - in this mode, the launcher sends itself to lowest position,
     so all other windows are above it. This emulates desktop with icons.
     Input focus is affected in the way that the launcher never gets focus,
