@@ -85,6 +85,7 @@ char * conffile="";
 char * runT="";
 char * fontname="";
 int disableprompt;
+int forkmode;
 int fullscreen=1;
 int useIsTyping=0;
 int columns;
@@ -109,11 +110,12 @@ void init(int argc, char **argv)
    font_height=20;
    cmdy=100;
    disableprompt=0;
+   forkmode=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nk")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkv")) != -1)
    switch (c)
    {
       case 'r':
@@ -164,6 +166,10 @@ void init(int argc, char **argv)
       disableprompt=1;
       break;
 
+      case 'v':
+      forkmode=1;
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -185,6 +191,7 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
           fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
+          fprintf (stderr,"   -v         fork mode, keep running after executing a program\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
 //          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
@@ -480,9 +487,6 @@ void filter_apps()
 
 void run_command(char * cmd, int excludePercentSign)
 {
-    printf("Running command: %s\n",cmd);
-    cleanup();
-
     // split arguments into pieces
     int i = 0;
     char *p = strtok (cmd, " ");
@@ -497,10 +501,33 @@ void run_command(char * cmd, int excludePercentSign)
         if (i>=99) break;
     }
 
-    // execute cmd replacing current process
-    int err=execvp(cmd,array);
-    printf("Error running %s : %d",cmd,err);
-    exit(0);
+    if (forkmode)
+    {
+       pid_t pid=fork();
+       if (pid==0) // child process
+       {
+          printf("Forking command: %s\n",cmd);
+          int err=execvp(cmd,array);
+          printf("Error forking %s : %d\n",cmd,err);
+          exit(0);
+       }
+       else if (pid<0) // error forking
+       {
+          printf("Error running %s\n",cmd);
+       }
+       else // parent process
+       {
+       }
+    }
+    else
+    {
+       // execute cmd replacing current process
+       cleanup();
+       printf("Running command: %s\n",cmd);
+       int err=execvp(cmd,array);
+       printf("Error running %s : %d\n",cmd);
+       exit(0);
+    }
 }
 
 void joincmdline()
@@ -584,12 +611,12 @@ int main(int argc, char **argv)
    joincmdlinetext();
 
    // fullscreen
+
    unsigned long valuemask = CWOverrideRedirect;
    XSetWindowAttributes attributes;
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
    attributes.override_redirect=fullscreen;
    XChangeWindowAttributes(disp,win,valuemask,&attributes);
-
 
    /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
    /* the images we use use less than 2Mb of RAM (that is uncompressed) */
