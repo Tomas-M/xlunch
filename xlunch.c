@@ -17,7 +17,7 @@
 /* exec include */
 #include <unistd.h>
 /* cursor */
-#include <X11/Xcursor/Xcursor.h>
+#include <X11/cursorfont.h>
 /* X utils */
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -960,7 +960,7 @@ int main(int argc, char **argv)
              imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
              node_t * current = apps;
-             Cursor c = XcursorLibraryLoadCursor(disp,"top_left_arrow");
+             Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
 
              while (current != NULL)
              {
@@ -976,7 +976,7 @@ int main(int argc, char **argv)
 
                       if (current->hovered)
                       {
-                         c = XcursorLibraryLoadCursor(disp,"hand1");
+                         c = XCreateFontCursor(disp,XC_hand1);
                          imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
                       }
 

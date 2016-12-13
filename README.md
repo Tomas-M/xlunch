@@ -8,7 +8,7 @@ detailed info at: http://www.xlunch.org/
 
 # compile with
 
-    gcc xlunch.c -o xlunch -lImlib2 -lX11 -lXcursor
+    gcc xlunch.c -o xlunch -lImlib2 -lX11
 
 # screenshots
 
