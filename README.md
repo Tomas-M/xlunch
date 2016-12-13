@@ -7,6 +7,10 @@ The Run commandline also works as a filter for the icons, as long as the title o
 
 **Available Modes**
 
+- One time launcher mode - this is default mode. In this mode, the launcher
+    opens as a fullscreen application, and offers screen with icons to select
+    application to run, plus commandline which serves as a filter for
+    the icons at the same time. Running any app or command ends the launcher.
 - Kiosk mode - in this mode, the Run comand is disabled, thus user cannot
     type any command and the command line is not displayed in the launcher.
     User can only select icons to run with arrow keys (if launcher has focus).
