@@ -502,6 +502,35 @@ void filter_apps()
 }
 
 
+void joincmdline()
+{
+   strcpy(commandline,"");
+
+   keynode_t * current = cmdline;
+
+   while (current != NULL) {
+      strcat(commandline,current->key);
+      current = current->next;
+   }
+}
+
+void joincmdlinetext()
+{
+   if (disableprompt) return;
+   if (strlen(runT)==0) runT="Run:  ";
+   strcpy(commandlinetext,runT);
+
+   keynode_t * current = cmdline;
+
+   while (current != NULL) {
+      strcat(commandlinetext,current->key);
+      current = current->next;
+   }
+
+   strcat(commandlinetext,"_");
+}
+
+
 void run_command(char * cmd, int excludePercentSign)
 {
     // split arguments into pieces
@@ -536,6 +565,11 @@ void run_command(char * cmd, int excludePercentSign)
        }
        else // parent process
        {
+          while (cmdline != NULL) pop_key();
+          joincmdline();
+          joincmdlinetext();
+          filter_apps();
+          arrange_positions();
        }
     }
     else
@@ -549,33 +583,6 @@ void run_command(char * cmd, int excludePercentSign)
     }
 }
 
-void joincmdline()
-{
-   strcpy(commandline,"");
-
-   keynode_t * current = cmdline;
-
-   while (current != NULL) {
-      strcat(commandline,current->key);
-      current = current->next;
-   }
-}
-
-void joincmdlinetext()
-{
-   if (disableprompt) return;
-   if (strlen(runT)==0) runT="Run:  ";
-   strcpy(commandlinetext,runT);
-
-   keynode_t * current = cmdline;
-
-   while (current != NULL) {
-      strcat(commandlinetext,current->key);
-      current = current->next;
-   }
-
-   strcat(commandlinetext,"_");
-}
 
 
 void sethover(node_t * cell, int hover)
