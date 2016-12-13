@@ -94,6 +94,10 @@ int columns;
 #define KEYBOARD 2
 int hoverset=MOUSE;
 
+#define TOPMOST 1
+#define LOWEST 2
+int focusmode=TOPMOST;
+
 
 /* areas to update */
 Imlib_Updates updates, current_update;
@@ -115,7 +119,7 @@ void init(int argc, char **argv)
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkv")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkvd")) != -1)
    switch (c)
    {
       case 'r':
@@ -170,6 +174,10 @@ void init(int argc, char **argv)
       forkmode=1;
       break;
 
+      case 'd':
+      focusmode=LOWEST;
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -178,6 +186,10 @@ void init(int argc, char **argv)
         {
           fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n", optopt);
           fprintf (stderr,"\nAvailable options:\n\n");
+          fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
+          fprintf (stderr,"   -d         desktop mode, keep the launcher lowest (behind other windows)\n");
+          fprintf (stderr,"   -v         fork mode, keep running after executing a program\n\n");
+
           fprintf (stderr,"   -r         use root window's background image\n");
           fprintf (stderr,"              Fails if your root window has no image set\n");
           fprintf (stderr,"   -g [file]  Image to set as background (jpg/png)\n");
@@ -190,8 +202,6 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
-          fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
-          fprintf (stderr,"   -v         fork mode, keep running after executing a program\n");
 
 //          fprintf (stderr,"   -d [x]  gradient color\n");
 //          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
@@ -236,6 +246,13 @@ void init(int argc, char **argv)
    cmdx=border+cell_width/2-icon_size/2;
    cmdw=screen_width-cmdx;
    cmdh=40;
+}
+
+
+void restack()
+{
+   if (focusmode==LOWEST) XLowerWindow(disp,win);
+   if (focusmode==TOPMOST) XRaiseWindow(disp,win);
 }
 
 
@@ -501,6 +518,8 @@ void run_command(char * cmd, int excludePercentSign)
         if (i>=99) break;
     }
 
+    restack();
+
     if (forkmode)
     {
        pid_t pid=fork();
@@ -584,7 +603,6 @@ Imlib_Font loadfont()
    if (!font) font=imlib_load_font("DejaVuSans/10");
    return font;
 }
-
 
 /* the program... */
 int main(int argc, char **argv)
@@ -710,8 +728,12 @@ int main(int argc, char **argv)
    if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
 
-   if (fullscreen)
+   if (fullscreen && focusmode==TOPMOST)
    XSetInputFocus(disp,win,RevertToNone,CurrentTime);
+   // else input will be given to the window by WM, hopefully
+
+   // send to back or front, depending on settings
+   restack();
 
    // parse config file
    parse_app_icons();
@@ -741,15 +763,13 @@ int main(int argc, char **argv)
                   break;
 
                case FocusIn:
+                  restack();
                break;
 
                case FocusOut:
-                  // if running in fullscreen, force TOP
-                  if (fullscreen)
-                  {
+                  if (fullscreen && focusmode==TOPMOST)
                      XSetInputFocus(disp,win,RevertToNone,CurrentTime);
-                     XRaiseWindow(disp,win);
-                  }
+                  restack();
                break;
 
                case ButtonPress:
