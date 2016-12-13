@@ -186,6 +186,8 @@ void init(int argc, char **argv)
         {
           fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n", optopt);
           fprintf (stderr,"\nAvailable options:\n\n");
+          fprintf (stderr,"              By default, xlunch opens in fullscreen mode, and ends after you run app.\n");
+          fprintf (stderr,"              You can overide this by specifying one of the following:\n");
           fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
           fprintf (stderr,"   -d         desktop mode, keep the launcher lowest (behind other windows)\n");
           fprintf (stderr,"   -v         fork mode, keep running after executing a program\n\n");
