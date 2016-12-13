@@ -3,6 +3,8 @@ Graphical app launcher for X, using pure Xlib and Imlib2. It allows you to run a
 you can just type any command using your keyboard. UTF8 is supported.
 The Run commandline also works as a filter for the icons, as long as the title or command matches, icon is visible.
 
+![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
+
 **Available Modes**
 
 - Kiosk mode - in this mode, the Run comand is disabled, thus user cannot
@@ -17,10 +19,10 @@ The Run commandline also works as a filter for the icons, as long as the title o
     so even if kiosk mode is disabled, user cannot use keyboard to use the launcher.
     Only mouse will work.
 
-It is possible to combine all modes together.
-
-
-![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
+It is possible to combine all modes together. Keep in mind that if you use
+desktop mode while you are running some other desktop already, you may
+end up with launcher even under your other desktop, thus it may be inaccessible.
+The desktop mode is intended only for users without other desktop.
 
 ![Screenshot](/../Screenshot/screenshot2.png?raw=true "Screenshot")
 
