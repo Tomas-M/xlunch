@@ -10,6 +10,10 @@ The Run commandline also works as a filter for the icons, as long as the title o
 
 **Commandline options:**
 
+    -k         kiosk mode, disable Run prompt, allow user to only run by icon
+    -d         desktop mode, keep the launcher lowest (behind other windows)
+    -v         fork mode, keep running after executing a program
+    
     -r         use root window's background image
                Fails if your root window has no image set
     -g [file]  Image to set as background (jpg/png)
@@ -17,12 +21,12 @@ The Run commandline also works as a filter for the icons, as long as the title o
     -p [i]     padding (integer) specifies padding inside icons in pixels
     -b [i]     border (integer) specifies spacing border size in pixels
     -i [i]     icon size (integer) in pixels
-    -c [file]  path to config file which describes titles, icons and commands.
+    -c [file]  path to config file which describes titles, icons and commands
     -n         Disable fullscreen
     -t [i]     Top position (integer) in pixels for the Run commandline
-    -x [text]  String to display instead of 'Run: '
+    -x [text]  string to display instead of 'Run: '
     -f [name]  font name including size after slash, for example: DejaVuSans/10
-    -k         kiosk mode, disable Run prompt, allow user to only run by icon
+
 
 
 **Format of config file (default is /etc/xlunch/icons.conf) is:**
