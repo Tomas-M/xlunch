@@ -782,7 +782,7 @@ int main(int argc, char **argv)
 
                case ButtonPress:
                {
-                  if (ev.xbutton.button==3) { /*todo: quit*/ }
+                  if (ev.xbutton.button==3) { cleanup(); exit(0); }
                   if (ev.xbutton.button!=1) break;
                   node_t * current = apps;
                   while (current != NULL)
