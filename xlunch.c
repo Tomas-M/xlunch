@@ -92,7 +92,7 @@ int singleinstance=1;
 #define KEYBOARD 2
 int hoverset=MOUSE;
 int desktopmode=0;
-
+int lock;
 
 /* areas to update */
 Imlib_Updates updates, current_update;
@@ -368,6 +368,7 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
 
 int cleanup()
 {
+   flock(lock, LOCK_UN | LOCK_NB);
    // destroy window, disconnect display, and exit
    XDestroyWindow(disp,win);
    XFlush(disp);
@@ -629,7 +630,7 @@ int main(int argc, char **argv)
    // If an instance is already running, quit
    if (singleinstance)
    {
-      int lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
+      lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
       int rc = flock(lock, LOCK_EX | LOCK_NB);
       if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\nIf this is an error, you may remove /var/run/xlunch.lock\n"); exit(3); }
    }
