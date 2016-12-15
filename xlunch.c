@@ -86,6 +86,7 @@ char * fontname="";
 int disableprompt;
 int fullscreen=1;
 int columns;
+int singleinstance=1;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -112,7 +113,7 @@ void init(int argc, char **argv)
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkd")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkds")) != -1)
    switch (c)
    {
       case 'r':
@@ -167,6 +168,10 @@ void init(int argc, char **argv)
       desktopmode=1;
       break;
 
+      case 's':
+      singleinstance=0;
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -194,6 +199,7 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
+          fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n");
 
           fprintf (stderr,"\n");
           exit(1);
@@ -599,11 +605,6 @@ Imlib_Font loadfont()
 /* the program... */
 int main(int argc, char **argv)
 {
-   // If an instance is already running, quit
-   int lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
-   int rc = flock(lock, LOCK_EX | LOCK_NB);
-   if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running, quit\n"); exit(3); }
-
    /* events we get from X */
    XEvent ev;
    /* our virtual framebuffer image we draw into */
@@ -624,6 +625,14 @@ int main(int argc, char **argv)
    // set initial variables now
    init(argc, argv);
    joincmdlinetext();
+
+   // If an instance is already running, quit
+   if (singleinstance)
+   {
+      int lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
+      int rc = flock(lock, LOCK_EX | LOCK_NB);
+      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\n"); exit(3); }
+   }
 
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
 
