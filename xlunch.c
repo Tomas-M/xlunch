@@ -546,6 +546,7 @@ void run_command(char * cmd, int excludePercentSign)
        pid_t pid=fork();
        if (pid==0) // child process
        {
+          if (singleinstance) close(lock);
           printf("Forking command: %s\n",cmd);
           int err=execvp(cmd,array);
           printf("Error forking %s : %d\n",cmd,err);
