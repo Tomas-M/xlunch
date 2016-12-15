@@ -23,6 +23,9 @@
 #include <X11/Xatom.h>
 /* parse commandline arguments */
 #include <ctype.h>
+/* one instance */
+#include <sys/file.h>
+#include <errno.h>
 
 /* some globals for our window & X display */
 Display *disp;
@@ -37,10 +40,6 @@ XIC ic;
 int screen;
 int screen_width;
 int screen_height;
-
-Window prev;
-int revert_to;
-
 
 // Let's define a linked list node:
 
@@ -85,18 +84,13 @@ char * conffile="";
 char * runT="";
 char * fontname="";
 int disableprompt;
-int forkmode;
 int fullscreen=1;
-int useIsTyping=0;
 int columns;
 
 #define MOUSE 1
 #define KEYBOARD 2
 int hoverset=MOUSE;
-
-#define TOPMOST 1
-#define LOWEST 2
-int focusmode=TOPMOST;
+int desktopmode=0;
 
 
 /* areas to update */
@@ -114,12 +108,11 @@ void init(int argc, char **argv)
    font_height=20;
    cmdy=100;
    disableprompt=0;
-   forkmode=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkvd")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkd")) != -1)
    switch (c)
    {
       case 'r':
@@ -170,12 +163,8 @@ void init(int argc, char **argv)
       disableprompt=1;
       break;
 
-      case 'v':
-      forkmode=1;
-      break;
-
       case 'd':
-      focusmode=LOWEST;
+      desktopmode=1;
       break;
 
       case '?':
@@ -184,16 +173,17 @@ void init(int argc, char **argv)
           fprintf (stderr, "Option -%c requires an argument.\n", optopt);
         else if (isprint (optopt))
         {
-          fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n", optopt);
-          fprintf (stderr,"\nAvailable options:\n\n");
-          fprintf (stderr,"              By default, xlunch opens in fullscreen mode, and ends after you run app.\n");
-          fprintf (stderr,"              You can overide this by specifying one of the following:\n");
-          fprintf (stderr,"   -k         kiosk mode, disable Run prompt, allow user to only run by icon\n");
-          fprintf (stderr,"   -d         desktop mode, keep the launcher lowest (behind other windows)\n");
-          fprintf (stderr,"   -v         fork mode, keep running after executing a program\n\n");
-
+          fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n\n", optopt);
+          fprintf (stderr,"By default, xlunch opens in fullscreen mode, and ends after you run app.\n");
+          fprintf (stderr,"It is also possible to cancel xlunch with right mouse click, or Esc key.\n");
+          fprintf (stderr,"You can change this by using the following parameter:\n\n");
+          fprintf (stderr,"   -d         desktop mode, always keep the launcher at background (behind other windows),\n");
+          fprintf (stderr,"              and keep it running after execution of any app or command.\n");
+          fprintf (stderr,"              In this mode, xlunch never terminates\n\n");
+          fprintf (stderr,"Available options:\n\n");
           fprintf (stderr,"   -r         use root window's background image\n");
-          fprintf (stderr,"              Fails if your root window has no image set\n");
+          fprintf (stderr,"              (Fails if your root window has no image set)\n");
+          fprintf (stderr,"   -k         hide the prompt, and allow user to only run app by icon\n");
           fprintf (stderr,"   -g [file]  Image to set as background (jpg/png)\n");
           fprintf (stderr,"   -m [i]     margin (integer) specifies margin in pixels between icons\n");
           fprintf (stderr,"   -p [i]     padding (integer) specifies padding inside icons in pixels\n");
@@ -205,8 +195,6 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
 
-//          fprintf (stderr,"   -d [x]  gradient color\n");
-//          fprintf (stderr,"   -s [i]  font size (integer) in pixels\n");
           fprintf (stderr,"\n");
           exit(1);
         }
@@ -233,9 +221,6 @@ void init(int argc, char **argv)
 
    XSynchronize(disp,True);
 
-   // previous window handle
-   XGetInputFocus(disp,&prev,&revert_to);
-
    /* get screen size */
    screen_width=DisplayWidth(disp,screen);
    screen_height=DisplayHeight(disp,screen);
@@ -253,8 +238,9 @@ void init(int argc, char **argv)
 
 void restack()
 {
-   if (focusmode==LOWEST) XLowerWindow(disp,win);
-   if (focusmode==TOPMOST) XRaiseWindow(disp,win);
+printf("%d\n",desktopmode);
+   if (desktopmode) XLowerWindow(disp,win);
+   else XRaiseWindow(disp,win);
 }
 
 
@@ -377,8 +363,6 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
 
 int cleanup()
 {
-   // revert focus to previous window
-   XSetInputFocus(disp,prev,RevertToNone,CurrentTime);
    // destroy window, disconnect display, and exit
    XDestroyWindow(disp,win);
    XFlush(disp);
@@ -551,7 +535,7 @@ void run_command(char * cmd, int excludePercentSign)
 
     restack();
 
-    if (forkmode)
+    if (desktopmode)
     {
        pid_t pid=fork();
        if (pid==0) // child process
@@ -616,6 +600,11 @@ Imlib_Font loadfont()
 /* the program... */
 int main(int argc, char **argv)
 {
+   // If an instance is already running, quit
+   int lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
+   int rc = flock(lock, LOCK_EX | LOCK_NB);
+   if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running, quit\n"); exit(3); }
+
    /* events we get from X */
    XEvent ev;
    /* our virtual framebuffer image we draw into */
@@ -637,12 +626,16 @@ int main(int argc, char **argv)
    init(argc, argv);
    joincmdlinetext();
 
-   // fullscreen
-   unsigned long valuemask = CWOverrideRedirect;
-   XSetWindowAttributes attributes;
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
-   attributes.override_redirect=fullscreen;
-   XChangeWindowAttributes(disp,win,valuemask,&attributes);
+
+   // absolute fullscreen mode by overide redirect
+   if (fullscreen && desktopmode)
+   {
+      unsigned long valuemask = CWOverrideRedirect;
+      XSetWindowAttributes attributes;
+      attributes.override_redirect=True;
+      XChangeWindowAttributes(disp,win,valuemask,&attributes);
+   }
 
    /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
    /* the images we use use less than 2Mb of RAM (that is uncompressed) */
@@ -727,7 +720,6 @@ int main(int argc, char **argv)
    /* show the window */
    XMapRaised(disp, win);
 
-
    // prepare for keyboard UTF8 input
    if (XSetLocaleModifiers("@im=none") == NULL) return 11;
    im = XOpenIM(disp, NULL, NULL, NULL);
@@ -736,15 +728,32 @@ int main(int argc, char **argv)
    if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
 
-   if (fullscreen && focusmode==TOPMOST)
-   XSetInputFocus(disp,win,RevertToNone,CurrentTime);
-   // else input will be given to the window by WM, hopefully
-
    // send to back or front, depending on settings
    restack();
 
    // parse config file
    parse_app_icons();
+
+
+   // prepare message for window manager that we are requesting fullscreen
+   XClientMessageEvent msg = {
+        .type = ClientMessage,
+        .display = disp,
+        .window = win,
+        .message_type = XInternAtom(disp, "_NET_WM_STATE", True),
+        .format = 32,
+        .data = { .l = {
+            1 /* _NET_WM_STATE_ADD */,
+            XInternAtom(disp, "_NET_WM_STATE_FULLSCREEN", True),
+            None,
+            0,
+            1
+        }}
+   };
+
+   // send the message
+   if (fullscreen && !desktopmode)
+   XSendEvent(disp, DefaultRootWindow(disp), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*)&msg);
 
 
    /* infinite event loop */
@@ -775,14 +784,12 @@ int main(int argc, char **argv)
                break;
 
                case FocusOut:
-                  if (fullscreen && focusmode==TOPMOST)
-                     XSetInputFocus(disp,win,RevertToNone,CurrentTime);
                   restack();
                break;
 
                case ButtonPress:
                {
-                  if (ev.xbutton.button==3) { cleanup(); exit(0); }
+                  if (ev.xbutton.button==3 && !desktopmode) { cleanup(); exit(0); }
                   if (ev.xbutton.button!=1) break;
                   node_t * current = apps;
                   while (current != NULL)
@@ -823,7 +830,7 @@ int main(int argc, char **argv)
                   char kbdbuf[20]={0};
                   count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
 
-                  if (keycode==XK_Escape)
+                  if (keycode==XK_Escape && !desktopmode)
                   {
                      cleanup();
                      exit(0);
