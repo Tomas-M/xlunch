@@ -238,7 +238,6 @@ void init(int argc, char **argv)
 
 void restack()
 {
-printf("%d\n",desktopmode);
    if (desktopmode) XLowerWindow(disp,win);
    else XRaiseWindow(disp,win);
 }
