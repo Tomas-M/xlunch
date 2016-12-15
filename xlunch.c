@@ -631,7 +631,7 @@ int main(int argc, char **argv)
    {
       int lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
       int rc = flock(lock, LOCK_EX | LOCK_NB);
-      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\n"); exit(3); }
+      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\nIf this is an error, you may remove /var/run/xlunch.lock\n"); exit(3); }
    }
 
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
@@ -667,18 +667,6 @@ int main(int argc, char **argv)
    imlib_context_set_colormap(cm);
    imlib_context_set_drawable(win);
 
-
-   // create gradient. It will be later used to shade things
-   rangebg = imlib_create_color_range();
-   imlib_context_set_color_range(rangebg);
-   /* add white opaque as the first color */
-   imlib_context_set_color(0, 0, 0, 100);
-   imlib_add_color_to_color_range(0);
-   /* add black, fully transparent at the end 20 units away */
-   imlib_context_set_color(0, 0, 0, 100);
-   imlib_add_color_to_color_range(120);
-
-
    /* fill the window background */
    background = imlib_create_image(screen_width, screen_height);
    imlib_context_set_image(background);
@@ -690,7 +678,10 @@ int main(int argc, char **argv)
       if (ok)
       {
          imlib_image_put_back_data(direct);
-         imlib_image_fill_color_range_rectangle(0,0, screen_width, screen_height, -45.0);
+         imlib_context_set_color(0, 0, 0, 100);
+         imlib_context_set_blend(1);
+         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+         imlib_context_set_blend(0);
       }
    }
    else // load background from file
@@ -703,13 +694,19 @@ int main(int argc, char **argv)
          w = imlib_image_get_width();
          h = imlib_image_get_height();
          imlib_context_set_image(background);
+         imlib_context_set_color(0, 0, 0, 100);
          imlib_context_set_blend(1);
          imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
-         imlib_image_fill_color_range_rectangle(0,0, screen_width, screen_height, -45.0);
+         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+         imlib_context_set_blend(0);
          imlib_context_set_image(image);
          imlib_free_image();
-         imlib_context_set_blend(0);
       }
+   }
+   else
+   {
+      imlib_context_set_color(46, 52, 64, 255);
+      imlib_image_fill_rectangle(0,0, screen_width, screen_height);
    }
 
    // create gradient. It will be later used to shade things
