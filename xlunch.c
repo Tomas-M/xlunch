@@ -631,9 +631,9 @@ int main(int argc, char **argv)
    // If an instance is already running, quit
    if (singleinstance)
    {
-      lock=open("/var/run/xlunch.lock",O_CREAT | O_RDWR,0666);
+      lock=open("/tmp/xlunch.lock",O_CREAT | O_RDWR,0666);
       int rc = flock(lock, LOCK_EX | LOCK_NB);
-      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\nIf this is an error, you may remove /var/run/xlunch.lock\n"); exit(3); }
+      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\nIf this is an error, you may remove /tmp/xlunch.lock\n"); exit(3); }
    }
 
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
