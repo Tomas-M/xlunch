@@ -571,7 +571,7 @@ void run_command(char * cmd, int excludePercentSign)
        cleanup();
        printf("Running command: %s\n",cmd);
        int err=execvp(cmd,array);
-       printf("Error running %s : %d\n",cmd);
+       printf("Error running %s : %d\n",cmd, err);
        exit(0);
     }
 }
