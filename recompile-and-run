@@ -1,5 +1,0 @@
-#!/bin/bash
-rm ./xlunch
-gcc xlunch.c -o xlunch -lImlib2 -lX11
-./xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg
-

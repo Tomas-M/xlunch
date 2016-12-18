@@ -15,4 +15,4 @@ xlunch:
 	$(CC) xlunch.c -o xlunch $(CFLAGS)
 
 icons.conf:
-	./genconf > icons.conf
+	bash genconf > icons.conf
