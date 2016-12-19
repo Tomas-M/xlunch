@@ -658,7 +658,6 @@ int main(int argc, char **argv)
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
-   imlib_add_path_to_font_path(".");
    /* set the maximum number of colors to allocate for 8bpp and less to 128 */
    imlib_set_color_usage(128);
    /* dither for depths < 24bpp */
