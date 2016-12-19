@@ -382,11 +382,11 @@ void parse_app_icons()
    fp=fopen(conffile,"rb");
    if (fp==NULL)
    {
-      printf("error opening config file %s\n",conffile);
-      printf("Icon file format is following:\n");
-      printf("title;icon_path;command\n");
-      printf("title;icon_path;command\n");
-      printf("title;icon_path;command\n");
+      fprintf(stderr,"error opening config file %s\n",conffile);
+      fprintf(stderr,"Icon file format is following:\n");
+      fprintf(stderr,"title;icon_path;command\n");
+      fprintf(stderr,"title;icon_path;command\n");
+      fprintf(stderr,"title;icon_path;command\n");
       return;
    }
 
@@ -549,12 +549,12 @@ void run_command(char * cmd, int excludePercentSign)
           if (singleinstance) close(lock);
           printf("Forking command: %s\n",cmd);
           int err=execvp(cmd,array);
-          printf("Error forking %s : %d\n",cmd,err);
+          fprintf(stderr,"Error forking %s : %d\n",cmd,err);
           exit(0);
        }
        else if (pid<0) // error forking
        {
-          printf("Error running %s\n",cmd);
+          fprintf(stderr,"Error running %s\n",cmd);
        }
        else // parent process
        {
@@ -571,7 +571,7 @@ void run_command(char * cmd, int excludePercentSign)
        cleanup();
        printf("Running command: %s\n",cmd);
        int err=execvp(cmd,array);
-       printf("Error running %s : %d\n",cmd, err);
+       fprintf(stderr,"Error running %s : %d\n",cmd, err);
        exit(0);
     }
 }
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
    {
       lock=open("/tmp/xlunch.lock",O_CREAT | O_RDWR,0666);
       int rc = flock(lock, LOCK_EX | LOCK_NB);
-      if (rc) { if (errno == EWOULDBLOCK) printf("xlunch already running. You may consider -s\nIf this is an error, you may remove /tmp/xlunch.lock\n"); exit(3); }
+      if (rc) { if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may consider -s\nIf this is an error, you may remove /tmp/xlunch.lock\n"); exit(3); }
    }
 
    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
@@ -732,7 +732,7 @@ int main(int argc, char **argv)
    im = XOpenIM(disp, NULL, NULL, NULL);
    if (im == NULL) { fputs("Could not open input method\n", stdout); return 2; }
    ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
-   if (ic == NULL) { printf("Could not open IC, whatever it is, I dont know\n");  return 4; }
+   if (ic == NULL) { fprintf(stderr,"Could not open IC, whatever it is, I dont know\n");  return 4; }
    XSetICFocus(ic);
 
    // send to back or front, depending on settings
