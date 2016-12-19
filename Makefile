@@ -16,3 +16,7 @@ xlunch:
 
 icons.conf:
 	sh extra/genconf > icons.conf
+
+clean:
+	rm xlunch
+	rm icons.conf
