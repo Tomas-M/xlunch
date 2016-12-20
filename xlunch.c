@@ -230,10 +230,10 @@ void init(int argc, char **argv)
           fprintf (stderr,"on the desired monitor. Use the following options:\n\n");
           fprintf (stderr,"   -a [i]     the x coordinates (integer) of the top left corner of launcher window\n");
           fprintf (stderr,"   -e [i]     the y coordinates (integer) of the top left corner of launcher window\n");
-          fprintf (stderr,"   -w [i]     the width (integer) of launcher window on your screen\n");
+          fprintf (stderr,"   -y [i]     the width (integer) of launcher window on your screen\n");
           fprintf (stderr,"   -z [i]     the height (integer) of launcher window on your screen\n\n");
           fprintf (stderr,"For example, if you have two 800x600 monitors side by side, xlunch sees it ass 1600x800.\n");
-          fprintf (stderr,"You can put it to first monitor by: -a 0 -e 0 -w 800 -z 600, or to second monitor by\n");
+          fprintf (stderr,"You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by\n");
           fprintf (stderr,"using -a 800 -e 0 -y 800 -z 600. Remember that all these settings may be entirely\n");
           fprintf (stderr,"overiden by your window manager, so you may find it more useful to specify only width\n");
           fprintf (stderr,"and height using these parameters, and then specify desired monitor in your WM config.\n");
