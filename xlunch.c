@@ -87,6 +87,10 @@ int disableprompt;
 int fullscreen=1;
 int columns;
 int singleinstance=1;
+int uposx;
+int uposy;
+int uwidth;
+int uheight;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -109,11 +113,15 @@ void init(int argc, char **argv)
    font_height=20;
    cmdy=100;
    disableprompt=0;
+   uposx=0;
+   uposy=0;
+   uwidth=0;
+   uheight=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkds")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkdsa:e:y:z:")) != -1)
    switch (c)
    {
       case 'r':
@@ -172,6 +180,22 @@ void init(int argc, char **argv)
       singleinstance=0;
       break;
 
+      case 'a':
+      uposx=atoi(optarg);
+      break;
+
+      case 'e':
+      uposy=atoi(optarg);
+      break;
+
+      case 'y':
+      uwidth=atoi(optarg);
+      break;
+
+      case 'z':
+      uheight=atoi(optarg);
+      break;
+
       case '?':
       {
         if (optopt == 'c')
@@ -199,7 +223,20 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
-          fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n");
+          fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n\n");
+          fprintf (stderr,"Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
+          fprintf (stderr,"as a big single screen. You can customize this manually by providing the top/left\n");
+          fprintf (stderr,"coordinates and width/height of your monitor screen, which effectively positions xlunch\n");
+          fprintf (stderr,"on the desired monitor. Use the following options:\n\n");
+          fprintf (stderr,"   -a [i]     the x coordinates (integer) of the top left corner of launcher window\n");
+          fprintf (stderr,"   -e [i]     the y coordinates (integer) of the top left corner of launcher window\n");
+          fprintf (stderr,"   -w [i]     the width (integer) of launcher window on your screen\n");
+          fprintf (stderr,"   -z [i]     the height (integer) of launcher window on your screen\n\n");
+          fprintf (stderr,"For example, if you have two 800x600 monitors side by side, xlunch sees it ass 1600x800.\n");
+          fprintf (stderr,"You can put it to first monitor by: -a 0 -e 0 -w 800 -z 600, or to second monitor by\n");
+          fprintf (stderr,"using -a 800 -e 0 -y 800 -z 600. Remember that all these settings may be entirely\n");
+          fprintf (stderr,"overiden by your window manager, so you may find it more useful to specify only width\n");
+          fprintf (stderr,"and height using these parameters, and then specify desired monitor in your WM config.\n");
 
           fprintf (stderr,"\n");
           exit(1);
@@ -225,11 +262,12 @@ void init(int argc, char **argv)
    depth = DefaultDepth(disp, screen);
    cm    = DefaultColormap(disp, screen);
 
-   XSynchronize(disp,True);
+   /* get/set screen size */
+   if (uwidth==0) screen_width=DisplayWidth(disp,screen);
+   else screen_width=uwidth;
 
-   /* get screen size */
-   screen_width=DisplayWidth(disp,screen);
-   screen_height=DisplayHeight(disp,screen);
+   if (uheight==0) screen_height=DisplayHeight(disp,screen);
+   else screen_height=uheight;
 
    cell_width=icon_size+padding*2+margin*2;
    cell_height=icon_size+padding*2+margin*2+font_height;
@@ -636,7 +674,7 @@ int main(int argc, char **argv)
       if (rc) { if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may consider -s\nIf this is an error, you may remove /tmp/xlunch.lock\n"); exit(3); }
    }
 
-   win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), 0, 0, screen_width, screen_height, 0, 0, 0);
+   win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
 
    // absolute fullscreen mode by overide redirect
    if (fullscreen && desktopmode)
