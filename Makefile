@@ -11,7 +11,7 @@ install: xlunch icons.conf
 test: xlunch
 	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -c extra/sample_config.cfg
 
-xlunch:
+xlunch: xlunch.c
 	$(CC) xlunch.c -o xlunch $(CFLAGS)
 
 icons.conf:
