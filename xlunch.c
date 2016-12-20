@@ -1122,6 +1122,16 @@ int main(int argc, char **argv)
                             sz--;
                          }
 
+                         // if text was shortened, add dots at the end
+                         if (strlen(current->title)!=strlen(title))
+                         {
+                            char * ptr = title;
+                            int len=strlen(ptr);
+                            while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
+                            strcat(title,"..");
+                            imlib_get_text_size(title, &text_w, &text_h);
+                         }
+
                          int d;
                          if (current->clicked==1) d=4; else d=0;
 
