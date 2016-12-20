@@ -18,5 +18,5 @@ icons.conf:
 	sh extra/genconf > icons.conf
 
 clean:
-	rm xlunch
-	rm icons.conf
+	rm -f xlunch
+	rm -f icons.conf
