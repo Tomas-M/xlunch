@@ -100,6 +100,24 @@ int lock;
 
 /* areas to update */
 Imlib_Updates updates, current_update;
+/* our background image, rendered only once */
+Imlib_Image background = NULL;
+/* image variable */
+Imlib_Image image = NULL;
+
+
+
+void recalc_cells()
+{
+   cell_width=icon_size+padding*2+margin*2;
+   cell_height=icon_size+padding*2+margin*2+font_height;
+   columns=(screen_width-border*2)/cell_width;
+   cell_width=(screen_width-border*2)/columns; // rounded
+
+   cmdx=border+cell_width/2-icon_size/2;
+   cmdw=screen_width-cmdx;
+   cmdh=40;
+}
 
 
 void init(int argc, char **argv)
@@ -269,14 +287,7 @@ void init(int argc, char **argv)
    if (uheight==0) screen_height=DisplayHeight(disp,screen);
    else screen_height=uheight;
 
-   cell_width=icon_size+padding*2+margin*2;
-   cell_height=icon_size+padding*2+margin*2+font_height;
-   columns=(screen_width-border*2)/cell_width;
-   cell_width=(screen_width-border*2)/columns; // rounded
-
-   cmdx=border+cell_width/2-icon_size/2;
-   cmdw=screen_width-cmdx;
-   cmdh=40;
+   recalc_cells();
 }
 
 
@@ -642,6 +653,60 @@ Imlib_Font loadfont()
    return font;
 }
 
+
+void update_background_image()
+{
+   /* reset image if exists */
+   if (background)
+   {
+      imlib_context_set_image(background);
+      imlib_free_image();
+   }
+
+   /* fill the window background */
+   background = imlib_create_image(screen_width, screen_height);
+   imlib_context_set_image(background);
+
+   if (useRootImg)
+   {
+      DATA32 * direct = imlib_image_get_data();
+      int ok = get_root_image_to_imlib_data(direct);
+      if (ok)
+      {
+         imlib_image_put_back_data(direct);
+         imlib_context_set_color(0, 0, 0, 100);
+         imlib_context_set_blend(1);
+         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+         imlib_context_set_blend(0);
+      }
+   }
+   else // load background from file
+   if (strlen(bgfile)>0)
+   {
+      image = imlib_load_image(bgfile);
+      imlib_context_set_image(image);
+      if (image)
+      {
+         int w = imlib_image_get_width();
+         int h = imlib_image_get_height();
+         imlib_context_set_image(background);
+         imlib_context_set_color(0, 0, 0, 100);
+         imlib_context_set_blend(1);
+         imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
+         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+         imlib_context_set_blend(0);
+         imlib_context_set_image(image);
+         imlib_free_image();
+      }
+   }
+   else
+   {
+      imlib_context_set_color(46, 52, 64, 255);
+      imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+   }
+}
+
+
 /* the program... */
 int main(int argc, char **argv)
 {
@@ -649,10 +714,6 @@ int main(int argc, char **argv)
    XEvent ev;
    /* our virtual framebuffer image we draw into */
    Imlib_Image buffer;
-   /* our background image, rendered only once */
-   Imlib_Image background;
-   /* image variable */
-   Imlib_Image image;
    /* a font */
    Imlib_Font font;
    /* our color range */
@@ -685,17 +746,17 @@ int main(int argc, char **argv)
       XChangeWindowAttributes(disp,win,valuemask,&attributes);
    }
 
-   /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
-   /* the images we use use less than 2Mb of RAM (that is uncompressed) */
-   imlib_set_cache_size(2048 * screen_width);
-   /* set the font cache to 512Kb - again to avoid re-loading */
-   imlib_set_font_cache_size(512 * screen_width);
    /* add the ttf fonts dir to our font path */
    imlib_add_path_to_font_path("~/.fonts");
    imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
+   /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
+   /* the images we use use less than 2Mb of RAM (that is uncompressed) */
+   imlib_set_cache_size(2048 * screen_width);
+   /* set the font cache to 512Kb - again to avoid re-loading */
+   imlib_set_font_cache_size(512 * screen_width);
    /* set the maximum number of colors to allocate for 8bpp and less to 128 */
    imlib_set_color_usage(128);
    /* dither for depths < 24bpp */
@@ -706,47 +767,7 @@ int main(int argc, char **argv)
    imlib_context_set_colormap(cm);
    imlib_context_set_drawable(win);
 
-   /* fill the window background */
-   background = imlib_create_image(screen_width, screen_height);
-   imlib_context_set_image(background);
-
-   if (useRootImg)
-   {
-      DATA32 * direct = imlib_image_get_data();
-      int ok = get_root_image_to_imlib_data(direct);
-      if (ok)
-      {
-         imlib_image_put_back_data(direct);
-         imlib_context_set_color(0, 0, 0, 100);
-         imlib_context_set_blend(1);
-         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
-         imlib_context_set_blend(0);
-      }
-   }
-   else // load background from file
-   if (strlen(bgfile)>0)
-   {
-      image = imlib_load_image(bgfile);
-      imlib_context_set_image(image);
-      if (image)
-      {
-         w = imlib_image_get_width();
-         h = imlib_image_get_height();
-         imlib_context_set_image(background);
-         imlib_context_set_color(0, 0, 0, 100);
-         imlib_context_set_blend(1);
-         imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
-         imlib_image_fill_rectangle(0,0, screen_width, screen_height);
-         imlib_context_set_blend(0);
-         imlib_context_set_image(image);
-         imlib_free_image();
-      }
-   }
-   else
-   {
-      imlib_context_set_color(46, 52, 64, 255);
-      imlib_image_fill_rectangle(0,0, screen_width, screen_height);
-   }
+   update_background_image();
 
    // create gradient. It will be later used to shade things
    range = imlib_create_color_range();
@@ -760,7 +781,7 @@ int main(int argc, char **argv)
 
 
    /* tell X what events we are interested in */
-   XSelectInput(disp, win, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
+   XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
    /* show the window */
    XMapRaised(disp, win);
 
@@ -830,6 +851,21 @@ int main(int argc, char **argv)
                case FocusOut:
                   restack();
                break;
+
+
+               case ConfigureNotify:
+               {
+                  if (screen_width!=ev.xconfigure.width || screen_height!=ev.xconfigure.height)
+                  {
+                     screen_width=ev.xconfigure.width;
+                     screen_height=ev.xconfigure.height;
+                     update_background_image();
+                     recalc_cells();
+                     arrange_positions();
+                     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                  }
+                  break;
+               }
 
                case ButtonPress:
                {
@@ -1042,9 +1078,9 @@ int main(int argc, char **argv)
                       if (font)
                       {
                          int text_w; int text_h;
-
                          imlib_context_set_font(font);
                          imlib_get_text_size(current->title, &text_w, &text_h);
+
                          int d;
                          if (current->clicked==1) d=4; else d=0;
 
