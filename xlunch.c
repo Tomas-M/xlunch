@@ -43,7 +43,8 @@ int screen_height;
 
 // Let's define a linked list node:
 
-typedef struct node {
+typedef struct node
+{
     char title[255];
     char icon[255];
     char cmd[255];
@@ -91,6 +92,8 @@ int uposx;
 int uposy;
 int uwidth;
 int uheight;
+int uborder;
+int utop;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -109,6 +112,9 @@ Imlib_Image image = NULL;
 
 void recalc_cells()
 {
+   border=screen_width/10;
+   if (uborder>0) border=uborder;
+
    cell_width=icon_size+padding*2+margin*2;
    cell_height=icon_size+padding*2+margin*2+font_height;
    columns=(screen_width-border*2)/cell_width;
@@ -117,6 +123,8 @@ void recalc_cells()
    cmdx=border+cell_width/2-icon_size/2;
    cmdw=screen_width-cmdx;
    cmdh=40;
+   cmdy=border/3*2;
+   if (utop) cmdy=utop;
 }
 
 
@@ -127,7 +135,6 @@ void init(int argc, char **argv)
    icon_size=48;
    padding=20;
    margin=2;
-   border=140;
    font_height=20;
    cmdy=100;
    disableprompt=0;
@@ -135,6 +142,8 @@ void init(int argc, char **argv)
    uposy=0;
    uwidth=0;
    uheight=0;
+   uborder=0;
+   utop=0;
 
    int c;
 
@@ -159,7 +168,7 @@ void init(int argc, char **argv)
       break;
 
       case 'b':
-      border=atoi(optarg);
+      uborder=atoi(optarg);
       break;
 
       case 'g':
@@ -175,7 +184,7 @@ void init(int argc, char **argv)
       break;
 
       case 't':
-      cmdy=atoi(optarg);
+      utop=atoi(optarg);
       break;
 
       case 'x':
@@ -295,6 +304,28 @@ void restack()
 {
    if (desktopmode) XLowerWindow(disp,win);
    else XRaiseWindow(disp,win);
+}
+
+
+char* strncpyutf8(char* dst, const char* src, size_t num)
+{
+    if(num)
+    {
+        size_t sizeSrc = strlen(src); // number of bytes not including null
+        while(sizeSrc>num)
+        {
+            const char* lastByte = src + sizeSrc; // initially \0 at end
+
+            while(lastByte-- > src) // test previous chars
+                if((*lastByte & 0xC0) != 0x80) // utf8 start byte found
+                    break;
+
+            sizeSrc = lastByte-src;
+        }
+        memcpy(dst, src, sizeSrc);
+        dst[sizeSrc] = '\0';
+    }
+    return dst;
 }
 
 
@@ -439,9 +470,9 @@ void parse_app_icons()
       return;
    }
 
-   char title[255];
-   char icon[255];
-   char cmd[255];
+   char title[255]={0};
+   char icon[255]={0};
+   char cmd[255]={0};
 
    while(!feof(fp))
    {
@@ -719,6 +750,7 @@ int main(int argc, char **argv)
    /* our color range */
    Imlib_Color_Range rangebg;
    Imlib_Color_Range range;
+   char title[255];
 
    /* width and height values */
    int w, h;
@@ -948,7 +980,7 @@ int main(int argc, char **argv)
                      {
                         if (!current->hidden)
                         {
-                           n++;
+                           if (current->y+cell_height<screen_height) n++;
                            if (selected==NULL) j++;
                            if (current->hovered) selected=current;
                            sethover(current,0);
@@ -1051,7 +1083,7 @@ int main(int argc, char **argv)
 
              while (current != NULL)
              {
-                if (!current->hidden)
+                if (!current->hidden && current->y+cell_height<=screen_height)
                 {
                    image=imlib_load_image(current->icon);
                    if (image)
@@ -1078,19 +1110,29 @@ int main(int argc, char **argv)
                       if (font)
                       {
                          int text_w; int text_h;
+                         size_t sz=strlen(current->title);
+                         text_w=cell_width-2*margin-padding+1;
+
                          imlib_context_set_font(font);
-                         imlib_get_text_size(current->title, &text_w, &text_h);
+
+                         while(text_w > cell_width-2*margin-padding && sz>0)
+                         {
+                            strncpyutf8(title,current->title,sz);
+                            printf("%s\n",title);
+                            imlib_get_text_size(title, &text_w, &text_h);
+                            sz--;
+                         }
 
                          int d;
                          if (current->clicked==1) d=4; else d=0;
 
                          imlib_context_set_color(0, 0, 0, 30);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, current->title);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, current->title);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, current->title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
 
                          imlib_context_set_color(255, 255, 255, 255);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, current->title);
+                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
 
                          /* free the font */
                          imlib_free_font();

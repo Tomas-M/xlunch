@@ -9,7 +9,7 @@ install: xlunch icons.conf
 	cp xlunch $(DESTDIR)/usr/bin/
 
 test: xlunch
-	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -c extra/sample_config.cfg
+	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -c extra/sample_config.cfg -b 140
 
 xlunch: xlunch.c
 	$(CC) xlunch.c -o xlunch $(CFLAGS)
