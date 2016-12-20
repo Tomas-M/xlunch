@@ -1118,7 +1118,6 @@ int main(int argc, char **argv)
                          while(text_w > cell_width-2*margin-padding && sz>0)
                          {
                             strncpyutf8(title,current->title,sz);
-                            printf("%s\n",title);
                             imlib_get_text_size(title, &text_w, &text_h);
                             sz--;
                          }
