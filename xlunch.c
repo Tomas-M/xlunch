@@ -488,6 +488,7 @@ void parse_app_icons()
 int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
    if (cell->hidden) return 0;
+   if (cell->y + cell_height > screen_height) return 0;
 
    if (mouse_x>=cell->x+margin
       && mouse_x<=cell->x+cell_width-margin
