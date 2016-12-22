@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>xlunch - application launcher for X</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1><img src=logo.png width=48 height=48 style="position: relative; top:  8px;"> xlunch</h1>
+          <h2>Graphical app launcher for X with little dependencies</h2>
+        </header>
+
+        <hr>
+
+        <section id="main_content">
+
+<p>Welcome. This is xlunch, the coolest graphical app launcher for X, using pure Xlib and Imlib2. It allows you to run a program by clicking its icon. Alternatively
+you can just type any command using your keyboard. UTF8 is supported.
+The Run commandline also works as a filter for the icons, as long as the title or command matches, icon is visible.</p>
+
+<p><img src="https://raw.githubusercontent.com/Tomas-M/xlunch/Screenshot/screenshot.png" alt="Screenshot" title="Screenshot" style="border: 10px solid #ddd;"></p>
+
+<p><strong>Available Modes</strong></p>
+
+<ul style="margin-left: 20px;">
+<li style="padding-left: 0">One time launcher mode - this is default mode. There is no need to specify
+any commandline parameter for this mode. In this mode, xlunch
+opens as a fullscreen application, and offers screen with icons to select
+application to run, plus commandline which serves as a filter for
+the icons at the same time.
+Running any app or command ends the launcher. You can also cancel the launcher
+with Esc key, or click with right mouse button.</li>
+<li style="padding-left: 0">Desktop mode - this mode is activated with -d. In this mode,
+xlunch sends itself to lowest position, so all other windows are above it.
+Your window manager will not have any control over it,
+so xlunch does not receive any input or focus and it cannot be raised to front.
+This emulates desktop with icons. In Desktop mode, applications start using fork (as another process).
+Xlunch in this mode cannot be terminated (except by killing it with SIGTERM).
+</li>
+</ul>
+
+<p>Keep in mind that if you use desktop mode while you are running some other desktop already,
+you may end up with launcher running under your other desktop, thus it may be inaccessible.
+The desktop mode is intended only for users without other desktop.</p>
+
+<p><img src="https://raw.githubusercontent.com/Tomas-M/xlunch/Screenshot/screenshot2.png" alt="Screenshot" title="Screenshot" style="border: 10px solid #ddd;"></p>
+
+<p><strong>Commandline options:</strong></p>
+
+<pre><code>-d        desktop mode, keep the launcher lowest (behind other windows)
+-r        use root window's background. Fails if you lack one
+-k        hide the prompt, and allow user to only run app by icon
+-g [file] image to set as background (jpg/png)
+-m [i]    margin (integer) specifies margin in pixels between icons
+-p [i]    padding (integer) specifies padding inside icons in pixels
+-b [i]    border (integer) specifies spacing border size in pixels
+-i [i]    icon size (integer) in pixels
+-c [file] path to config file which describes titles, icons and commands
+-n        Disable fullscreen
+-t [i]    Top position (integer) in pixels for the Run commandline
+-x [text] string to display instead of 'Run: '
+-f [name] font name including size after slash, ex: DejaVuSans/10
+-s        disable single-instance check - allow multiple instances running.
+          This may be useful if you want to run xlunch from another xlunch
+</code></pre>
+
+
+<p><strong>Multi monitor setup</strong></p>
+
+<p>xlunch does not know how to detect your output monitors, it sees your monitors
+as a big single screen. If you run it, your window manager positions the window and makes
+it fullscreen, so it is up to your window manager to decide what monitor xlunch runs on.
+If you, however, start xlunch in Desktop mode (which bypasses your window manager) or
+if you do not have any WM at all, you can customize the size and position of the window
+manually by providing the top/left coordinates and width/height of your monitor screen,
+which effectively positions xlunch on the desired place/monitor. Use the following options:</p>
+
+<pre><code>   -a [i]     the x coordinates (integer) of the top left corner of launcher window
+   -e [i]     the y coordinates (integer) of the top left corner of launcher window
+   -y [i]     the width (integer) of launcher window on your screen
+   -z [i]     the height (integer) of launcher window on your screen
+</code></pre>
+
+<p>For example, if you have two 800x600 monitors side by side, xlunch sees it as 1600x800.
+You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by
+using -a 800 -e 0 -y 800 -z 600. Remember that all these settings are overiden
+by your window manager unless you start xlunch in Desktop mode.</p>
+
+<p><strong>Compile:</strong></p>
+
+<pre><code>make
+make test
+make install
+</code></pre>
+
+
+<p><strong>Configuration file:</strong></p>
+
+<p>During compilation, sampele config file is created for you. By default
+the config file is installed into /etc/xlunch/icons.conf.
+You should always manually edit the file and adapt it to your needs,
+remove all the icons you don't like, etc. When xlunch starts, it firstly
+tries to load your config file from ~/.xlunch/icons.conf. If this fails,
+system-wide config is loaded from /etc/xlunch/icons.conf. Format of the configuration file is following:</p>
+
+<pre><code>title;icon_path;cmd
+title;icon_path;cmd
+title;icon_path;cmd
+title;icon_path;cmd
+</code></pre>
+
+
+<p><strong>Example usage:</strong></p>
+
+<pre><code># launcher mode:
+xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg
+
+# desktop mode:
+xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg -d -k -s
+</code></pre>
+
+<p><strong>Tips and tricks:</strong></p>
+
+<p>If you wish to run xlunch as app launcher, best practice is to
+set up a keyboard shortcut to start xlunch, such as Alt+F2
+Or have a button in taskbar to run it.</p>
+
+<p>For example, to start xlunch on Alt+F2 in i3wm, add this line to ~/.i3/config:</p>
+
+<pre><code>bindsym $mod+F2 exec /usr/bin/xlunch
+</code></pre>
+
+
+<p>To have xlunch running as a desktop with icons in i3wm, add this to ~/.i3/config:</p>
+
+<pre><code>exec /usr/bin/xlunch -d -k -s
+</code></pre>
+
+<p>You can consider xlunch as a dmenu replacement, or rofi replacement.</p>
+
+
+<hr>
+
+        <div id="downloads" class="clearfix" align=center>
+          <a href="https://github.com/Tomas-M/xlunch/archive/v2.1.zip" id="download-zip" class="button"><span>Download xlunch 2.1.zip &nbsp;&nbsp;</span></a>
+          <a href="https://github.com/Tomas-M/xlunch/archive/v2.1.tar.gz" id="download-tar-gz" class="button"><span>Download xlunch 2.1.tar.gz &nbsp;&nbsp;</span></a>
+          <a href="https://github.com/Tomas-M/xlunch" id="view-on-github" class="button"><span>View on GitHub &nbsp;&nbsp;</span></a>
+        </div>
+
+<hr>
+
+       <p style='font-size: 13px;'>&copy; 2016, 2017, Tomas Matejicek - tomas [at] slax [dot] org<br><br>
+
+        </section>
+
+      </div>
+    </div>
+  </body>
+</html>
