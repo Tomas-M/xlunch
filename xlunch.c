@@ -455,19 +455,39 @@ int cleanup()
    XCloseDisplay(disp);
 }
 
+
 void parse_app_icons()
 {
    FILE * fp;
-   if (strlen(conffile)==0) conffile="/etc/xlunch/icons.conf";
+   char * homeconf = NULL;
+
+   char * home = getenv("HOME");
+   if (home!=NULL)
+   {
+      char* path = "/.xlunch/icons.conf";
+      size_t len = strlen(home) + strlen(path) + 1;
+      homeconf = malloc(len);
+      strcpy(homeconf, home);
+      strcat(homeconf, path);
+   }
+
+   if (strlen(conffile)==0) conffile=homeconf;
    fp=fopen(conffile,"rb");
    if (fp==NULL)
    {
-      fprintf(stderr,"error opening config file %s\n",conffile);
-      fprintf(stderr,"Icon file format is following:\n");
-      fprintf(stderr,"title;icon_path;command\n");
-      fprintf(stderr,"title;icon_path;command\n");
-      fprintf(stderr,"title;icon_path;command\n");
-      return;
+      fprintf(stderr,"Error opening config file from %s.\nReverting back to system conf.\n",conffile);
+      conffile="/etc/xlunch/icons.conf";
+      fp=fopen(conffile,"rb");
+
+      if (fp==NULL)
+      {
+         fprintf(stderr,"Error opening config file %s\n",conffile);
+         fprintf(stderr,"You may need to create it. Icon file format is following:\n");
+         fprintf(stderr,"title;icon_path;command\n");
+         fprintf(stderr,"title;icon_path;command\n");
+         fprintf(stderr,"title;icon_path;command\n");
+         return;
+      }
    }
 
    char title[255]={0};
