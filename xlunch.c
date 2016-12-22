@@ -912,7 +912,7 @@ int main(int argc, char **argv)
                   {
                      screen_width=ev.xconfigure.width;
                      screen_height=ev.xconfigure.height;
-                     update_background_image();
+                     if (!useRootImg) update_background_image();
                      recalc_cells();
                      arrange_positions();
                      updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
