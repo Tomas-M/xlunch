@@ -26,7 +26,7 @@
 
         <section id="main_content">
 
-<p>Welcome. This is xlunch, the coolest graphical app launcher for X, using pure Xlib and Imlib2. It allows you to run a program by clicking its icon. Alternatively
+<p>Welcome. This is xlunch, the coolest graphical app launcher for X, using pure Xlib and Imlib2. It allows you to run a program by clicking its icon. Alternatively,
 you can just type any command using your keyboard. UTF8 is supported.
 The Run commandline also works as a filter for the icons, as long as the title or command matches, icon is visible.</p>
 
@@ -95,7 +95,7 @@ which effectively positions xlunch on the desired place/monitor. Use the followi
 
 <p>For example, if you have two 800x600 monitors side by side, xlunch sees it as 1600x800.
 You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by
-using -a 800 -e 0 -y 800 -z 600. Remember that all these settings are overiden
+using -a 800 -e 0 -y 800 -z 600. Remember that all these settings are overridden
 by your window manager unless you start xlunch in Desktop mode.</p>
 
 <p><strong>Compile:</strong></p>
@@ -108,7 +108,7 @@ make install
 
 <p><strong>Configuration file:</strong></p>
 
-<p>During compilation, sampele config file is created for you. By default
+<p>During compilation, sample config file is created for you. By default,
 the config file is installed into /etc/xlunch/icons.conf.
 You should always manually edit the file and adapt it to your needs,
 remove all the icons you don't like, etc. When xlunch starts, it firstly
@@ -134,8 +134,8 @@ xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg -d -k -s
 <p><strong>Tips and tricks:</strong></p>
 
 <p>If you wish to run xlunch as app launcher, best practice is to
-set up a keyboard shortcut to start xlunch, such as Alt+F2
-Or have a button in taskbar to run it.</p>
+set up a keyboard shortcut to start xlunch, such as Alt+F2.
+Or you can have a button in taskbar to run it.</p>
 
 <p>For example, to start xlunch on Alt+F2 in i3wm, add this line to ~/.i3/config:</p>
 
@@ -148,7 +148,7 @@ Or have a button in taskbar to run it.</p>
 <pre><code>exec /usr/bin/xlunch -d -k -s
 </code></pre>
 
-<p>You can consider xlunch as a dmenu replacement, or rofi replacement.</p>
+<p>xlunch is a perfect dmenu replacement, or rofi replacement.</p>
 
 
 <hr>
