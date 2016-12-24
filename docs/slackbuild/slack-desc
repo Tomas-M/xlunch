@@ -5,15 +5,15 @@
 # You must make exactly 11 lines for the formatting to be correct.  It's also
 # customary to leave one space after the ':' except on otherwise blank lines.
 
-       |-----handy-ruler------------------------------------------------------|
-appname: xlunch (graphical launcher for xorg/x11)
-appname:
-appname: Xlunch is small and simple graphical launcher for Xorg/X11.
-appname: It requires only pure Xlib and Imlib2. It allows you to run
-appname: a program by clicking its icon; alternatively, you can also
-appname: just type any arbitrary command using your keyboard.
-appname: It is possible to run xlunch in two different modes:
-appname: Desktop mode and Quick launch mode.
-appname:
-appname: Author: Tomas Matejicek, www.xlunch.org, www.slax.org
-appname:
+      |-----handy-ruler------------------------------------------------------|
+xlunch: xlunch (graphical launcher for xorg/x11)
+xlunch:
+xlunch: Xlunch is a small and simple graphical launcher for Xorg/X11.
+xlunch: It requires only pure Xlib and Imlib2. It allows you to run
+xlunch: a program by clicking its icon; alternatively, you can also
+xlunch: just type any arbitrary command using your keyboard.
+xlunch: It is possible to run xlunch in two different modes:
+xlunch: Desktop mode and Quick launch mode.
+xlunch:
+xlunch: Author: Tomas Matejicek, www.xlunch.org, www.slax.org
+xlunch:

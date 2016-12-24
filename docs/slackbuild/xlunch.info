@@ -1,7 +1,7 @@
 PRGNAM="xlunch"
 VERSION="2.2"
 HOMEPAGE="http://www.xlunch.org/"
-DOWNLOAD="https://github.com/Tomas-M/xlunch/archive/v2.2.tar.gz"
+DOWNLOAD="https://github.com/Tomas-M/xlunch/archive/v2.2/xlunch-2.2.tar.gz"
 MD5SUM="59e11d9f8f177bfa061e2f91a66ae3bd"
 DOWNLOAD_x86_64=""
 MD5SUM_x86_64=""

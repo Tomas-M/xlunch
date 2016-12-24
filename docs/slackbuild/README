@@ -1,10 +1,9 @@
 xlunch (graphical launcher for xorg/x11)
 
-Xlunch is small and simple graphical launcher for Xorg/X11.
-It requires only pure Xlib and Imlib2. It allows you to run
-a program by clicking its icon; alternatively, you can also
-just type any arbitrary command using your keyboard.
-It is possible to run xlunch in two different modes:
-Desktop mode and Quick launch mode.
+Xlunch is a small and simple graphical launcher for Xorg/X11. It
+requires only pure Xlib and Imlib2. It allows you to run a program by
+clicking its icon; alternatively, you can also just type any arbitrary
+command using your keyboard. It is possible to run xlunch in two
+different modes: Desktop mode and Quick launch mode.
 
-Author: Tomas Matejicek, www.xlunch.org, www.slax.org
+Author: Tomas Matejicek
