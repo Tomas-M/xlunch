@@ -624,8 +624,11 @@ void joincmdlinetext()
 }
 
 
-void run_command(char * cmd, int excludePercentSign)
+void run_command(char * cmd_orig, int excludePercentSign)
 {
+    char cmd[255];
+    strcpy(cmd,cmd_orig);
+
     // split arguments into pieces
     int i = 0;
     char *p = strtok (cmd, " ");
