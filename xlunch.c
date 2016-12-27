@@ -979,7 +979,7 @@ int main(int argc, char **argv)
                         if (!current->hidden && current->hovered) selected=current;
                         current=current->next;
                      }
-                     if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,0);
+                     if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,1);
                      // else run the command entered by commandline, if the command prompt is used
                      else if (!disableprompt) run_command(commandline,0);
                   }
