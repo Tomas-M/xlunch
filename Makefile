@@ -1,6 +1,6 @@
-CC=gcc
-LDFLAGS= -lImlib2 -lX11
-CFLAGS-= -O2 -s
+CC = gcc
+LDFLAGS = -lImlib2 -lX11
+CFLAGS ?= -O2 -s
 
 all: xlunch icons.conf
 
