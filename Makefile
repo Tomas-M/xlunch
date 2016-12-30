@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-lImlib2 -lX11 -O2 -s
+LDFLAGS= -lImlib2 -lX11
+CFLAGS+= -O2 -s
 
 all: xlunch icons.conf
 
@@ -13,7 +14,7 @@ test: xlunch
 	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -c extra/sample_config.cfg -b 140
 
 xlunch: xlunch.c
-	$(CC) xlunch.c -o xlunch $(CFLAGS)
+	$(CC) xlunch.c -o xlunch $(LDFLAGS) $(CFLAGS)
 
 icons.conf:
 	sh extra/genconf > icons.conf
