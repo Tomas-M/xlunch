@@ -23,5 +23,5 @@ find $APPS | fgrep .desktop | while read DESKTOPFILE; do
          echo "$NAME;$ICON;$EXEC"
       fi
    fi
-done
+done | sort | uniq
 
