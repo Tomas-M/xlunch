@@ -992,10 +992,10 @@ int main(int argc, char **argv)
                   || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
                   {
                      int i=0;
-                     if (keycode==XK_Tab || keycode==XK_KP_Left || keycode==XK_Left) i=-1;
+                     if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
                      if (keycode==XK_Up || keycode==XK_KP_Up || keycode==XK_Page_Up) i=-columns;
                      if (keycode==XK_Down || keycode==XK_KP_Down || keycode==XK_Page_Down) i=columns;
-                     if (keycode==XK_Right || keycode==XK_KP_Right) i=1;
+                     if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
 
                      int j=0,n=0;
                      node_t * current = apps;
