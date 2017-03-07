@@ -70,6 +70,7 @@ int icon_size;
 int padding;
 int margin;
 int border;
+int bordertop;
 int cell_width;
 int cell_height;
 int font_height;
@@ -93,6 +94,7 @@ int uposy;
 int uwidth;
 int uheight;
 int uborder;
+int ubordertop;
 int utop;
 
 #define MOUSE 1
@@ -114,6 +116,8 @@ void recalc_cells()
 {
    border=screen_width/10;
    if (uborder>0) border=uborder;
+   bordertop=border;
+   if (ubordertop>0) bordertop=ubordertop;
 
    cell_width=icon_size+padding*2+margin*2;
    cell_height=icon_size+padding*2+margin*2+font_height;
@@ -123,7 +127,7 @@ void recalc_cells()
    cmdx=border+cell_width/2-icon_size/2;
    cmdw=screen_width-cmdx;
    cmdh=40;
-   cmdy=border/3*2;
+   cmdy=bordertop/3*2;
    if (utop) cmdy=utop;
 }
 
@@ -143,12 +147,13 @@ void init(int argc, char **argv)
    uwidth=0;
    uheight=0;
    uborder=0;
+   ubordertop=0;
    utop=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:x:nkdsa:e:y:z:")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:T:x:nkdsa:e:y:z:")) != -1)
    switch (c)
    {
       case 'r':
@@ -169,6 +174,10 @@ void init(int argc, char **argv)
 
       case 'b':
       uborder=atoi(optarg);
+      break;
+
+      case 'T':
+      ubordertop=atoi(optarg);
       break;
 
       case 'g':
@@ -248,6 +257,7 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
           fprintf (stderr,"   -n         Disable fullscreen\n");
           fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
+          fprintf (stderr,"   -T [i]     Top position (integer) in pixels for the icons (overides top border)\n");
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
           fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n\n");
@@ -351,7 +361,7 @@ void arrange_positions()
               current->x=border;
            }
            i++;
-           current->y=j*cell_height+border;
+           current->y=j*cell_height+bordertop;
         }
         current = current->next;
     }
