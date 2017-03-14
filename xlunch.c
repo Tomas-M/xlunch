@@ -456,7 +456,7 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
 
 
 
-int cleanup()
+void cleanup()
 {
    flock(lock, LOCK_UN | LOCK_NB);
    // destroy window, disconnect display, and exit
