@@ -8,6 +8,7 @@ install: xlunch icons.conf
 	mkdir -p $(DESTDIR)/etc/xlunch/
 	mkdir -p $(DESTDIR)/usr/bin/
 	cp icons.conf $(DESTDIR)/etc/xlunch/
+	cp ghost.png $(DESTDIR)/etc/xlunch/
 	cp xlunch $(DESTDIR)/usr/bin/
 
 test: xlunch

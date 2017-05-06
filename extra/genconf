@@ -11,16 +11,21 @@ find $APPS -name "*.desktop" | while read DESKTOPFILE; do
    NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
    EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2-)"
    ICON="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
-   TERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
+   USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
 
-   if [ "$TERM" = "true" ]; then
-      EXEC="xterm -e ""$EXEC"
+   if [ "$USETERM" = "true" ]; then
+      EXEC="$TERM -e ""$EXEC"
    fi
 
    if [ "$ICON" != "" ]; then
       ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICON"[.]png" | head -n 1)"
       if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
          echo "$NAME;$ICON;$EXEC"
+      else
+        ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICON"[.](png|svg)" | head -n 1)"
+        if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
+           echo "$NAME;$ICON;$EXEC"
+        fi
       fi
    fi
 done | sort | uniq
