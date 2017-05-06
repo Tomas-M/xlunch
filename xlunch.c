@@ -987,12 +987,21 @@ int main(int argc, char **argv)
                      // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
                      node_t * current = apps;
                      node_t * selected = NULL;
+                     node_t * selected_one = NULL;
+                     int nb=0;
                      while (current != NULL)
                      {
+                       if (!current->hidden)
+                       {
+                         nb++;
+                         selected_one=current;
+                       }
                         if (!current->hidden && current->hovered) selected=current;
                         current=current->next;
                      }
-                     if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,1);
+                     /* if only 1 app was filtered, consider it selected */
+                     if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd,1);
+                     else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,1);
                      // else run the command entered by commandline, if the command prompt is used
                      else if (!disableprompt) run_command(commandline,0);
                   }
@@ -1204,7 +1213,7 @@ int main(int argc, char **argv)
                 imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext);
 
                 imlib_context_set_color(255, 255, 255, 255);
-                imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext); 
+                imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext);
 
                 /* free the font */
                 imlib_free_font();
@@ -1225,4 +1234,3 @@ int main(int argc, char **argv)
    }
    return 0;
 }
-
