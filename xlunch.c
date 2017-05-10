@@ -1198,7 +1198,7 @@ int main(int argc, char **argv)
                    else {
                      w = 48;
                      h = 48;
-                     image = imlib_load_image("/etc/xlunch/ghost.png");
+                     image = imlib_load_image("/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png");
                      //image = imlib_create_image(w, h);
 
                      imlib_context_set_image(buffer);
