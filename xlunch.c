@@ -987,12 +987,21 @@ int main(int argc, char **argv)
                      // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
                      node_t * current = apps;
                      node_t * selected = NULL;
+                     node_t * selected_one = NULL;
+                     int nb=0;
                      while (current != NULL)
                      {
+                       if (!current->hidden)
+                       {
+                         nb++;
+                         selected_one=current;
+                       }
                         if (!current->hidden && current->hovered) selected=current;
                         current=current->next;
                      }
-                     if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,1);
+                     /* if only 1 app was filtered, consider it selected */
+                     if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd,1);
+                     else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd,1);
                      // else run the command entered by commandline, if the command prompt is used
                      else if (!disableprompt) run_command(commandline,0);
                   }
@@ -1184,6 +1193,73 @@ int main(int argc, char **argv)
                       imlib_context_set_image(image);
                       imlib_free_image();
                    }
+                   /* render text if icon couldn't be loaded
+                   */
+                   else {
+                     w = 48;
+                     h = 48;
+                     image = imlib_load_image("/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png");
+                     //image = imlib_create_image(w, h);
+
+                     imlib_context_set_image(buffer);
+
+                     if (current->hovered)
+                     {
+                        c = XCreateFontCursor(disp,XC_hand1);
+                        imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
+                     }
+
+                     int d;
+                     if (current->clicked) d=2; else d=0;
+
+                     imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
+                                                 current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
+
+                     /* draw text under icon */
+                     font = loadfont();
+                     if (font)
+                     {
+                        int text_w; int text_h;
+                        size_t sz=strlen(current->title);
+                        text_w=cell_width-2*margin-padding+1;
+
+                        imlib_context_set_font(font);
+
+                        while(text_w > cell_width-2*margin-padding && sz>0)
+                        {
+                           strncpyutf8(title,current->title,sz);
+                           imlib_get_text_size(title, &text_w, &text_h);
+                           sz--;
+                        }
+
+                        // if text was shortened, add dots at the end
+                        if (strlen(current->title)!=strlen(title))
+                        {
+                           char * ptr = title;
+                           int len=strlen(ptr);
+                           while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
+                           strcat(title,"..");
+                           imlib_get_text_size(title, &text_w, &text_h);
+                        }
+
+                        int d;
+                        if (current->clicked==1) d=4; else d=0;
+
+                        imlib_context_set_color(0, 0, 0, 30);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
+
+                        imlib_context_set_color(255, 255, 255, 255);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
+
+                        /* free the font */
+                        imlib_free_font();
+                     }
+
+                     imlib_context_set_image(image);
+                     imlib_free_image();
+                   }
                 }
                 current = current->next;
              }
@@ -1204,7 +1280,7 @@ int main(int argc, char **argv)
                 imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext);
 
                 imlib_context_set_color(255, 255, 255, 255);
-                imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext); 
+                imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext);
 
                 /* free the font */
                 imlib_free_font();
@@ -1225,4 +1301,3 @@ int main(int argc, char **argv)
    }
    return 0;
 }
-
