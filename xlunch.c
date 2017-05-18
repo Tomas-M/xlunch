@@ -4,6 +4,8 @@
 
 
 #define _GNU_SOURCE
+/* open and O_RDWR,O_CREAT */
+#include <fcntl.h>
 /* include X11 stuff */
 #include <X11/Xlib.h>
 /* include Imlib2 stuff */
