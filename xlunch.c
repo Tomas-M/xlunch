@@ -1147,8 +1147,8 @@ int main(int argc, char **argv)
                       int d;
                       if (current->clicked) d=2; else d=0;
 
-                      imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                  current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
+                      if (image) { imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
+                                                  current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2); };
 
                       /* draw text under icon */
                       font = loadfont();
@@ -1192,8 +1192,8 @@ int main(int argc, char **argv)
                          imlib_free_font();
                       }
 
-                      imlib_context_set_image(image);
-                      imlib_free_image();
+                      if (image) { imlib_context_set_image(image);
+                      imlib_free_image(); };
                    }
                    /* render text if icon couldn't be loaded
                    */
@@ -1214,8 +1214,8 @@ int main(int argc, char **argv)
                      int d;
                      if (current->clicked) d=2; else d=0;
 
-                     imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                 current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
+                     if (image) { imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
+                                                 current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2); };
 
                      /* draw text under icon */
                      font = loadfont();
@@ -1259,8 +1259,8 @@ int main(int argc, char **argv)
                         imlib_free_font();
                      }
 
-                     imlib_context_set_image(image);
-                     imlib_free_image();
+                     if (image) { imlib_context_set_image(image);
+                     imlib_free_image(); };
                    }
                 }
                 current = current->next;
