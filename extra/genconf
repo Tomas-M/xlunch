@@ -8,38 +8,38 @@ SIZE=48
 echo "Generating config file from $APPS ..." >&2
 
 find $APPS -name "*.desktop" | while read DESKTOPFILE; do
-   FDATA="$(cat $DESKTOPFILE)"
-   NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
-   EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2-)"
-   ICONNAME="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
-   USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
-   if [ "$USETERM" = "true" ]; then
-      EXEC="$TERM -e ""$EXEC"
-   fi
+  FDATA="$(cat $DESKTOPFILE)"
+  NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
+  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2-)"
+  ICONNAME="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
+  USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
+  if [ "$USETERM" = "true" ]; then
+    EXEC="$TERM -e ""$EXEC"
+  fi
 
-   if [ "$ICONNAME" != "" ]; then
-     ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png" | head -n 1)"
-     if [ "$ICON" == "" ]; then
-        ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png" | head -n 1)"
-     fi
+  if [ "$ICONNAME" != "" ]; then
+    ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png" | head -n 1)"
+    if [ "$ICON" == "" ]; then
+      ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png" | head -n 1)"
+    fi
 
-     if [ "$ICON" == "" ]; then
-        ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png" | head -n 1)"
-				if [ "$ICON" == "" ]; then
-					if type convert >/dev/null 2>&1; then
-						SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
-						if [ "$SVGICON" != "" ]; then
-							mkdir -p "svgicons"
-							convert -background none "$SVGICON" "svgicons/"$ICONNAME".png"
-							ICON="svgicons/"$ICONNAME".png"
-						fi
-					else
-						echo >&2 "convert (from imagemagick) not found, will not convert and use svg images"
-					fi
-				fi
+    if [ "$ICON" == "" ]; then
+      ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png" | head -n 1)"
+      if [ "$ICON" == "" ]; then
+        if type convert >/dev/null 2>&1; then
+          SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
+          if [ "$SVGICON" != "" ]; then
+            mkdir -p "svgicons"
+            convert -background none "$SVGICON" "svgicons/"$ICONNAME".png"
+            ICON="svgicons/"$ICONNAME".png"
+          fi
+        else
+          echo >&2 "convert (from imagemagick) not found, will not convert and use svg images"
+        fi
       fi
-      if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
-         echo "$NAME;$ICON;$EXEC"
-      fi
-   fi
+    fi
+    if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
+      echo "$NAME;$ICON;$EXEC"
+    fi
+  fi
 done | sort | uniq
