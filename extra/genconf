@@ -1,6 +1,7 @@
 #!/bin/bash
 
 APPS=/usr/share/applications
+PIXMAPS=/usr/share/pixmaps
 ICONS=/usr/share/icons
 SIZE=48
 
@@ -17,14 +18,23 @@ find $APPS -name "*.desktop" | while read DESKTOPFILE; do
    fi
 
    if [ "$ICONNAME" != "" ]; then
-      ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png" | head -n 1)"
-      if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
-         echo "$NAME;$ICON;$EXEC"
-      else
-        ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.](png|svg)" | head -n 1)"
-        if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
-           echo "$NAME;$ICON;$EXEC"
-        fi
+		  ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png" | head -n 1)"
+		  if [ "$ICON" == "" ]; then
+        ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png" | head -n 1)"
+		  fi
+		  if [ "$ICON" == "" ]; then
+        ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png" | head -n 1)"
+				if [ "$ICON" == "" ]; then
+					SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
+          if [ "$SVGICON" != "" ]; then
+						mkdir -p "svgicons"
+						convert -background none "$SVGICON" "svgicons/"$ICONNAME".png"
+						ICON="svgicons/"$ICONNAME".png"
+					fi
+				fi
       fi
+			if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
+				 echo "$NAME;$ICON;$EXEC"
+			fi
    fi
 done | sort | uniq
