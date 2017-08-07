@@ -6,8 +6,10 @@ all: xlunch icons.conf
 
 install: xlunch icons.conf
 	mkdir -p $(DESTDIR)/etc/xlunch/
+	mkdir -p $(DESTDIR)/etc/xlunch/svgicons/
 	mkdir -p $(DESTDIR)/usr/bin/
 	cp icons.conf $(DESTDIR)/etc/xlunch/
+	cp -r svgicons/ $(DESTDIR)/etc/xlunch/svgicons/
 	cp extra/ghost.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 	cp xlunch $(DESTDIR)/usr/bin/
 
