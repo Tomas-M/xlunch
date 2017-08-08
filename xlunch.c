@@ -940,13 +940,18 @@ int main(int argc, char **argv)
                   if (ev.xbutton.button==3 && !desktopmode) { cleanup(); exit(0); }
                   if (ev.xbutton.button!=1) break;
                   node_t * current = apps;
+                  int clicked = 0;
                   while (current != NULL)
                   {
-                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) setclicked(current,1);
+                      if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+                          setclicked(current,1);
+                          clicked = 1;
+                      }
                       else setclicked(current,0);
                       current = current->next;
                   }
 
+                  if (!clicked) { cleanup(); exit(0); }
                   break;
                }
 
