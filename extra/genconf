@@ -10,7 +10,7 @@ echo "Generating config file from $APPS ..." >&2
 find $APPS -name "*.desktop" | while read DESKTOPFILE; do
   FDATA="$(cat $DESKTOPFILE)"
   NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
-  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2-)"
+  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
   ICONNAME="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
   USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
   if [ "$USETERM" = "true" ]; then
