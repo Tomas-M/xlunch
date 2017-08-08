@@ -98,6 +98,7 @@ int uheight;
 int uborder;
 int ubordertop;
 int utop;
+int closeonvoidclick;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -151,11 +152,12 @@ void init(int argc, char **argv)
    uborder=0;
    ubordertop=0;
    utop=0;
+   closeonvoidclick=0;
 
    int c;
 
    opterr = 0;
-   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:T:x:nkdsa:e:y:z:")) != -1)
+   while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:T:x:nkdsva:e:y:z:")) != -1)
    switch (c)
    {
       case 'r':
@@ -218,6 +220,10 @@ void init(int argc, char **argv)
       singleinstance=0;
       break;
 
+      case 'v':
+      closeonvoidclick=1;
+      break;
+
       case 'a':
       uposx=atoi(optarg);
       break;
@@ -262,7 +268,8 @@ void init(int argc, char **argv)
           fprintf (stderr,"   -T [i]     Top position (integer) in pixels for the icons (overides top border)\n");
           fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
           fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
-          fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n\n");
+          fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n");
+          fprintf (stderr,"   -v         Enable closing xlunch when clicking empty space (i.e. not on an icon) - practical for touch screens\n\n");
           fprintf (stderr,"Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
           fprintf (stderr,"as a big single screen. You can customize this manually by providing the top/left\n");
           fprintf (stderr,"coordinates and width/height of your monitor screen, which effectively positions xlunch\n");
@@ -422,7 +429,7 @@ void pop_key()
 void push_app(char * title, char * icon, char * cmd, int x, int y)
 {
     node_t * current = apps;
-    /* Pre-load the image into the cache, this is done to check for error messages
+    /* Pre-load the image into the cache, this is done to check for error messages
      * If a user has more images then can be shown this might incur a performance hit */
     Imlib_Load_Error load_error;
     Imlib_Image image = imlib_load_image_with_error_return(icon, &load_error);
@@ -997,18 +1004,18 @@ int main(int argc, char **argv)
                   if (ev.xbutton.button==3 && !desktopmode) { cleanup(); exit(0); }
                   if (ev.xbutton.button!=1) break;
                   node_t * current = apps;
-                  int clicked = 0;
+                  int voidclicked = 0;
                   while (current != NULL)
                   {
                       if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
                           setclicked(current,1);
-                          clicked = 1;
+                          voidclicked = 1;
                       }
                       else setclicked(current,0);
                       current = current->next;
                   }
 
-                  if (!clicked) { cleanup(); exit(0); }
+                  if (!voidclicked && closeonvoidclick) { cleanup(); exit(0); }
                   break;
                }
 
