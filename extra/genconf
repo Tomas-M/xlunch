@@ -26,15 +26,16 @@ find $APPS -name "*.desktop" | while read DESKTOPFILE; do
     if [ "$ICON" == "" ]; then
       ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png" | head -n 1)"
       if [ "$ICON" == "" ]; then
+        SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
         if type convert >/dev/null 2>&1; then
-          SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
           if [ "$SVGICON" != "" ]; then
             mkdir -p "svgicons"
             convert -background none "$SVGICON" "svgicons/"$ICONNAME".png"
             ICON="svgicons/"$ICONNAME".png"
           fi
         else
-          echo >&2 "convert (from imagemagick) not found, will not convert and use svg images"
+          echo >&2 "'convert' (from imagemagick) not found, will not convert and use svg images."
+          ICON=$SVGICON
         fi
       fi
     fi
