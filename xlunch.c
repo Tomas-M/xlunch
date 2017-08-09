@@ -123,7 +123,7 @@ void recalc_cells()
    if (ubordertop>0) bordertop=ubordertop;
 
    cell_width=icon_size+padding*2+margin*2;
-   cell_height=icon_size+padding*2+margin*2+font_height;
+   cell_height=icon_size+padding*2+margin*2;
    columns=(screen_width-border*2)/cell_width;
    cell_width=(screen_width-border*2)/columns; // rounded
 
@@ -589,7 +589,7 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
    if (mouse_x>=cell->x+margin
       && mouse_x<=cell->x+cell_width-margin
       && mouse_y>=cell->y+margin
-      && mouse_y<=cell->y+cell_height-margin) return 1;
+      && mouse_y<=cell->y+cell_height-margin+font_height) return 1;
    else return 0;
 }
 
@@ -702,23 +702,6 @@ void joincmdlinetext()
 
 void run_command(char * cmd_orig, int excludePercentSign)
 {
-    char cmd[255];
-    strcpy(cmd,cmd_orig);
-
-    // split arguments into pieces
-    int i = 0;
-    char *p = strtok (cmd, " ");
-    char *array[100] = {0};
-
-    if (p==NULL) array[0]=cmd;
-
-    while (p != NULL)
-    {
-        if (strncmp("%",p,1)!=0 || !excludePercentSign) array[i++]=p;
-        p = strtok (NULL, " ");
-        if (i>=99) break;
-    }
-
     restack();
 
     if (desktopmode)
@@ -727,14 +710,14 @@ void run_command(char * cmd_orig, int excludePercentSign)
        if (pid==0) // child process
        {
           if (singleinstance) close(lock);
-          printf("Forking command: %s\n",cmd);
-          int err=execvp(cmd,array);
-          fprintf(stderr,"Error forking %s : %d\n",cmd,err);
+          printf("Forking command: %s\n",cmd_orig);
+          int err=system(cmd_orig);
+          if(err!=0){ fprintf(stderr,"Error forking %s : %d\n",cmd_orig,err); }
           exit(0);
        }
        else if (pid<0) // error forking
        {
-          fprintf(stderr,"Error running %s\n",cmd);
+          fprintf(stderr,"Error running %s\n",cmd_orig);
        }
        else // parent process
        {
@@ -749,9 +732,9 @@ void run_command(char * cmd_orig, int excludePercentSign)
     {
        // execute cmd replacing current process
        cleanup();
-       printf("Running command: %s\n",cmd);
-       int err=execvp(cmd,array);
-       fprintf(stderr,"Error running %s : %d\n",cmd, err);
+       printf("Running command: %s\n",cmd_orig);
+       int err=system(cmd_orig);
+       if(err!=0){ fprintf(stderr,"Error running %s : %d\n",cmd_orig, err); }
        exit(0);
     }
 }
@@ -882,7 +865,11 @@ int main(int argc, char **argv)
    }
 
    /* add the ttf fonts dir to our font path */
-   imlib_add_path_to_font_path("~/.fonts");
+   char* homedir;
+   if((homedir = getenv("HOME")) != NULL){
+     imlib_add_path_to_font_path(strcat(homedir,"/.local/share/fonts"));
+     imlib_add_path_to_font_path(strcat(homedir,"/.fonts"));
+   }
    imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
@@ -1097,7 +1084,7 @@ int main(int argc, char **argv)
                      {
                         if (!current->hidden)
                         {
-                           if (current->y+cell_height<screen_height) n++;
+                           if (current->y+cell_height<=screen_height-border) n++;
                            if (selected==NULL) j++;
                            if (current->hovered) selected=current;
                            sethover(current,0);
@@ -1200,7 +1187,7 @@ int main(int argc, char **argv)
 
              while (current != NULL)
              {
-                if (!current->hidden && current->y+cell_height<=screen_height)
+                if (!current->hidden && current->y+cell_height<=screen_height-border)
                 {
                    image=imlib_load_image(current->icon);
                    if (image)
@@ -1213,7 +1200,7 @@ int main(int argc, char **argv)
                       if (current->hovered)
                       {
                          c = XCreateFontCursor(disp,XC_hand1);
-                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
+                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
                       }
 
                       int d;

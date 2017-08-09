@@ -8,14 +8,15 @@ install: xlunch icons.conf
 	mkdir -p $(DESTDIR)/etc/xlunch/
 	mkdir -p $(DESTDIR)/etc/xlunch/svgicons/
 	mkdir -p $(DESTDIR)/usr/bin/
-	cp icons.conf $(DESTDIR)/etc/xlunch/
-	cp -r svgicons/ $(DESTDIR)/etc/xlunch/svgicons/ 2>/dev/null || :
+	#cp icons.conf $(DESTDIR)/etc/xlunch/
+	cat icons.conf | sed "s/;svgicons\//;$(DESTDIR)\/etc\/xlunch\/svgicons\//g" > $(DESTDIR)/etc/xlunch/icons.conf
+	cp -r svgicons/ $(DESTDIR)/etc/xlunch/ 2>/dev/null || :
 	cp extra/ghost.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 	cp xlunch $(DESTDIR)/usr/bin/
 
 remove:
 	rm -r $(DESTDIR)/etc/xlunch
-	rm $(DESTDIR)/usr/bin/xlunch
+	rm -r $(DESTDIR)/usr/bin/xlunch
 	rm $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 
 test: xlunch
