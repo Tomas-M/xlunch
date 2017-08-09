@@ -702,6 +702,23 @@ void joincmdlinetext()
 
 void run_command(char * cmd_orig, int excludePercentSign)
 {
+    char cmd[255];
+    strcpy(cmd,cmd_orig);
+
+    // split arguments into pieces
+    int i = 0;
+    char *p = strtok (cmd, " ");
+    char *array[100] = {0};
+
+    if (p==NULL) array[0]=cmd;
+
+    while (p != NULL)
+    {
+        if (strncmp("%",p,1)!=0 || !excludePercentSign) array[i++]=p;
+        p = strtok (NULL, " ");
+        if (i>=99) break;
+    }
+
     restack();
 
     if (desktopmode)
@@ -710,14 +727,14 @@ void run_command(char * cmd_orig, int excludePercentSign)
        if (pid==0) // child process
        {
           if (singleinstance) close(lock);
-          printf("Forking command: %s\n",cmd_orig);
-          int err=system(cmd_orig);
-          if(err != 0) { fprintf(stderr,"Error running %s : %d\n",cmd_orig,err); }
+          printf("Forking command: %s\n",cmd);
+          int err=execvp(cmd,array);
+          fprintf(stderr,"Error forking %s : %d\n",cmd,err);
           exit(0);
        }
        else if (pid<0) // error forking
        {
-          fprintf(stderr,"Error forking %s\n",cmd_orig);
+          fprintf(stderr,"Error running %s\n",cmd);
        }
        else // parent process
        {
@@ -732,9 +749,9 @@ void run_command(char * cmd_orig, int excludePercentSign)
     {
        // execute cmd replacing current process
        cleanup();
-       printf("Running command: %s\n",cmd_orig);
-       int err=system(cmd_orig);
-       if(err != 0) { fprintf(stderr,"Error running %s : %d\n",cmd_orig,err); }
+       printf("Running command: %s\n",cmd);
+       int err=execvp(cmd,array);
+       fprintf(stderr,"Error running %s : %d\n",cmd, err);
        exit(0);
     }
 }
