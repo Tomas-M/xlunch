@@ -9,9 +9,14 @@ install: xlunch icons.conf
 	mkdir -p $(DESTDIR)/etc/xlunch/svgicons/
 	mkdir -p $(DESTDIR)/usr/bin/
 	cp icons.conf $(DESTDIR)/etc/xlunch/
-	cp -r svgicons/ $(DESTDIR)/etc/xlunch/svgicons/
+	cp -r svgicons/ $(DESTDIR)/etc/xlunch/svgicons/ 2>/dev/null || :
 	cp extra/ghost.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 	cp xlunch $(DESTDIR)/usr/bin/
+
+remove:
+	rm -r $(DESTDIR)/etc/xlunch
+	rm $(DESTDIR)/usr/bin/xlunch
+	rm $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 
 test: xlunch
 	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -c extra/sample_config.cfg -b 140

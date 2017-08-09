@@ -30,7 +30,7 @@ find $APPS -name "*.desktop" | while read DESKTOPFILE; do
         if type convert >/dev/null 2>&1; then
           if [ "$SVGICON" != "" ]; then
             mkdir -p "svgicons"
-            convert -background none "$SVGICON" "svgicons/"$ICONNAME".png"
+            convert -size $SIZEx$SIZE -background none "$SVGICON" "svgicons/"$ICONNAME".png"
             ICON="svgicons/"$ICONNAME".png"
           fi
         else

@@ -123,7 +123,7 @@ void recalc_cells()
    if (ubordertop>0) bordertop=ubordertop;
 
    cell_width=icon_size+padding*2+margin*2;
-   cell_height=icon_size+padding*2+margin*2;
+   cell_height=icon_size+padding*2+margin*2+font_height;
    columns=(screen_width-border*2)/cell_width;
    cell_width=(screen_width-border*2)/columns; // rounded
 
@@ -589,7 +589,7 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
    if (mouse_x>=cell->x+margin
       && mouse_x<=cell->x+cell_width-margin
       && mouse_y>=cell->y+margin
-      && mouse_y<=cell->y+cell_height-margin+font_height) return 1;
+      && mouse_y<=cell->y+cell_height-margin) return 1;
    else return 0;
 }
 
@@ -781,9 +781,11 @@ Imlib_Font loadfont()
    Imlib_Font font;
    font=imlib_load_font(fontname);
    if (!font) font=imlib_load_font("DejaVuSans/10");
+
    imlib_context_set_font(font);
    font_height = imlib_get_maximum_font_ascent() + imlib_get_maximum_font_descent();
    imlib_free_font();
+
    return font;
 }
 
@@ -882,11 +884,7 @@ int main(int argc, char **argv)
    }
 
    /* add the ttf fonts dir to our font path */
-   char* homedir;
-   if((homedir = getenv("HOME")) != NULL){
-     imlib_add_path_to_font_path(strcat(homedir,"/.local/share/fonts"));
-     imlib_add_path_to_font_path(strcat(homedir,"/.fonts"));
-   }
+   imlib_add_path_to_font_path("~/.fonts");
    imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
@@ -1217,7 +1215,7 @@ int main(int argc, char **argv)
                       if (current->hovered)
                       {
                          c = XCreateFontCursor(disp,XC_hand1);
-                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
+                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
                       }
 
                       int d;
@@ -1229,7 +1227,7 @@ int main(int argc, char **argv)
                       /* draw text under icon */
                       font = loadfont();
                       if (font)
-		      {
+            		      {
                         int text_w; int text_h;
                         size_t sz=strlen(current->title);
                         text_w=cell_width-2*margin-padding+1;
