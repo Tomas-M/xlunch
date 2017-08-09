@@ -123,7 +123,7 @@ void recalc_cells()
    if (ubordertop>0) bordertop=ubordertop;
 
    cell_width=icon_size+padding*2+margin*2;
-   cell_height=icon_size+padding*2+margin*2+font_height;
+   cell_height=icon_size+padding*2+margin*2;
    columns=(screen_width-border*2)/cell_width;
    cell_width=(screen_width-border*2)/columns; // rounded
 
@@ -589,7 +589,7 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
    if (mouse_x>=cell->x+margin
       && mouse_x<=cell->x+cell_width-margin
       && mouse_y>=cell->y+margin
-      && mouse_y<=cell->y+cell_height-margin) return 1;
+      && mouse_y<=cell->y+cell_height-margin+font_height) return 1;
    else return 0;
 }
 
@@ -702,6 +702,23 @@ void joincmdlinetext()
 
 void run_command(char * cmd_orig, int excludePercentSign)
 {
+    char cmd[255];
+    strcpy(cmd,cmd_orig);
+
+    // split arguments into pieces
+    int i = 0;
+    char *p = strtok (cmd, " ");
+    char *array[100] = {0};
+
+    if (p==NULL) array[0]=cmd;
+
+    while (p != NULL)
+    {
+        if (strncmp("%",p,1)!=0 || !excludePercentSign) array[i++]=p;
+        p = strtok (NULL, " ");
+        if (i>=99) break;
+    }
+
     restack();
 
     if (desktopmode)
@@ -710,14 +727,14 @@ void run_command(char * cmd_orig, int excludePercentSign)
        if (pid==0) // child process
        {
           if (singleinstance) close(lock);
-          printf("Forking command: %s\n",cmd_orig);
-          int err=system(cmd_orig);
-          if(err != 0) { fprintf(stderr,"Error running %s : %d\n",cmd_orig,err); }
+          printf("Forking command: %s\n",cmd);
+          int err=execvp(cmd,array);
+          fprintf(stderr,"Error forking %s : %d\n",cmd,err);
           exit(0);
        }
        else if (pid<0) // error forking
        {
-          fprintf(stderr,"Error forking %s\n",cmd_orig);
+          fprintf(stderr,"Error running %s\n",cmd);
        }
        else // parent process
        {
@@ -732,9 +749,9 @@ void run_command(char * cmd_orig, int excludePercentSign)
     {
        // execute cmd replacing current process
        cleanup();
-       printf("Running command: %s\n",cmd_orig);
-       int err=system(cmd_orig);
-       if(err != 0) { fprintf(stderr,"Error running %s : %d\n",cmd_orig,err); }
+       printf("Running command: %s\n",cmd);
+       int err=execvp(cmd,array);
+       fprintf(stderr,"Error running %s : %d\n",cmd, err);
        exit(0);
     }
 }
@@ -764,6 +781,9 @@ Imlib_Font loadfont()
    Imlib_Font font;
    font=imlib_load_font(fontname);
    if (!font) font=imlib_load_font("DejaVuSans/10");
+   imlib_context_set_font(font);
+   font_height = imlib_get_maximum_font_ascent() + imlib_get_maximum_font_descent();
+   imlib_free_font();
    return font;
 }
 
@@ -862,7 +882,11 @@ int main(int argc, char **argv)
    }
 
    /* add the ttf fonts dir to our font path */
-   imlib_add_path_to_font_path("~/.fonts");
+   char* homedir;
+   if((homedir = getenv("HOME")) != NULL){
+     imlib_add_path_to_font_path(strcat(homedir,"/.local/share/fonts"));
+     imlib_add_path_to_font_path(strcat(homedir,"/.fonts"));
+   }
    imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
    imlib_add_path_to_font_path("/usr/share/fonts/TTF");
@@ -1193,7 +1217,7 @@ int main(int argc, char **argv)
                       if (current->hovered)
                       {
                          c = XCreateFontCursor(disp,XC_hand1);
-                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
+                         imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
                       }
 
                       int d;
@@ -1205,43 +1229,42 @@ int main(int argc, char **argv)
                       /* draw text under icon */
                       font = loadfont();
                       if (font)
-                      {
-                         int text_w; int text_h;
-                         size_t sz=strlen(current->title);
-                         text_w=cell_width-2*margin-padding+1;
+		      {
+                        int text_w; int text_h;
+                        size_t sz=strlen(current->title);
+                        text_w=cell_width-2*margin-padding+1;
 
-                         imlib_context_set_font(font);
+                        imlib_context_set_font(font);
 
-                         while(text_w > cell_width-2*margin-padding && sz>0)
-                         {
-                            strncpyutf8(title,current->title,sz);
-                            imlib_get_text_size(title, &text_w, &text_h);
-                            sz--;
-                         }
+                        while(text_w > cell_width-2*margin-padding && sz>0)
+                        {
+                          strncpyutf8(title,current->title,sz);
+                          imlib_get_text_size(title, &text_w, &text_h);
+                          sz--;
+                        }
 
-                         // if text was shortened, add dots at the end
-                         if (strlen(current->title)!=strlen(title))
-                         {
-                            char * ptr = title;
-                            int len=strlen(ptr);
-                            while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
-                            strcat(title,"..");
-                            imlib_get_text_size(title, &text_w, &text_h);
-                         }
+                        // if text was shortened, add dots at the end
+                        if (strlen(current->title)!=strlen(title))
+                        {
+                          char * ptr = title;
+                          int len=strlen(ptr);
+                          while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
+                          strcat(title,"..");
+                          imlib_get_text_size(title, &text_w, &text_h);
+                        }
+                        int d;
+                        if (current->clicked==1) d=4; else d=0;
 
-                         int d;
-                         if (current->clicked==1) d=4; else d=0;
+                        imlib_context_set_color(0, 0, 0, 30);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
 
-                         imlib_context_set_color(0, 0, 0, 30);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
+                        imlib_context_set_color(255, 255, 255, 255);
+                        imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
 
-                         imlib_context_set_color(255, 255, 255, 255);
-                         imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
-
-                         /* free the font */
-                         imlib_free_font();
+                        /* free the font */
+                        imlib_free_font();
                       }
 
                       if (image) { imlib_context_set_image(image);
@@ -1260,7 +1283,7 @@ int main(int argc, char **argv)
                      if (current->hovered)
                      {
                         c = XCreateFontCursor(disp,XC_hand1);
-                        imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin, -45.0);
+                        imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
                      }
 
                      int d;
