@@ -783,7 +783,6 @@ Imlib_Font loadfont()
    if (!font) font=imlib_load_font("DejaVuSans/10");
    imlib_context_set_font(font);
    font_height = imlib_get_maximum_font_ascent() + imlib_get_maximum_font_descent();
-   printf("Font height: %d\n", font_height);
    imlib_free_font();
    return font;
 }
@@ -1228,9 +1227,10 @@ int main(int argc, char **argv)
                                                   current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2); };
 
                       /* draw text under icon */
-                      int text_w; int text_h;
                       font = loadfont();
-                      if (font) {
+                      if (font)
+		      {
+                        int text_w; int text_h;
                         size_t sz=strlen(current->title);
                         text_w=cell_width-2*margin-padding+1;
 
