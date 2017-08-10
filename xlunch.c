@@ -839,6 +839,16 @@ void update_background_image()
    }
 }
 
+char* concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
+    if(result != 0){
+      strcpy(result, s1);
+      strcat(result, s2);
+      return result;
+    }
+    exit(1);
+}
 
 /* the program... */
 int main(int argc, char **argv)
@@ -883,8 +893,8 @@ int main(int argc, char **argv)
    /* add the ttf fonts dir to our font path */
    char* homedir;
    if((homedir = getenv("HOME")) != NULL){
-     imlib_add_path_to_font_path(strcat(homedir,"/.local/share/fonts"));
-     imlib_add_path_to_font_path(strcat(homedir,"/.fonts"));
+     imlib_add_path_to_font_path(concat(homedir,"/.local/share/fonts"));
+     imlib_add_path_to_font_path(concat(homedir,"/.fonts"));
    }
    imlib_add_path_to_font_path("/usr/local/share/fonts");
    imlib_add_path_to_font_path("/usr/share/fonts/truetype");
