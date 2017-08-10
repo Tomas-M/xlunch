@@ -1228,7 +1228,7 @@ int main(int argc, char **argv)
                       /* draw text under icon */
                       font = loadfont();
                       if (font)
-		      {
+                      {
                         int text_w; int text_h;
                         size_t sz=strlen(current->title);
                         text_w=cell_width-2*margin-padding+1;
