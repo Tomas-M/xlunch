@@ -3,14 +3,14 @@
 APPS=/usr/share/applications
 PIXMAPS=/usr/share/pixmaps
 ICONS=/usr/share/icons
-SIZE=64
+SIZE=48
 
 echo "Generating config file from $APPS ..." >&2
 
 find $APPS -name "*.desktop" | while read DESKTOPFILE; do
   FDATA="$(cat $DESKTOPFILE)"
   NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
-  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
+  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2-)"
   ICONNAME="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
   USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
   if [ "$USETERM" = "true" ]; then
@@ -18,15 +18,15 @@ find $APPS -name "*.desktop" | while read DESKTOPFILE; do
   fi
 
   if [ "$ICONNAME" != "" ]; then
-    ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png" | head -n 1)"
+    ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png$" | head -n 1)"
     if [ "$ICON" == "" ]; then
-      ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png" | head -n 1)"
+      ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png$" | head -n 1)"
     fi
 
     if [ "$ICON" == "" ]; then
-      ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png" | head -n 1)"
+      ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png$" | head -n 1)"
       if [ "$ICON" == "" ]; then
-        SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg" | head -n 1)"
+        SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg$" | head -n 1)"
         if type convert >/dev/null 2>&1; then
           if [ "$SVGICON" != "" ]; then
             mkdir -p "svgicons"
