@@ -2,6 +2,9 @@
 // Licence: GNU GPL v3
 // Author: Tomas M <www.slax.org>
 
+const int VERSION_MAJOR = 3; // Major version, changes when breaking backwards compatability
+const int VERSION_MINOR = 0; // Minor version, changes when new functionality is added
+const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -18,6 +21,8 @@
 #include <stdlib.h>
 /* exec include */
 #include <unistd.h>
+/* long options include*/
+#include <getopt.h>
 /* cursor */
 #include <X11/cursorfont.h>
 /* X utils */
@@ -68,37 +73,41 @@ typedef struct keynode {
 node_t * apps = NULL;
 keynode_t * cmdline = NULL;
 
-int icon_size;
-int padding;
-int margin;
+int icon_size = 48;
+int ucolumns = 0;
+int columns;
+int urows = 0;
+int rows;
+int column_margin = 0;
+int row_margin = 0;
+int iconpadding = 10;
+int textpadding = 10;
 int border;
 int bordertop;
 int cell_width;
 int cell_height;
 int font_height;
-int useRootImg;
+int prompt_font_height;
+int use_root_img = 0;
 char commandline[10024];
 char commandlinetext[10024];
-int cmdx;
-int cmdy;
-int cmdw;
-int cmdh;
-char * bgfile="";
-char * conffile="";
-char * runT="";
-char * fontname="";
-int disableprompt;
-int fullscreen=1;
-int columns;
-int singleinstance=1;
-int uposx;
-int uposy;
-int uwidth;
-int uheight;
-int uborder;
-int ubordertop;
-int utop;
-int closeonvoidclick;
+int prompt_x;
+int prompt_y;
+char * bgfile = "";
+char * inputfile = "";
+char * prompt = "";
+char * font_name = "";
+char * prompt_font_name = "";
+int disableprompt = 0;
+int prompt_spacing = 48;
+int windowed = 0;
+int multipleinstances = 0;
+int uposx = 0;
+int uposy = 0;
+int uwidth = 0;
+int uheight = 0;
+int uborder = 0;
+int voidclickterminate = 0;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -114,208 +123,61 @@ Imlib_Image background = NULL;
 Imlib_Image image = NULL;
 
 
-
 void recalc_cells()
 {
     border=screen_width/10;
-    if (uborder>0) border=uborder;
-    bordertop=border;
-    if (ubordertop>0) bordertop=ubordertop;
+    if (uborder>0) border = uborder;
 
-    cell_width=icon_size+padding*2+margin*2;
-    cell_height=icon_size+padding*2+margin*2;
-    columns=(screen_width-border*2)/cell_width;
-    cell_width=(screen_width-border*2)/columns; // rounded
+    // cells have a iconpadding on all sides of the image, plus another iconpadding below the text
+    cell_width=icon_size+iconpadding*2;
+    cell_height=icon_size+iconpadding*2+font_height+textpadding;
 
-    cmdx=border+cell_width/2-icon_size/2;
-    cmdw=screen_width-cmdx;
-    cmdh=40;
-    cmdy=bordertop/3*2;
-    if (utop) cmdy=utop;
-}
+    int usable_width;
+    int usable_height;    
+    do {
+        do {
+            usable_width = screen_width-border*2;
+            usable_height = screen_height-border*2-prompt_spacing-prompt_font_height;
 
-
-void init(int argc, char **argv)
-{
-    // defaults
-    useRootImg=0;
-    icon_size=48;
-    padding=20;
-    margin=2;
-    font_height=20;
-    cmdy=100;
-    disableprompt=0;
-    uposx=0;
-    uposy=0;
-    uwidth=0;
-    uheight=0;
-    uborder=0;
-    ubordertop=0;
-    utop=0;
-    closeonvoidclick=0;
-
-    int c;
-
-    opterr = 0;
-    while ((c = getopt(argc, argv, "rm:p:i:b:g:c:f:t:T:x:nkdsva:e:y:z:")) != -1)
-        switch (c)
-        {
-        case 'r':
-            useRootImg=1;
-            break;
-
-        case 'm':
-            margin=atoi(optarg);
-            break;
-
-        case 'p':
-            padding=atoi(optarg);
-            break;
-
-        case 'i':
-            icon_size=atoi(optarg);
-            break;
-
-        case 'b':
-            uborder=atoi(optarg);
-            break;
-
-        case 'T':
-            ubordertop=atoi(optarg);
-            break;
-
-        case 'g':
-            bgfile=optarg;
-            break;
-
-        case 'c':
-            conffile=optarg;
-            break;
-
-        case 'n':
-            fullscreen=0;
-            break;
-
-        case 't':
-            utop=atoi(optarg);
-            break;
-
-        case 'x':
-            runT=optarg;
-            break;
-
-        case 'f':
-            fontname=optarg;
-            break;
-
-        case 'k':
-            disableprompt=1;
-            break;
-
-        case 'd':
-            desktopmode=1;
-            break;
-
-        case 's':
-            singleinstance=0;
-            break;
-
-        case 'v':
-            closeonvoidclick=1;
-            break;
-
-        case 'a':
-            uposx=atoi(optarg);
-            break;
-
-        case 'e':
-            uposy=atoi(optarg);
-            break;
-
-        case 'y':
-            uwidth=atoi(optarg);
-            break;
-
-        case 'z':
-            uheight=atoi(optarg);
-            break;
-
-        case '?':
-        {
-            if (optopt == 'c')
-                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            else if (isprint (optopt))
-            {
-                fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n\n", optopt);
-                fprintf (stderr,"By default, xlunch opens in fullscreen mode, and ends after you run app.\n");
-                fprintf (stderr,"It is also possible to cancel xlunch with right mouse click, or Esc key.\n");
-                fprintf (stderr,"You can change this by using the following parameter:\n\n");
-                fprintf (stderr,"   -d         desktop mode, always keep the launcher at background (behind other windows),\n");
-                fprintf (stderr,"              and keep it running after execution of any app or command.\n");
-                fprintf (stderr,"              In this mode, xlunch never terminates\n\n");
-                fprintf (stderr,"Available options:\n\n");
-                fprintf (stderr,"   -r         use root window's background image\n");
-                fprintf (stderr,"              (Fails if your root window has no image set)\n");
-                fprintf (stderr,"   -k         hide the prompt, and allow user to only run app by icon\n");
-                fprintf (stderr,"   -g [file]  Image to set as background (jpg/png)\n");
-                fprintf (stderr,"   -m [i]     margin (integer) specifies margin in pixels between icons\n");
-                fprintf (stderr,"   -p [i]     padding (integer) specifies padding inside icons in pixels\n");
-                fprintf (stderr,"   -b [i]     border (integer) specifies spacing border size in pixels\n");
-                fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
-                fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
-                fprintf (stderr,"   -n         Disable fullscreen\n");
-                fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
-                fprintf (stderr,"   -T [i]     Top position (integer) in pixels for the icons (overides top border)\n");
-                fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
-                fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
-                fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n");
-                fprintf (stderr,"   -v         Enable closing xlunch when clicking empty space (i.e. not on an icon) - practical for touch screens\n\n");
-                fprintf (stderr,"Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
-                fprintf (stderr,"as a big single screen. You can customize this manually by providing the top/left\n");
-                fprintf (stderr,"coordinates and width/height of your monitor screen, which effectively positions xlunch\n");
-                fprintf (stderr,"on the desired monitor. Use the following options:\n\n");
-                fprintf (stderr,"   -a [i]     the x coordinates (integer) of the top left corner of launcher window\n");
-                fprintf (stderr,"   -e [i]     the y coordinates (integer) of the top left corner of launcher window\n");
-                fprintf (stderr,"   -y [i]     the width (integer) of launcher window on your screen\n");
-                fprintf (stderr,"   -z [i]     the height (integer) of launcher window on your screen\n\n");
-                fprintf (stderr,"For example, if you have two 800x600 monitors side by side, xlunch sees it ass 1600x800.\n");
-                fprintf (stderr,"You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by\n");
-                fprintf (stderr,"using -a 800 -e 0 -y 800 -z 600. Remember that all these settings may be entirely\n");
-                fprintf (stderr,"overiden by your window manager, so you may find it more useful to specify only width\n");
-                fprintf (stderr,"and height using these parameters, and then specify desired monitor in your WM config.\n");
-
-                fprintf (stderr,"\n");
-                exit(1);
+            if(usable_width < cell_width) {
+                border = screen_width/2 - cell_width;
+            } else if (usable_height < cell_height + prompt_font_height + prompt_spacing) {
+                border = screen_height/2 - cell_height - prompt_font_height - prompt_spacing;
             }
-            else
-                fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
-            exit(1);
+        } while (usable_width < 0 || usable_height < 0);
+        // If columns were not manually overriden, calculate the most it can possibly contain
+        if (ucolumns == 0){
+            columns = usable_width/cell_width;
+        } else{
+            columns = ucolumns;
         }
+        if (urows == 0){
+            rows = usable_height/cell_height;
+        } else{
+            rows = urows;
         }
+        if (columns == 0) {
+            border -= (cell_width - usable_width)/2;
+        } else if (rows == 0) {
+            border -= (cell_height - usable_height)/2;
+        }
+    } while (columns == 0 || rows == 0);
 
-    /* connect to X */
-    disp = XOpenDisplay(NULL);
-    if (!disp)
-    {
-        fprintf(stderr,"Cannot connect to DISPLAY\n");
-        exit(2);
+    // The space between the icon tiles to fill all the space
+    if (columns == 1){
+        column_margin = (usable_width - cell_width*columns);
+    } else {
+        column_margin = (usable_width - cell_width*columns)/(columns - 1);
+    }
+    if (rows == 1){
+        row_margin = (usable_height - cell_height*rows);
+    } else {
+        row_margin = (usable_height - cell_height*rows)/(rows - 1);
     }
 
-    /* get default visual , colormap etc. you could ask imlib2 for what it */
-    /* thinks is the best, but this example is intended to be simple */
-    screen = DefaultScreen(disp);
-    vis   = DefaultVisual(disp, screen);
-    depth = DefaultDepth(disp, screen);
-    cm    = DefaultColormap(disp, screen);
-
-    /* get/set screen size */
-    if (uwidth==0) screen_width=DisplayWidth(disp,screen);
-    else screen_width=uwidth;
-
-    if (uheight==0) screen_height=DisplayHeight(disp,screen);
-    else screen_height=uheight;
-
-    recalc_cells();
+    // These are kept in case manual positioning is reintroduced
+    prompt_x = border;
+    prompt_y = border;
 }
 
 
@@ -351,27 +213,26 @@ char* strncpyutf8(char* dst, const char* src, size_t num)
 void arrange_positions()
 {
     node_t * current = apps;
-    int i=0;
-    int j=0;
+    int i = 0;
+    int j = 0;
 
     while (current != NULL)
     {
         if (current->hidden)
         {
-            current->x=0;
-            current->y=0;
+            current->x = 0;
+            current->y = 0;
         }
         else
         {
-            current->x=i*cell_width+border;
-            if (current->x+cell_width>screen_width-border)
-            {
-                i=0;
+            current->x = border + i * (cell_width+column_margin);
+            current->y = border + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
+            if (i == columns-1) {
+                i = 0;
                 j++;
-                current->x=border;
+            } else {
+                i++;
             }
-            i++;
-            current->y=j*cell_height+bordertop;
         }
         current = current->next;
     }
@@ -425,13 +286,17 @@ void pop_key()
 }
 
 
-
-
-void push_app(char * title, char * icon, char * cmd, int x, int y)
+void cleanup()
 {
-    node_t * current = apps;
-    /* Pre-load the image into the cache, this is done to check for error messages
-     * If a user has more images then can be shown this might incur a performance hit */
+    flock(lock, LOCK_UN | LOCK_NB);
+    // destroy window, disconnect display, and exit
+    XDestroyWindow(disp,win);
+    XFlush(disp);
+    XCloseDisplay(disp);
+}
+
+
+Imlib_Image load_image(char * icon) {
     Imlib_Load_Error load_error;
     Imlib_Image image = imlib_load_image_with_error_return(icon, &load_error);
     if(image) {
@@ -440,53 +305,71 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
     } else {
         fprintf(stderr, "Could not load icon %s, Imlib failed with: ", icon);
         switch(load_error) {
-        case IMLIB_LOAD_ERROR_NONE:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_NONE");
-            break;
-        case IMLIB_LOAD_ERROR_FILE_DOES_NOT_EXIST:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_FILE_DOES_NOT_EXIST");
-            break;
-        case IMLIB_LOAD_ERROR_FILE_IS_DIRECTORY:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_FILE_IS_DIRECTORY");
-            break;
-        case IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_READ:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_READ");
-            break;
-        case IMLIB_LOAD_ERROR_NO_LOADER_FOR_FILE_FORMAT:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_NO_LOADER_FOR_FILE_FORMAT");
-            break;
-        case IMLIB_LOAD_ERROR_PATH_TOO_LONG:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_TOO_LONG");
-            break;
-        case IMLIB_LOAD_ERROR_PATH_COMPONENT_NON_EXISTANT:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_COMPONENT_NON_EXISTANT");
-            break;
-        case IMLIB_LOAD_ERROR_PATH_COMPONENT_NOT_DIRECTORY:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_COMPONENT_NOT_DIRECTORY");
-            break;
-        case IMLIB_LOAD_ERROR_PATH_POINTS_OUTSIDE_ADDRESS_SPACE:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_POINTS_OUTSIDE_ADDRESS_SPACE");
-            break;
-        case IMLIB_LOAD_ERROR_TOO_MANY_SYMBOLIC_LINKS:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_TOO_MANY_SYMBOLIC_LINKS");
-            break;
-        case IMLIB_LOAD_ERROR_OUT_OF_MEMORY:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_MEMORY");
-            break;
-        case IMLIB_LOAD_ERROR_OUT_OF_FILE_DESCRIPTORS:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_FILE_DESCRIPTORS");
-            break;
-        case IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_WRITE:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_WRITE");
-            break;
-        case IMLIB_LOAD_ERROR_OUT_OF_DISK_SPACE:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_DISK_SPACE");
-            break;
-        case IMLIB_LOAD_ERROR_UNKNOWN:
-            fprintf(stderr, "IMLIB_LOAD_ERROR_UNKNOWN");
-            break;
+            case IMLIB_LOAD_ERROR_NONE:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_NONE");
+                break;
+            case IMLIB_LOAD_ERROR_FILE_DOES_NOT_EXIST:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_FILE_DOES_NOT_EXIST");
+                break;
+            case IMLIB_LOAD_ERROR_FILE_IS_DIRECTORY:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_FILE_IS_DIRECTORY");
+                break;
+            case IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_READ:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_READ");
+                break;
+            case IMLIB_LOAD_ERROR_NO_LOADER_FOR_FILE_FORMAT:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_NO_LOADER_FOR_FILE_FORMAT");
+                break;
+            case IMLIB_LOAD_ERROR_PATH_TOO_LONG:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_TOO_LONG");
+                break;
+            case IMLIB_LOAD_ERROR_PATH_COMPONENT_NON_EXISTANT:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_COMPONENT_NON_EXISTANT");
+                break;
+            case IMLIB_LOAD_ERROR_PATH_COMPONENT_NOT_DIRECTORY:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_COMPONENT_NOT_DIRECTORY");
+                break;
+            case IMLIB_LOAD_ERROR_PATH_POINTS_OUTSIDE_ADDRESS_SPACE:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PATH_POINTS_OUTSIDE_ADDRESS_SPACE");
+                break;
+            case IMLIB_LOAD_ERROR_TOO_MANY_SYMBOLIC_LINKS:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_TOO_MANY_SYMBOLIC_LINKS");
+                break;
+            case IMLIB_LOAD_ERROR_OUT_OF_MEMORY:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_MEMORY");
+                break;
+            case IMLIB_LOAD_ERROR_OUT_OF_FILE_DESCRIPTORS:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_FILE_DESCRIPTORS");
+                break;
+            case IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_WRITE:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_PERMISSION_DENIED_TO_WRITE");
+                break;
+            case IMLIB_LOAD_ERROR_OUT_OF_DISK_SPACE:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_OUT_OF_DISK_SPACE");
+                break;
+            case IMLIB_LOAD_ERROR_UNKNOWN:
+                fprintf(stderr, "IMLIB_LOAD_ERROR_UNKNOWN");
+                break;
         }
         fprintf(stderr, "\n");
+        cleanup();
+        exit(1);
+    }
+    return image;
+}
+
+
+void push_app(char * title, char * icon, char * cmd, int x, int y)
+{
+    node_t * current = apps;
+    int hasicon = (strlen(icon) != 0);
+    /* Pre-load the image into the cache, this is done to check for error messages
+     * If a user has more images then can be shown this might incur a performance hit */
+    if (hasicon) {
+        Imlib_Image image = load_image(icon);
+        if (image == NULL) {
+            icon = "/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png";
+        }
     }
     // empty list, add first directly
     if (current==NULL)
@@ -522,17 +405,6 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
 }
 
 
-
-void cleanup()
-{
-    flock(lock, LOCK_UN | LOCK_NB);
-    // destroy window, disconnect display, and exit
-    XDestroyWindow(disp,win);
-    XFlush(disp);
-    XCloseDisplay(disp);
-}
-
-
 void parse_app_icons()
 {
     FILE * fp;
@@ -548,17 +420,17 @@ void parse_app_icons()
         strcat(homeconf, path);
     }
 
-    if (strlen(conffile)==0) conffile=homeconf;
-    fp=fopen(conffile,"rb");
+    if (strlen(inputfile)==0) inputfile=homeconf;
+    fp=fopen(inputfile,"rb");
     if (fp==NULL)
     {
-        fprintf(stderr,"Error opening config file from %s.\nReverting back to system conf.\n",conffile);
-        conffile="/etc/xlunch/icons.conf";
-        fp=fopen(conffile,"rb");
+        fprintf(stderr,"Error opening config file from %s.\nReverting back to system conf.\n",inputfile);
+        inputfile="/etc/xlunch/icons.conf";
+        fp=fopen(inputfile,"rb");
 
         if (fp==NULL)
         {
-            fprintf(stderr,"Error opening config file %s\n",conffile);
+            fprintf(stderr,"Error opening config file %s\n",inputfile);
             fprintf(stderr,"You may need to create it. Icon file format is following:\n");
             fprintf(stderr,"title;icon_path;command\n");
             fprintf(stderr,"title;icon_path;command\n");
@@ -573,7 +445,10 @@ void parse_app_icons()
 
     while(!feof(fp))
     {
-        fscanf(fp,"%250[^;];%250[^;];%250[^\n]\n",title,icon,cmd);
+        if(fscanf(fp,"%250[^;];%250[^;];%250[^\n]\n",title,icon,cmd) == 0){
+            fscanf(fp,"%250[^;];;%250[^\n]\n",title,cmd);
+        }
+        fprintf(stderr, "%s;%s;%s\n", title, icon, cmd);
         push_app(title,icon,cmd,0,0);
     }
 
@@ -585,12 +460,11 @@ void parse_app_icons()
 int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
     if (cell->hidden) return 0;
-    if (cell->y + cell_height > screen_height) return 0;
 
-    if (mouse_x>=cell->x+margin
-            && mouse_x<=cell->x+cell_width-margin
-            && mouse_y>=cell->y+margin
-            && mouse_y<=cell->y+cell_height-margin+font_height) return 1;
+    if (   mouse_x >= cell->x
+        && mouse_x <= cell->x+cell_width
+        && mouse_y >= cell->y
+        && mouse_y <= cell->y+cell_height) return 1;
     else return 0;
 }
 
@@ -694,8 +568,8 @@ void joincmdline()
 void joincmdlinetext()
 {
     if (disableprompt) return;
-    if (strlen(runT)==0) runT="Run:  ";
-    strcpy(commandlinetext,runT);
+    if (strlen(prompt)==0) prompt="Run:  ";
+    strcpy(commandlinetext,prompt);
 
     keynode_t * current = cmdline;
 
@@ -707,7 +581,7 @@ void joincmdlinetext()
     strcat(commandlinetext,"_");
 }
 
-
+// TODO: Rewrite (recur for running new xlunch with execv)
 void run_command(char * cmd_orig, int excludePercentSign)
 {
     char cmd[255];
@@ -734,7 +608,7 @@ void run_command(char * cmd_orig, int excludePercentSign)
         pid_t pid=fork();
         if (pid==0) // child process
         {
-            if (singleinstance) close(lock);
+            if (!multipleinstances) close(lock);
             printf("Forking command: %s\n",cmd);
             int err=execvp(cmd,array);
             fprintf(stderr,"Error forking %s : %d\n",cmd,err);
@@ -773,6 +647,7 @@ void sethover(node_t * cell, int hover)
     cell->hovered=hover;
 }
 
+
 void setclicked(node_t * cell, int clicked)
 {
     if (cell==NULL) return;
@@ -781,16 +656,50 @@ void setclicked(node_t * cell, int clicked)
     cell->clicked=clicked;
 }
 
-
-Imlib_Font loadfont()
-{
-    if (strlen(fontname)==0) fontname="OpenSans-Regular/10";
+Imlib_Font load_default_font(){
+    // No font was specified, try to load some default options as a fallback
     Imlib_Font font;
-    font=imlib_load_font(fontname);
-    if (!font) font=imlib_load_font("DejaVuSans/10");
+    font = imlib_load_font("OpenSans-Regular/10");
+    if (!font) font = imlib_load_font("DejaVuSans/10");
+    return font;
+}
+
+int get_font_height(Imlib_Font font){
     imlib_context_set_font(font);
-    font_height = imlib_get_maximum_font_ascent() + imlib_get_maximum_font_descent();
+    int height = imlib_get_maximum_font_ascent() + imlib_get_maximum_font_descent();
     imlib_free_font();
+    return height;
+}
+
+Imlib_Font load_font()
+{   
+    Imlib_Font font;
+    if (strlen(font_name)==0){
+        font = load_default_font();
+    } else {
+        font = imlib_load_font(font_name);
+    }
+    if (font == NULL) {
+        fprintf(stderr, "Font %s could not be loaded!\n", font_name);
+        exit(1);
+    }
+    font_height = get_font_height(font);
+    return font;
+}
+
+Imlib_Font load_prompt_font()
+{
+    Imlib_Font font;
+    if (strlen(prompt_font_name)==0){
+        font = load_default_font();
+    } else {
+        font = imlib_load_font(prompt_font_name);
+    }
+    if (font == NULL) {
+        fprintf(stderr, "Prompt font %s could not be loaded!\n", prompt_font_name);
+        exit(1);
+    }
+    prompt_font_height = get_font_height(font);
     return font;
 }
 
@@ -808,7 +717,7 @@ void update_background_image()
     background = imlib_create_image(screen_width, screen_height);
     imlib_context_set_image(background);
 
-    if (useRootImg)
+    if (use_root_img)
     {
         DATA32 * direct = imlib_image_get_data();
         int ok = get_root_image_to_imlib_data(direct);
@@ -858,6 +767,221 @@ char* concat(const char *s1, const char *s2)
     exit(1);
 }
 
+void init(int argc, char **argv)
+{
+    static struct option long_options[] =
+        {
+            {"version",               no_argument,       0, 'v'},
+            {"help",                  no_argument,       0, 1000},
+            {"desktop",               no_argument,       0, 'd'},
+            {"rootwindowbackground",  no_argument,       0, 1005},
+            {"noprompt",              no_argument,       0, 'n'},
+            {"background",            required_argument, 0, 'g'},
+            {"iconpadding",           required_argument, 0, 1001},
+            {"textpadding",           required_argument, 0, 1006},
+            {"columns",               required_argument, 0, 'c'},
+            {"rows",                  required_argument, 0, 'r'},
+            {"border",                required_argument, 0, 'b'},
+            {"prompt_spacing",         required_argument, 0, 1002},
+            {"iconsize",              required_argument, 0, 's'},
+            {"input",                 required_argument, 0, 'i'},
+            {"windowed",              no_argument,       0, 1003},
+            {"prompt",                required_argument, 0, 'p'},
+            {"font",                  required_argument, 0, 'f'},
+            {"promptfont",            required_argument, 0, 1004},
+            {"multiple",              no_argument,       0, 'm'},
+            {"voidclickterminate",    no_argument,       0, 't'},
+            {"xposition",             required_argument, 0, 'x'},
+            {"yposition",             required_argument, 0, 'y'},
+            {"width",                 required_argument, 0, 'w'},
+            {"height",                required_argument, 0, 'h'},
+            {0, 0, 0, 0}
+        };
+
+    int c, option_index;
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:", long_options, &option_index)) != -1) {
+        switch (c) {
+            case 'v':
+                fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+                exit(0);
+
+            case 'd':
+                desktopmode = 1;
+                break;
+
+            case 1005:
+                use_root_img = 1;
+                break;
+
+            case 'n':
+                disableprompt = 1;
+                break;
+
+            case 'g':
+                bgfile = optarg;
+                break;
+
+            case 1001:
+                iconpadding = atoi(optarg);
+                break;
+
+            case 1006:
+                textpadding = atoi(optarg);
+                break;
+
+            case 'c':
+                ucolumns = atoi(optarg);
+                break;
+
+            case 'r':
+                urows = atoi(optarg);
+                break;
+
+            case 'b':
+                uborder = atoi(optarg);
+                break;
+
+            case 1002:
+                prompt_spacing = atoi(optarg);
+                break;
+
+            case 's':
+                icon_size = atoi(optarg);
+                break;
+
+            case 'i':
+                inputfile = optarg;
+                break;
+
+            case 1003:
+                windowed = 1;
+                break;
+
+            case 'p':
+                prompt = optarg;
+                break;
+
+            case 'f':
+                font_name = optarg;
+                break;
+
+            case 1004:
+                prompt_font_name = optarg;
+                break;
+
+            case 'm':
+                multipleinstances = 1;
+                break;
+
+            case 't':
+                voidclickterminate = 1;
+                break;
+
+            case 'x':
+                uposx = atoi(optarg);
+                break;
+
+            case 'y':
+                uposy = atoi(optarg);
+                break;
+
+            case 'w':
+                uwidth = atoi(optarg);
+                break;
+
+            case 'h':
+                uheight = atoi(optarg);
+                break;
+
+            case '?':
+                if (optopt == 'c') {
+                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                    exit(1);
+                } else if (isprint (optopt)) {
+                    fprintf (stderr, "Unknown option or missing parameter for option `-%c'.\n\n", optopt);
+                    // By design this case statement does not terminate here and flows on into the --help case below
+                } else {
+                    fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
+                    exit(1);
+                }
+
+            case 1000:
+                // TODO: Rewrite section
+                fprintf (stderr,"By default, xlunch opens in fullscreen mode, and ends after you run app.\n");
+                fprintf (stderr,"It is also possible to cancel xlunch with right mouse click, or Esc key.\n");
+                fprintf (stderr,"You can change this by using the following parameter:\n\n");
+                fprintf (stderr,"   -d         desktop mode, always keep the launcher at background (behind other windows),\n");
+                fprintf (stderr,"              and keep it running after execution of any app or command.\n");
+                fprintf (stderr,"              In this mode, xlunch never terminates\n\n");
+                fprintf (stderr,"Available options:\n\n");
+                fprintf (stderr,"   -r         use root window's background image\n");
+                fprintf (stderr,"              (Fails if your root window has no image set)\n");
+                fprintf (stderr,"   -k         hide the prompt, and allow user to only run app by icon\n");
+                fprintf (stderr,"   -g [file]  Image to set as background (jpg/png)\n");
+                fprintf (stderr,"   -m [i]     iconpadding (integer) specifies iconpadding in pixels between icons\n");
+                fprintf (stderr,"   -p [i]     iconpadding (integer) specifies iconpadding inside icons in pixels\n");
+                fprintf (stderr,"   -b [i]     border (integer) specifies spacing border size in pixels\n");
+                fprintf (stderr,"   -i [i]     icon size (integer) in pixels\n");
+                fprintf (stderr,"   -c [file]  path to config file which describes titles, icons and commands\n");
+                fprintf (stderr,"   -n         Disable windowed\n");
+                fprintf (stderr,"   -t [i]     Top position (integer) in pixels for the Run commandline\n");
+                fprintf (stderr,"   -T [i]     Top position (integer) in pixels for the icons (overides top border)\n");
+                fprintf (stderr,"   -x [text]  string to display instead of 'Run: '\n");
+                fprintf (stderr,"   -f [name]  font name including size after slash, for example: DejaVuSans/10\n");
+                fprintf (stderr,"   -s         disable single-instance check - allow multiple instances running\n");
+                fprintf (stderr,"   -v         Enable closing xlunch when clicking empty space (i.e. not on an icon) - practical for touch screens\n\n");
+                fprintf (stderr,"Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
+                fprintf (stderr,"as a big single screen. You can customize this manually by providing the top/left\n");
+                fprintf (stderr,"coordinates and width/height of your monitor screen, which effectively positions xlunch\n");
+                fprintf (stderr,"on the desired monitor. Use the following options:\n\n");
+                fprintf (stderr,"   -a [i]     the x coordinates (integer) of the top left corner of launcher window\n");
+                fprintf (stderr,"   -e [i]     the y coordinates (integer) of the top left corner of launcher window\n");
+                fprintf (stderr,"   -y [i]     the width (integer) of launcher window on your screen\n");
+                fprintf (stderr,"   -z [i]     the height (integer) of launcher window on your screen\n\n");
+                fprintf (stderr,"For example, if you have two 800x600 monitors side by side, xlunch sees it ass 1600x800.\n");
+                fprintf (stderr,"You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by\n");
+                fprintf (stderr,"using -a 800 -e 0 -y 800 -z 600. Remember that all these settings may be entirely\n");
+                fprintf (stderr,"overiden by your window manager, so you may find it more useful to specify only width\n");
+                fprintf (stderr,"and height using these parameters, and then specify desired monitor in your WM config.\n");
+                fprintf (stderr,"\n");
+                // Check if we came from the error block above or if this was a call with --help
+                if(c == '?'){
+                    exit(1);
+                } else {
+                    exit(0);
+                }
+        }
+    }
+    /* connect to X */
+    disp = XOpenDisplay(NULL);
+    if (!disp)
+    {
+        fprintf(stderr,"Cannot connect to DISPLAY\n");
+        exit(2);
+    }
+
+    /* get default visual , colormap etc. you could ask imlib2 for what it */
+    /* thinks is the best, but this example is intended to be simple */
+    screen = DefaultScreen(disp);
+    vis   = DefaultVisual(disp, screen);
+    depth = DefaultDepth(disp, screen);
+    cm    = DefaultColormap(disp, screen);
+
+    /* get/set screen size */
+    if (uwidth==0) screen_width=DisplayWidth(disp,screen);
+    else screen_width=uwidth;
+
+    if (uheight==0) screen_height=DisplayHeight(disp,screen);
+    else screen_height=uheight;
+
+    // Moved to after font loading
+    // Load fonts to ensure that recalc knows how large the cells are
+    /*load_font();
+    load_prompt_font();
+
+    recalc_cells();*/
+}
+
 /* the program... */
 int main(int argc, char **argv)
 {
@@ -880,7 +1004,7 @@ int main(int argc, char **argv)
     joincmdlinetext();
 
     // If an instance is already running, quit
-    if (singleinstance)
+    if (!multipleinstances)
     {
         lock=open("/tmp/xlunch.lock",O_CREAT | O_RDWR,0666);
         int rc = flock(lock, LOCK_EX | LOCK_NB);
@@ -893,7 +1017,7 @@ int main(int argc, char **argv)
     win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
 
     // absolute fullscreen mode by overide redirect
-    if (fullscreen && desktopmode)
+    if (!windowed && desktopmode)
     {
         unsigned long valuemask = CWOverrideRedirect;
         XSetWindowAttributes attributes;
@@ -916,6 +1040,10 @@ int main(int argc, char **argv)
     imlib_set_cache_size(2048 * screen_width);
     /* set the font cache to 512Kb - again to avoid re-loading */
     imlib_set_font_cache_size(512 * screen_width);
+    /* Preload fonts so that drawing can know their sizes */
+    load_font();
+    load_prompt_font();
+    recalc_cells();
     /* set the maximum number of colors to allocate for 8bpp and less to 128 */
     imlib_set_color_usage(128);
     /* dither for depths < 24bpp */
@@ -984,7 +1112,7 @@ int main(int argc, char **argv)
     };
 
     // send the message
-    if (fullscreen && !desktopmode)
+    if (!windowed && !desktopmode)
         XSendEvent(disp, DefaultRootWindow(disp), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*)&msg);
 
 
@@ -1026,7 +1154,7 @@ int main(int argc, char **argv)
                 {
                     screen_width=ev.xconfigure.width;
                     screen_height=ev.xconfigure.height;
-                    if (!useRootImg) update_background_image();
+                    if (!use_root_img) update_background_image();
                     recalc_cells();
                     arrange_positions();
                     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
@@ -1042,18 +1170,18 @@ int main(int argc, char **argv)
                 }
                 if (ev.xbutton.button!=1) break;
                 node_t * current = apps;
-                int voidclicked = 0;
+                int voidclicked = 1;
                 while (current != NULL)
                 {
                     if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
                         setclicked(current,1);
-                        voidclicked = 1;
+                        voidclicked = 0;
                     }
                     else setclicked(current,0);
                     current = current->next;
                 }
 
-                if (!voidclicked && closeonvoidclick) {
+                if (voidclicked && voidclickterminate) {
                     cleanup();
                     exit(0);
                 }
@@ -1067,7 +1195,7 @@ int main(int argc, char **argv)
                 while (current != NULL)
                 {
                     if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd,1);
-                    setclicked(current,0); // button release means all cells are not clicked
+                    setclicked(current, 0); // button release means all cells are not clicked
                     current = current->next;
                 }
 
@@ -1246,158 +1374,84 @@ int main(int argc, char **argv)
             imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
             node_t * current = apps;
+            int drawn = 0;
             Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
 
             while (current != NULL)
             {
-                if (!current->hidden && current->y+cell_height<=screen_height-border)
+                if (!current->hidden)
                 {
-                    image=imlib_load_image(current->icon);
-                    if (image)
+                    if (strlen(current->icon) == 0) {
+                        image=imlib_load_image(current->icon);
+                        if (image)
+                        {
+                            imlib_context_set_image(image);
+                            w = imlib_image_get_width();
+                            h = imlib_image_get_height();
+                            imlib_context_set_image(buffer);
+
+                            if (current->hovered)
+                            {
+                                c = XCreateFontCursor(disp,XC_hand1);
+                                imlib_image_fill_color_range_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height, -45.0);
+                            }
+
+                            int d;
+                            if (current->clicked) d=2;
+                            else d=0;
+
+                            imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
+                                                             current->x - up_x + iconpadding+d, current->y - up_y +iconpadding+d, icon_size-d*2, icon_size-d*2);
+                            
+                            imlib_context_set_image(image);
+                            imlib_free_image();
+                        }
+                    }
+                    /* draw text under icon */
+                    font = load_font();
+                    if (font)
                     {
-                        imlib_context_set_image(image);
-                        w = imlib_image_get_width();
-                        h = imlib_image_get_height();
                         imlib_context_set_image(buffer);
+                        int text_w;
+                        int text_h;
 
-                        if (current->hovered)
+                        size_t sz=strlen(current->title);
+                        imlib_context_set_font(font);
+                        do
                         {
-                            c = XCreateFontCursor(disp,XC_hand1);
-                            imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
-                        }
+                            strncpyutf8(title,current->title,sz);
+                            imlib_get_text_size(title, &text_w, &text_h);
+                            sz--;
+                        } while(text_w > cell_width-2*textpadding && sz>0);
 
+                        // if text was shortened, add dots at the end
+                        if (strlen(current->title) != strlen(title))
+                        {
+                            char * ptr = title;
+                            int len=strlen(ptr);
+                            while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
+                            strcat(title,"..");
+                            imlib_get_text_size(title, &text_w, &text_h);
+                        }
                         int d;
-                        if (current->clicked) d=2;
+                        if (current->clicked==1) d=4;
                         else d=0;
 
-                        if (image) {
-                            imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                         current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
-                        };
+                        imlib_context_set_color(0, 0, 0, 30);
+                        imlib_text_draw(current->x - up_x + cell_width/2 - text_w/2 +1, current->y - up_y + iconpadding*2 + icon_size - font_height +1, title);
+                        imlib_text_draw(current->x - up_x + cell_width/2 - text_w/2 +1, current->y - up_y + iconpadding*2 + icon_size - font_height +2, title);
+                        imlib_text_draw(current->x - up_x + cell_width/2 - text_w/2 +2, current->y - up_y + iconpadding*2 + icon_size - font_height +2, title);
 
-                        /* draw text under icon */
-                        font = loadfont();
-                        if (font)
-                        {
-                            int text_w;
-                            int text_h;
-                            size_t sz=strlen(current->title);
-                            text_w=cell_width-2*margin-padding+1;
+                        imlib_context_set_color(255, 255, 255, 255);
+                        imlib_text_draw(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + iconpadding*2 + icon_size - font_height, title);
 
-                            imlib_context_set_font(font);
-
-                            while(text_w > cell_width-2*margin-padding && sz>0)
-                            {
-                                strncpyutf8(title,current->title,sz);
-                                imlib_get_text_size(title, &text_w, &text_h);
-                                sz--;
-                            }
-
-                            // if text was shortened, add dots at the end
-                            if (strlen(current->title)!=strlen(title))
-                            {
-                                char * ptr = title;
-                                int len=strlen(ptr);
-                                while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
-                                strcat(title,"..");
-                                imlib_get_text_size(title, &text_w, &text_h);
-                            }
-                            int d;
-                            if (current->clicked==1) d=4;
-                            else d=0;
-
-                            imlib_context_set_color(0, 0, 0, 30);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
-
-                            imlib_context_set_color(255, 255, 255, 255);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
-
-                            /* free the font */
-                            imlib_free_font();
-                        }
-
-                        if (image) {
-                            imlib_context_set_image(image);
-                            imlib_free_image();
-                        };
+                        /* free the font */
+                        imlib_free_font();
                     }
-                    /* render text if icon couldn't be loaded
-                    */
-                    else {
-                        w = 48;
-                        h = 48;
-                        image = imlib_load_image("/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png");
-                        //image = imlib_create_image(w, h);
-
-                        imlib_context_set_image(buffer);
-
-                        if (current->hovered)
-                        {
-                            c = XCreateFontCursor(disp,XC_hand1);
-                            imlib_image_fill_color_range_rectangle(current->x -up_x+margin, current->y- up_y+margin, cell_width-2*margin, cell_height-2*margin+font_height, -45.0);
-                        }
-
-                        int d;
-                        if (current->clicked) d=2;
-                        else d=0;
-
-                        if (image) {
-                            imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                         current->x - up_x + cell_width/2-icon_size/2+d, current->y - up_y +padding+margin+d, icon_size-d*2, icon_size-d*2);
-                        };
-
-                        /* draw text under icon */
-                        font = loadfont();
-                        if (font)
-                        {
-                            int text_w;
-                            int text_h;
-                            size_t sz=strlen(current->title);
-                            text_w=cell_width-2*margin-padding+1;
-
-                            imlib_context_set_font(font);
-
-                            while(text_w > cell_width-2*margin-padding && sz>0)
-                            {
-                                strncpyutf8(title,current->title,sz);
-                                imlib_get_text_size(title, &text_w, &text_h);
-                                sz--;
-                            }
-
-                            // if text was shortened, add dots at the end
-                            if (strlen(current->title)!=strlen(title))
-                            {
-                                char * ptr = title;
-                                int len=strlen(ptr);
-                                while (len>1 && isspace(ptr[len-1])) ptr[--len]=0;
-                                strcat(title,"..");
-                                imlib_get_text_size(title, &text_w, &text_h);
-                            }
-
-                            int d;
-                            if (current->clicked==1) d=4;
-                            else d=0;
-
-                            imlib_context_set_color(0, 0, 0, 30);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +1, title);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +1, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x +2, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2 +2, title);
-
-                            imlib_context_set_color(255, 255, 255, 255);
-                            imlib_text_draw(current->x +cell_width/2 - (text_w / 2) - up_x, current->y + cell_height - d - font_height/2 - text_h - up_y - padding/2, title);
-
-                            /* free the font */
-                            imlib_free_font();
-                        }
-
-                        if (image) {
-                            imlib_context_set_image(image);
-                            imlib_free_image();
-                        };
-                    }
+                    drawn++;
                 }
+                if (drawn == columns*rows)
+                    break;
                 current = current->next;
             }
 
@@ -1407,17 +1461,17 @@ int main(int argc, char **argv)
             imlib_context_set_image(buffer);
 
             /* draw text */
-            font = loadfont();
+            font = load_prompt_font();
             if (font)
             {
                 imlib_context_set_font(font);
                 imlib_context_set_color(0, 0, 0, 30);
-                imlib_text_draw(cmdx+1 - up_x, cmdy+1 - up_y, commandlinetext);
-                imlib_text_draw(cmdx+1 - up_x, cmdy+2 - up_y, commandlinetext);
-                imlib_text_draw(cmdx+2 - up_x, cmdy+2 - up_y, commandlinetext);
+                imlib_text_draw(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext);
+                imlib_text_draw(prompt_x+1 - up_x, prompt_y+2 - up_y, commandlinetext);
+                imlib_text_draw(prompt_x+2 - up_x, prompt_y+2 - up_y, commandlinetext);
 
                 imlib_context_set_color(255, 255, 255, 255);
-                imlib_text_draw(cmdx-up_x, cmdy-up_y, commandlinetext);
+                imlib_text_draw(prompt_x-up_x, prompt_y-up_y, commandlinetext);
 
                 /* free the font */
                 imlib_free_font();
