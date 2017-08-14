@@ -19,14 +19,14 @@
 
         <header>
           <h1><img src=logo.png width=48 height=48 style="position: relative; top:  8px;"> xlunch</h1>
-          <h2>Graphical app launcher for X with little dependencies</h2>
+          <h2>Graphical app launcher for X with few dependencies</h2>
         </header>
 
 
         <hr>
         <div id="downloads" class="clearfix" align=center>
-          <a href="https://github.com/Tomas-M/xlunch/archive/v2.4.2.zip" id="download-zip" class="button"><span>Download xlunch 2.4.2.zip &nbsp;&nbsp;</span></a>
-          <a href="https://github.com/Tomas-M/xlunch/archive/v2.4.2.tar.gz" id="download-tar-gz" class="button"><span>Download xlunch 2.4.2.tar.gz &nbsp;&nbsp;</span></a>
+          <a href="https://github.com/Tomas-M/xlunch/archive/v3.0.0.zip" id="download-zip" class="button"><span>Download xlunch 3.0.0.zip &nbsp;&nbsp;</span></a>
+          <a href="https://github.com/Tomas-M/xlunch/archive/v3.0.0.tar.gz" id="download-tar-gz" class="button"><span>Download xlunch 3.0.0.tar.gz &nbsp;&nbsp;</span></a>
           <a href="https://github.com/Tomas-M/xlunch" id="view-on-github" class="button"><span>View on GitHub &nbsp;&nbsp;</span></a>
         </div>
         <hr>
@@ -34,30 +34,29 @@
         <section id="main_content">
 
 <p>Welcome. This is xlunch, the coolest graphical app launcher for Xorg/X11.
-It requires only pure Xlib and Imlib2. It allows you to run a program by
-clicking its icon; alternatively, you can also just type any arbitrary command
-using your keyboard. UTF8 input is fully supported. The Run commandline
-also works as a filter for the icons; all matching icons are visible
-as long as the title or command matches what you typed. It is possible
-to run xlunch in two different modes, see below for more.</p>
+It requires only pure Xlib and Imlib2. It allows you to run programs, commands,
+or simply select something out of a list using your mouse, keyboard, or both!
+UTF8 is fully supported meaning you can have text of all kinds. The prompt
+allows you to run arbitrary commands, and it works to filter your entries as
+well. xlunch is also highly configurable, both in functionality and style, it
+can even be used as a desktop! See below for more</p>
 
 <p><img src="https://raw.githubusercontent.com/Tomas-M/xlunch/Screenshot/screenshot.png" alt="Screenshot" title="Screenshot" style="border: 10px solid #ddd;"></p>
 
 <p><strong>Available Modes</strong></p>
 
 <ul style="margin-left: 20px;">
-<li style="padding-left: 0">One time launcher mode - this is default mode. There is no need to specify
-any commandline parameter for this mode. In this mode, xlunch
-opens as a fullscreen application, and offers screen with icons to select
-application to run, plus commandline which serves as a filter for
-the icons at the same time.
-Running any app or command ends the launcher. You can also cancel the launcher
-with Esc key, or click with right mouse button.</li>
+<li style="padding-left: 0">One time launcher mode - this is default mode. There
+is no need to specify any commandline parameter for this mode. In this mode, xlunch
+opens as a fullscreen application, and offers a screen with icons to select
+applications to run, plus commandline which serves as a filter for the icons at
+the same time. Running any app or command ends the launcher. You can also cancel
+the launcher with Esc key, or click with right mouse button.</li>
 <li style="padding-left: 0">Desktop mode - this mode is activated with -d. In this mode,
-xlunch sends itself to lowest position, so all other windows are above it.
-Your window manager will not have any control over it,
-so xlunch does not receive any input or focus and it cannot be raised to front.
-This emulates desktop with icons. In Desktop mode, applications start using fork (as another process).
+xlunch sends itself to the lowest position in the window stack, so all other windows
+are above it. Your window manager will not have any control over it, so xlunch
+does not receive any input or focus and it cannot be raised to front. This emulates
+desktop with icons. In Desktop mode, applications start using fork (as another process).
 Xlunch in this mode cannot be terminated (except by killing it with SIGTERM).
 </li>
 </ul>

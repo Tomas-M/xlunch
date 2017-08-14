@@ -1,47 +1,106 @@
 #!/bin/bash
 
-APPS=/usr/share/applications
-PIXMAPS=/usr/share/pixmaps
-ICONS=/usr/share/icons
-SIZE=48
+globalappfolder=/usr/share/applications
+localappfolder=$HOME/.local/share/applications
+pixmaps=/usr/share/pixmaps
+icons=/usr/share/icons
+localicons=$HOME/.local/share/icons
+homeicons=$HOME/.icons
+size=64
 
-echo "Generating entries file from $APPS ..." >&2
+echo "Generating entries file..." >&2
 
-find $APPS -name "*.desktop" | while read DESKTOPFILE; do
-  FDATA="$(cat $DESKTOPFILE)"
-  NAME="$(echo "$FDATA" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
+function readdesktopfile {
+  fdata=$(cat "$1")
+  # TODO: We should check for NoDisplay=true here
+  name="$(echo "$fdata" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
   # Remove % arguments from the .desktop files as they are not supported by xlunch (WARNING: this might cause programs to misbehave)
-  EXEC="$(echo "$FDATA" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
-  ICONNAME="$(echo "$FDATA" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
-  USETERM="$(echo "$FDATA" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
-  if [ "$USETERM" = "true" ]; then
-    EXEC="$TERM -e ""$EXEC"
+  cmd="$(echo "$fdata" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
+  iconname="$(echo "$fdata" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
+  useterm="$(echo "$fdata" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
+  if [ "$useterm" = "true" ]; then
+    cmd="$TERM -e ""$cmd"
   fi
 
-  if [ "$ICONNAME" != "" ]; then
-    ICON="$(find "$PIXMAPS" | grep $ICONNAME"[.]png$" | head -n 1)"
-    if [ "$ICON" == "" ]; then
-      ICON="$(find "$ICONS" | grep $SIZE"x"$SIZE | grep $ICONNAME"[.]png$" | head -n 1)"
+  if [ "$iconname" != "" ]; then
+    # Look for icons in the correct size
+    icon="$(find "$localicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
+    if [ "$icon" == "" ]; then
+      icon="$(find "$homeicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
+    fi
+    if [ "$icon" == "" ]; then
+      icon="$(find "$icons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
     fi
 
-    if [ "$ICON" == "" ]; then
-      ICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]png$" | head -n 1)"
-      if [ "$ICON" == "" ]; then
-        SVGICON="$(find "$ICONS" | grep "scalable" | grep -E $ICONNAME"[.]svg$" | head -n 1)"
-        if type convert >/dev/null 2>&1; then
-          if [ "$SVGICON" != "" ]; then
-            mkdir -p "svgicons"
-            convert -size $SIZEx$SIZE -background none "$SVGICON" "svgicons/"$ICONNAME".png"
-            ICON="svgicons/"$ICONNAME".png"
-          fi
-        else
-          echo >&2 "'convert' (from imagemagick) not found, will not convert and use svg images."
-          ICON=$SVGICON
+    if [ "$icon" == "" ]; then
+      # If we have the convert program from imagemagick, try to find svg images and convert them to the right size
+      if type convert >/dev/null 2>&1; then
+        svgicon="$(find "$localicons" | grep $iconname"[.]svg$" | head -n 1)"
+        if [ "$svgicon" == "" ]; then
+          svgicon="$(find "$homeicons" | grep $iconname"[.]svg$" | head -n 1)"
+        fi
+        if [ "$svgicon" == "" ]; then
+          svgicon="$(find "$icons" | grep $iconname"[.]svg$" | head -n 1)"
+        fi
+        if [ "$svgicon" != "" ]; then
+          mkdir -p "svgicons"
+          convert -size $sizex$size -background none "$svgicon" "svgicons/"$iconname".png"
+          icon="svgicons/"$iconname".png"
         fi
       fi
     fi
-    if [ "$ICON" != "" -a "$EXEC" != "" -a "$NAME" != "" ]; then
-      echo "$NAME;$ICON;$EXEC"
+    # If we still haven't found an icon, try to look for any sized icon
+    if [ "$icon" == "" ]; then
+      icon="$(find "$localicons" | grep $iconname"[.]png$" | head -n 1)"
+    fi
+    if [ "$icon" == "" ]; then
+      icon="$(find "$homeicons" | grep $iconname"[.]png$" | head -n 1)"
+    fi
+    if [ "$icon" == "" ]; then
+      icon="$(find "$icons" | grep $iconname"[.]png$" | head -n 1)"
+    fi
+    if [ "$icon" == "" ]; then
+      icon="$(find "$pixmaps" | grep $iconname"[.]png$" | head -n 1)"
+    fi
+
+    # If we have all the data we need, output an entry
+    if [ "$icon" != "" -a "$cmd" != "" -a "$name" != "" ]; then
+      echo "$name;$icon;$cmd"
     fi
   fi
+}
+
+# Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+declare -A applications
+
+# Set for in separator to newline
+IFS=$'\n'
+
+# Iterate over files in localappfolder and add them to the array
+files=$(find "$localappfolder" -name "*.desktop")
+for desktopfile in $files
+do
+  bname=$(basename "$desktopfile")
+  entry=$(readdesktopfile "$desktopfile")
+  if ! [ -z "$entry" ]; then
+    applications["$bname"]="$entry"
+  fi
+done
+
+# Iterate over files in globalappfolder and add them to the array if they don't already exists
+files=$(find "$globalappfolder" -name "*.desktop")
+for desktopfile in $files
+do
+  bname=$(basename "$desktopfile")
+  if ! [[ ${applications[$bname]} ]]; then
+    entry=$(readdesktopfile "$desktopfile")
+    if ! [ -z "$entry" ]; then
+      applications["$bname"]="$entry"
+    fi
+  fi
+done
+
+# Get all the entries and write them out sorted and unique
+for key in "${!applications[@]}"; do
+  echo "${applications[$key]}"
 done | sort | uniq

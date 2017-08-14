@@ -523,7 +523,11 @@ void parse_app_icons()
             }
             if(strlen(token) > 254){
                 fprintf(stderr, "Entry too long \"%s\", maximum length is 254 characters!\n", token);
-                exit(1);
+                //exit(1);
+                for(int i = parsing; i < 3; i++){
+                    token = strtok_new(NULL, ";\n");
+                }
+                continue;
             }
             switch(parsing){
                 case 0:
@@ -708,6 +712,11 @@ void run_command(char * cmd_orig)
             p = strtok (NULL, " ");
             if (i>=99) break;
         }
+    } else {
+        array[0] = "/bin/bash";
+        array[1] = "-c";
+        array[2] = cmd_orig;
+        array[3] = NULL;
     }
 
     restack();
@@ -720,10 +729,7 @@ void run_command(char * cmd_orig)
             if (!multiple_instances) close(lock);
             printf("Forking command: %s\n",cmd);
             int err;
-            if (isrecur)
-                err = execvp(array[0],array);
-            else
-                err = system(cmd_orig);
+            err = execvp(array[0],array);
             fprintf(stderr,"Error forking %s : %d\n",cmd,err);
             exit(0);
         }
@@ -745,17 +751,14 @@ void run_command(char * cmd_orig)
         cleanup();
         printf("Running command: %s\n",cmd);
         int err;
-        if (isrecur)
-            err = execvp(array[0],array);
-        else
-            err = system(cmd_orig);
+        err = execvp(array[0],array);
         fprintf(stderr,"Error running %s : %d\n",cmd, err);
         exit(0);
     }
 }
 
 
-void sethover(node_t * cell, int hover)
+void set_hover(node_t * cell, int hover)
 {
     if (cell==NULL) return;
     if (cell->hidden) return;
@@ -764,7 +767,7 @@ void sethover(node_t * cell, int hover)
 }
 
 
-void setclicked(node_t * cell, int clicked)
+void set_clicked(node_t * cell, int clicked)
 {
     if (cell==NULL) return;
     if (cell->hidden) return;
@@ -1311,10 +1314,10 @@ int main(int argc, char **argv)
                 while (current != NULL)
                 {
                     if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                        setclicked(current,1);
+                        set_clicked(current,1);
                         voidclicked = 0;
                     }
-                    else setclicked(current,0);
+                    else set_clicked(current,0);
                     current = current->next;
                 }
 
@@ -1332,7 +1335,7 @@ int main(int argc, char **argv)
                 while (current != NULL)
                 {
                     if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
-                    setclicked(current, 0); // button release means all cells are not clicked
+                    set_clicked(current, 0); // button release means all cells are not clicked
                     current = current->next;
                 }
 
@@ -1403,7 +1406,7 @@ int main(int argc, char **argv)
                             if (current->y+cell_height<=screen_height-border) n++;
                             if (selected==NULL) j++;
                             if (current->hovered) selected=current;
-                            sethover(current,0);
+                            set_hover(current,0);
                         }
                         current=current->next;
                     }
@@ -1424,7 +1427,7 @@ int main(int argc, char **argv)
                         {
                             k--;
                             if (k==0) {
-                                sethover(current,1);
+                                set_hover(current,1);
                                 hoverset=KEYBOARD;
                             }
                         }
@@ -1448,8 +1451,8 @@ int main(int argc, char **argv)
                 node_t * current = entries;
                 while (current != NULL)
                 {
-                    sethover(current,0);
-                    setclicked(current,0);
+                    set_hover(current,0);
+                    set_clicked(current,0);
                     current = current->next;
                 }
 
@@ -1467,12 +1470,12 @@ int main(int argc, char **argv)
                 while (current != NULL)
                 {
                     if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                        sethover(current,1);
+                        set_hover(current,1);
                         hoverset=MOUSE;
                     }
                     else {
-                        sethover(current,0);
-                        setclicked(current,0);
+                        set_hover(current,0);
+                        set_clicked(current,0);
                     }
                     current = current->next;
                 }
