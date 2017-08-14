@@ -41,7 +41,6 @@ Display *disp;
 Window   win;
 Visual  *vis;
 Colormap cm;
-int      depth;
 
 XIM im;
 XIC ic;
@@ -75,7 +74,7 @@ typedef struct color {
     int r, g, b, a;
 } color_t;
 
-node_t * apps = NULL;
+node_t * entries = NULL;
 keynode_t * cmdline = NULL;
 
 int icon_size = 48;
@@ -85,10 +84,9 @@ int urows = 0;
 int rows;
 int column_margin = 0;
 int row_margin = 0;
-int iconpadding = 10;
-int textpadding = 10;
+int icon_padding = 10;
+int text_padding = 10;
 int border;
-int bordertop;
 int cell_width;
 int cell_height;
 int font_height;
@@ -98,34 +96,34 @@ char commandline[10024];
 char commandlinetext[10024];
 int prompt_x;
 int prompt_y;
-char * bgfile = "";
-char * inputfile = "";
+char * background_file = "";
+char * input_file = "";
 char * prompt = "";
 char * font_name = "";
 char * prompt_font_name = "";
-char * progname;
-int noprompt = 0;
+char * program_name;
+int no_prompt = 0;
 int prompt_spacing = 48;
 int windowed = 0;
-int multipleinstances = 0;
+int multiple_instances = 0;
 int uposx = 0;
 int uposy = 0;
 int uwidth = 0;
 int uheight = 0;
 int uborder = 0;
-int voidclickterminate = 0;
+int void_click_terminate = 0;
 int output_only = 0;
 int select_only = 0;
 int text_after = 0;
-color_t textcolor = {.r = 255, .g = 255, .b = 255, .a = 255};
-color_t promptcolor = {.r = 255, .g = 255, .b = 255, .a = 255};
-color_t backgroundcolor = {.r = 46, .g = 52, .b = 64, .a = 255};
-color_t highlightcolor = {.r = 255, .g = 255, .b = 255, .a = 50};
+color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
+color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
+color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
+color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
 
 #define MOUSE 1
 #define KEYBOARD 2
 int hoverset=MOUSE;
-int desktopmode=0;
+int desktop_mode=0;
 int lock;
 
 /* areas to update */
@@ -141,54 +139,56 @@ void recalc_cells()
     border=screen_width/10;
     if (uborder>0) border = uborder;
 
-    // cells have a iconpadding on all sides of the image, plus another iconpadding below the text
     if (text_after){
-        cell_width=icon_size+iconpadding*2;
-        cell_height=icon_size+iconpadding*2;
+        cell_width=icon_size+icon_padding*2;
+        cell_height=icon_size+icon_padding*2;
         if(ucolumns == 0)
             ucolumns = 1;
     } else {
-        cell_width=icon_size+iconpadding*2;
-        cell_height=icon_size+iconpadding*2+font_height+textpadding;
+        cell_width=icon_size+icon_padding*2;
+        cell_height=icon_size+icon_padding*2+font_height+text_padding;
     }
 
     int usable_width;
     int usable_height;
+    // These do while loops should run at most three times, it's just to avoid copying code
     do {
-        do {
-            usable_width = screen_width-border*2;
-            if (noprompt) {
-                usable_height = screen_height-border*2;
-            } else {
-                usable_height = screen_height-border*2-prompt_spacing-prompt_font_height;
-            }
+        usable_width = screen_width-border*2;
+        if (no_prompt) {
+            usable_height = screen_height-border*2;
+        } else {
+            usable_height = screen_height-border*2-prompt_spacing-prompt_font_height;
+        }
 
-            if (usable_width < cell_width) {
-                border = screen_width/2 - cell_width;
-            } else if (usable_height < cell_height + prompt_font_height + prompt_spacing) {
-                border = screen_height/2 - cell_height - prompt_font_height - prompt_spacing;
-            }
-        } while (usable_width < 0 || usable_height < 0);
-        // If columns were not manually overriden, calculate the most it can possibly contain
-        if (ucolumns == 0){
-            columns = usable_width/cell_width;
-        } else{
-            columns = ucolumns;
+        // If the usable_width is too small, take some space away from the border
+        if (usable_width < cell_width) {
+            border = (screen_width - cell_width - 1)/2;
+        } else if (usable_height < cell_height) {
+            border = (screen_height - cell_height - prompt_spacing - prompt_font_height - 1)/2;
         }
-        if (urows == 0){
-            rows = usable_height/cell_height;
-        } else{
-            rows = urows;
-        }
-        if (columns == 0) {
-            border -= (cell_width - usable_width)/2;
-        } else if (rows == 0) {
-            border -= (cell_height - usable_height)/2;
-        }
-    } while (columns == 0 || rows == 0);
+    } while ((usable_width < cell_width && screen_width > cell_width) || (usable_height < cell_height && screen_height > cell_height));
+    // If columns were not manually overriden, calculate the most it can possibly contain
+    if (ucolumns == 0){
+        columns = usable_width/cell_width;
+    } else{
+        columns = ucolumns;
+    }
+    if (urows == 0){
+        rows = usable_height/cell_height;
+    } else{
+        rows = urows;
+    }
+    
+    // If we don't have space for a single column or row, force it.
+    if (columns == 0) {
+        columns = 1;
+    }
+    if (rows == 0) {
+        rows = 1;
+    }
 
     if (text_after){
-        cell_width = usable_width/columns - textpadding*(columns - 1);
+        cell_width = (usable_width - text_padding*(columns - 1))/columns;
     }
 
     // The space between the icon tiles to fill all the space
@@ -211,7 +211,7 @@ void recalc_cells()
 
 void restack()
 {
-    if (desktopmode) XLowerWindow(disp,win);
+    if (desktop_mode) XLowerWindow(disp,win);
     else XRaiseWindow(disp,win);
 }
 
@@ -240,7 +240,7 @@ char* strncpyutf8(char* dst, const char* src, size_t num)
 
 void arrange_positions()
 {
-    node_t * current = apps;
+    node_t * current = entries;
     int i = 0;
     int j = 0;
 
@@ -254,7 +254,7 @@ void arrange_positions()
         else
         {
             current->x = border + i * (cell_width+column_margin);
-            if (noprompt) {
+            if (no_prompt) {
                 current->y = border + j * (cell_height+row_margin);
             } else {
                 current->y = border + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
@@ -393,29 +393,29 @@ Imlib_Image load_image(char * icon) {
 
 void push_app(char * title, char * icon, char * cmd, int x, int y)
 {
-    node_t * current = apps;
+    node_t * current = entries;
     int hasicon = (strlen(icon) != 0);
     /* Pre-load the image into the cache, this is done to check for error messages
      * If a user has more images then can be shown this might incur a performance hit */
     if (hasicon) {
         Imlib_Image image = load_image(icon);
         if (image == NULL) {
-            icon = "/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png";
+            icon = "/usr/share/icons/hicolor/48x48/entries/xlunch_ghost.png";
         }
     }
     // empty list, add first directly
     if (current==NULL)
     {
-        apps = malloc(sizeof(node_t));
-        strcpy(apps->title,title);
-        strcpy(apps->icon,icon);
-        strcpy(apps->cmd,cmd);
-        apps->x=0;
-        apps->y=0;
-        apps->hidden=0;
-        apps->hovered=0;
-        apps->clicked=0;
-        apps->next = NULL;
+        entries = malloc(sizeof(node_t));
+        strcpy(entries->title,title);
+        strcpy(entries->icon,icon);
+        strcpy(entries->cmd,cmd);
+        entries->x=0;
+        entries->y=0;
+        entries->hidden=0;
+        entries->hovered=0;
+        entries->clicked=0;
+        entries->next = NULL;
         return;
     }
 
@@ -472,10 +472,10 @@ void parse_app_icons()
     char * home = getenv("HOME");
     if (home!=NULL)
     {
-        homeconf = concat(home,"/.xlunch/icons.conf");
+        homeconf = concat(home,"/.xlunch/entries.dsv");
     }
 
-    if (strlen(inputfile)==0){
+    if (strlen(input_file)==0){
         fp = stdin;
         struct pollfd fds;
         fds.fd = 0; /* this is STDIN */
@@ -484,17 +484,17 @@ void parse_app_icons()
             fp = fopen(homeconf, "rb");
         }
     } else {
-        fp = fopen(inputfile, "rb");
+        fp = fopen(input_file, "rb");
     }
     if (fp == NULL)
     {
-        fprintf(stderr, "Error opening config file from %s.\nReverting back to system conf.\n", inputfile);
-        inputfile = "/etc/xlunch/icons.conf";
-        fp = fopen(inputfile, "rb");
+        fprintf(stderr, "Error opening config file from %s.\nReverting back to system conf.\n", input_file);
+        input_file = "/etc/xlunch/entries.dsv";
+        fp = fopen(input_file, "rb");
 
         if (fp == NULL)
         {
-            fprintf(stderr, "Error opening config file %s\n", inputfile);
+            fprintf(stderr, "Error opening config file %s\n", input_file);
             fprintf(stderr, "You may need to create it. Icon file format is following:\n");
             fprintf(stderr, "title;icon_path;command\n");
             fprintf(stderr, "title;icon_path;command\n");
@@ -626,9 +626,9 @@ int get_root_image_to_imlib_data(DATA32 * direct)
 }
 
 
-void filter_apps()
+void filter_entries()
 {
-    node_t * current = apps;
+    node_t * current = entries;
 
     while (current != NULL)
     {
@@ -657,7 +657,7 @@ void joincmdline()
 
 void joincmdlinetext()
 {
-    if (noprompt) return;
+    if (no_prompt) return;
     if (strlen(prompt)==0) prompt="Run:  ";
     strcpy(commandlinetext,prompt);
 
@@ -697,7 +697,7 @@ void run_command(char * cmd_orig)
         // split arguments into pieces
         int i = 0;
         // If we recur (ie. start xlunch again) run the command that was used to run xlunch
-        array[0] = progname;
+        array[0] = program_name;
 
         // Blindly consume the first token which should be "recur"
         char *p = strtok (cmd, " ");
@@ -712,12 +712,12 @@ void run_command(char * cmd_orig)
 
     restack();
 
-    if (desktopmode)
+    if (desktop_mode)
     {
         pid_t pid=fork();
         if (pid==0) // child process
         {
-            if (!multipleinstances) close(lock);
+            if (!multiple_instances) close(lock);
             printf("Forking command: %s\n",cmd);
             int err;
             if (isrecur)
@@ -736,7 +736,7 @@ void run_command(char * cmd_orig)
             while (cmdline != NULL) pop_key();
             joincmdline();
             joincmdlinetext();
-            filter_apps();
+            filter_entries();
             arrange_positions();
         }
     }
@@ -852,9 +852,9 @@ void update_background_image()
         }
     }
     else // load background from file
-        if (strlen(bgfile)>0)
+        if (strlen(background_file)>0)
         {
-            image = imlib_load_image(bgfile);
+            image = imlib_load_image(background_file);
             imlib_context_set_image(image);
             if (image)
             {
@@ -872,7 +872,7 @@ void update_background_image()
         }
         else
         {
-            imlib_context_set_color(backgroundcolor.r, backgroundcolor.g, backgroundcolor.b, backgroundcolor.a);
+            imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
             imlib_image_fill_rectangle(0,0, screen_width, screen_height);
         }
 }
@@ -933,7 +933,7 @@ void init(int argc, char **argv)
                 exit(0);
 
             case 'd':
-                desktopmode = 1;
+                desktop_mode = 1;
                 break;
 
             case 1005:
@@ -941,19 +941,19 @@ void init(int argc, char **argv)
                 break;
 
             case 'n':
-                noprompt = 1;
+                no_prompt = 1;
                 break;
 
             case 'g':
-                bgfile = optarg;
+                background_file = optarg;
                 break;
 
             case 1001:
-                iconpadding = atoi(optarg);
+                icon_padding = atoi(optarg);
                 break;
 
             case 1006:
-                textpadding = atoi(optarg);
+                text_padding = atoi(optarg);
                 break;
 
             case 'c':
@@ -977,7 +977,7 @@ void init(int argc, char **argv)
                 break;
 
             case 'i':
-                inputfile = optarg;
+                input_file = optarg;
                 break;
 
             case 1003:
@@ -997,11 +997,11 @@ void init(int argc, char **argv)
                 break;
 
             case 'm':
-                multipleinstances = 1;
+                multiple_instances = 1;
                 break;
 
             case 't':
-                voidclickterminate = 1;
+                void_click_terminate = 1;
                 break;
 
             case 'x':
@@ -1029,19 +1029,19 @@ void init(int argc, char **argv)
                 break;
 
             case 1009:
-                sscanf(optarg, "%02x%02x%02x%02x", &textcolor.r, &textcolor.g, &textcolor.b, &textcolor.a);
+                sscanf(optarg, "%02x%02x%02x%02x", &text_color.r, &text_color.g, &text_color.b, &text_color.a);
                 break;
 
             case 1010:
-                sscanf(optarg, "%02x%02x%02x%02x", &promptcolor.r, &promptcolor.g, &promptcolor.b, &promptcolor.a);
+                sscanf(optarg, "%02x%02x%02x%02x", &prompt_color.r, &prompt_color.g, &prompt_color.b, &prompt_color.a);
                 break;
 
             case 1011:
-                sscanf(optarg, "%02x%02x%02x%02x", &backgroundcolor.r, &backgroundcolor.g, &backgroundcolor.b, &backgroundcolor.a);
+                sscanf(optarg, "%02x%02x%02x%02x", &background_color.r, &background_color.g, &background_color.b, &background_color.a);
                 break;
 
             case 1012:
-                sscanf(optarg, "%02x%02x%02x%02x", &highlightcolor.r, &highlightcolor.g, &highlightcolor.b, &highlightcolor.a);
+                sscanf(optarg, "%02x%02x%02x%02x", &highlight_color.r, &highlight_color.g, &highlight_color.b, &highlight_color.a);
                 break;
 
             case 'a':
@@ -1065,7 +1065,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -o, --outputonly            Do not run the selected entry, only output it to stdout\n");
                 fprintf (stderr,"        --selectonly                Only allow an actual entry and not free-typed commands\n");
                 fprintf (stderr,"        -i, --input [file]          File to read entries from, defaults to stdin if data is available\n");
-                fprintf (stderr,"                                    otherwise it reads from $HOME/.xlunch/icons.conf or /etc/xlunch/icons.conf\n");
+                fprintf (stderr,"                                    otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
                 fprintf (stderr,"        -m, --multiple              Allow multiple instances running\n");
                 fprintf (stderr,"        -t, --voidclickterminate    Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                    practical for touch screens.\n");
@@ -1118,7 +1118,6 @@ void init(int argc, char **argv)
     /* thinks is the best, but this example is intended to be simple */
     screen = DefaultScreen(disp);
     vis   = DefaultVisual(disp, screen);
-    depth = DefaultDepth(disp, screen);
     cm    = DefaultColormap(disp, screen);
 
     /* get/set screen size */
@@ -1132,7 +1131,7 @@ void init(int argc, char **argv)
 /* the program... */
 int main(int argc, char **argv)
 {
-    progname = argv[0];
+    program_name = argv[0];
     /* events we get from X */
     XEvent ev;
     /* our virtual framebuffer image we draw into */
@@ -1152,12 +1151,12 @@ int main(int argc, char **argv)
     joincmdlinetext();
 
     // If an instance is already running, quit
-    if (!multipleinstances)
+    if (!multiple_instances)
     {
         lock=open("/tmp/xlunch.lock",O_CREAT | O_RDWR,0666);
         int rc = flock(lock, LOCK_EX | LOCK_NB);
         if (rc) {
-            if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may consider -s\nIf this is an error, you may remove /tmp/xlunch.lock\n");
+            if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may want to consider --multiple\nIf this is an error, you may remove /tmp/xlunch.lock\n");
             exit(3);
         }
     }
@@ -1165,7 +1164,7 @@ int main(int argc, char **argv)
     win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
 
     // absolute fullscreen mode by overide redirect
-    if (!windowed && desktopmode)
+    if (!windowed && desktop_mode)
     {
         unsigned long valuemask = CWOverrideRedirect;
         XSetWindowAttributes attributes;
@@ -1216,9 +1215,10 @@ int main(int argc, char **argv)
         fputs("Could not open input method\n", stdout);
         return 2;
     }
+
     ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
     if (ic == NULL) {
-        fprintf(stderr,"Could not open IC, whatever it is, I dont know\n");
+        fprintf(stderr,"Could not open input context, without it we can't properly handle UTF8\n");
         return 4;
     }
     XSetICFocus(ic);
@@ -1249,7 +1249,7 @@ int main(int argc, char **argv)
     };
 
     // send the message
-    if (!windowed && !desktopmode)
+    if (!windowed && !desktop_mode)
         XSendEvent(disp, DefaultRootWindow(disp), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*)&msg);
 
 
@@ -1301,12 +1301,12 @@ int main(int argc, char **argv)
 
             case ButtonPress:
             {
-                if (ev.xbutton.button==3 && !desktopmode) {
+                if (ev.xbutton.button==3 && !desktop_mode) {
                     cleanup();
                     exit(0);
                 }
                 if (ev.xbutton.button!=1) break;
-                node_t * current = apps;
+                node_t * current = entries;
                 int voidclicked = 1;
                 while (current != NULL)
                 {
@@ -1318,7 +1318,7 @@ int main(int argc, char **argv)
                     current = current->next;
                 }
 
-                if (voidclicked && voidclickterminate) {
+                if (voidclicked && void_click_terminate) {
                     cleanup();
                     exit(0);
                 }
@@ -1327,7 +1327,7 @@ int main(int argc, char **argv)
 
             case ButtonRelease:
             {
-                node_t * current = apps;
+                node_t * current = entries;
 
                 while (current != NULL)
                 {
@@ -1353,7 +1353,7 @@ int main(int argc, char **argv)
                 char kbdbuf[20]= {0};
                 count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
 
-                if (keycode==XK_Escape && !desktopmode)
+                if (keycode==XK_Escape && !desktop_mode)
                 {
                     cleanup();
                     exit(0);
@@ -1362,7 +1362,7 @@ int main(int argc, char **argv)
                 if (keycode==XK_Return || keycode==XK_KP_Enter)
                 {
                     // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
-                    node_t * current = apps;
+                    node_t * current = entries;
                     node_t * selected = NULL;
                     node_t * selected_one = NULL;
                     int nb=0;
@@ -1380,7 +1380,7 @@ int main(int argc, char **argv)
                     if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd);
                     else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
                     // else run the command entered by commandline, if the command prompt is used
-                    else if (!noprompt && !select_only) run_command(commandline);
+                    else if (!no_prompt && !select_only) run_command(commandline);
                 }
 
                 if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
@@ -1394,7 +1394,7 @@ int main(int argc, char **argv)
                     if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
 
                     int j=0,n=0;
-                    node_t * current = apps;
+                    node_t * current = entries;
                     node_t * selected = NULL;
                     while (current != NULL)
                     {
@@ -1409,11 +1409,11 @@ int main(int argc, char **argv)
                     }
 
                     if (selected==NULL) {
-                        selected=apps;
+                        selected=entries;
                         i=0;
                         j=0;
                     }
-                    current=apps;
+                    current=entries;
 
                     int k=i+j;
                     if (k>n || keycode==XK_End) k=n;
@@ -1437,15 +1437,15 @@ int main(int argc, char **argv)
                 if (keycode==XK_Delete || keycode==XK_BackSpace)
                     pop_key();
                 else if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
-                    if (!noprompt) push_key(kbdbuf);
+                    if (!no_prompt) push_key(kbdbuf);
 
                 joincmdline();
                 joincmdlinetext();
-                filter_apps();
+                filter_entries();
                 arrange_positions();
 
                 // we used keyboard to type command. So unselect all icons.
-                node_t * current = apps;
+                node_t * current = entries;
                 while (current != NULL)
                 {
                     sethover(current,0);
@@ -1462,7 +1462,7 @@ int main(int argc, char **argv)
 
             case MotionNotify:
             {
-                node_t * current = apps;
+                node_t * current = entries;
 
                 while (current != NULL)
                 {
@@ -1510,7 +1510,7 @@ int main(int argc, char **argv)
             /* blend background image onto the buffer */
             imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
-            node_t * current = apps;
+            node_t * current = entries;
             int drawn = 0;
             Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
 
@@ -1522,7 +1522,7 @@ int main(int argc, char **argv)
                     {
                         imlib_context_set_image(buffer);
                         c = XCreateFontCursor(disp,XC_hand1);
-                        imlib_context_set_color(highlightcolor.r, highlightcolor.g, highlightcolor.b, highlightcolor.a);
+                        imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
                         imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
                     }
                     if (strlen(current->icon) != 0) {
@@ -1539,7 +1539,7 @@ int main(int argc, char **argv)
                             else d=0;
 
                             imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                             current->x - up_x + iconpadding+d, current->y - up_y +iconpadding+d, icon_size-d*2, icon_size-d*2);
+                                                             current->x - up_x + icon_padding+d, current->y - up_y +icon_padding+d, icon_size-d*2, icon_size-d*2);
                             
                             imlib_context_set_image(image);
                             imlib_free_image();
@@ -1563,16 +1563,16 @@ int main(int argc, char **argv)
                                 strcat(title,"..");
                             imlib_get_text_size(title, &text_w, &text_h);
                             sz--;
-                        } while(text_w > cell_width-2*textpadding && sz>0);
+                        } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*3 : icon_padding*2) + icon_size : 2*text_padding) && sz>0);
 
                         int d;
                         if (current->clicked==1) d=4;
                         else d=0;
 
                         if (text_after) {
-                            draw_text_with_shadow(current->x - up_x + (icon_size != 0 ? iconpadding*2 : iconpadding) + icon_size, current->y - up_y + cell_height/2 - font_height/2, title, textcolor);
+                            draw_text_with_shadow(current->x - up_x + (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size, current->y - up_y + cell_height/2 - font_height/2, title, text_color);
                         } else {
-                            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + iconpadding*2 + icon_size, title, textcolor);
+                            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + icon_padding*2 + icon_size, title, text_color);
                         }
 
                         /* free the font */
@@ -1591,12 +1591,12 @@ int main(int argc, char **argv)
             imlib_context_set_image(buffer);
 
             /* draw text */
-            if (!noprompt) {
+            if (!no_prompt) {
                 font = load_prompt_font();
                 if (font)
                 {
                     imlib_context_set_font(font);
-                    draw_text_with_shadow(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext, promptcolor);
+                    draw_text_with_shadow(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext, prompt_color);
                     /* free the font */
                     imlib_free_font();
                 }
