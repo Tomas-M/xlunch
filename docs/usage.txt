@@ -10,6 +10,8 @@ usage: xlunch [options]
     Functinal options:
         -v, --version                     Returns the version of xlunch
         -H, --help                        Shows this help message
+        --name                            POSIX-esque way to specify the first part of WM_CLASS
+                                          (default: environment variable RESOURCE_NAME or argv[0])
         -n, --noprompt                    Hides the prompt, only allowing selection by icon
         -o, --outputonly                  Do not run the selected entry, only output it to stdout
         -S, --selectonly                  Only allow an actual entry and not free-typed commands

@@ -53,9 +53,9 @@ int screen_height;
 
 typedef struct node
 {
-    char title[255];
-    char icon[255];
-    char cmd[255];
+    char title[256];
+    char icon[256];
+    char cmd[512];
     int hovered;
     int clicked;
     int hidden;
@@ -503,26 +503,26 @@ void parse_app_icons()
         }
     }
 
-    char title[255]= {0};
-    char icon[255]= {0};
-    char cmd[255]= {0};
+    char title[256]= {0};
+    char icon[256]= {0};
+    char cmd[512]= {0};
 
     // title, icon, and cmd can each be 254 characters long
-    char line[766] = {0};
+    char line[1022] = {0};
     char *token;    
 
-    while(!feof(fp))
+    while(fgets(line, 1021, fp) != 0)
     {
-        fgets(line, 766, fp);
         token = strtok_new(line, ";");
         int parsing = 0;
         while(token != NULL){
-            if(parsing == 4){
+            if(parsing == 3){
                 fprintf(stderr, "Unknown format in line \"%s\", only three sections are allowed!\n", line);
                 exit(1);
             }
-            if(strlen(token) > 254){
-                fprintf(stderr, "Entry too long \"%s\", maximum length is 254 characters!\n", token);
+            int maxlen = (parsing == 2 ? 511 : 255);
+            if(strlen(token) > maxlen){
+                fprintf(stderr, "Entry too long \"%s\", maximum length is %d characters!\n", token, maxlen);
                 //exit(1);
                 for(int i = parsing; i < 3; i++){
                     token = strtok_new(NULL, ";\n");
@@ -683,7 +683,7 @@ int starts_with(const char *pre, const char *str)
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
 
-// TODO: Rewrite (recur for running new xlunch with execv)
+
 void run_command(char * cmd_orig)
 {
     if(output_only){
@@ -696,11 +696,11 @@ void run_command(char * cmd_orig)
         }
     }
 
-    char cmd[255];
+    char cmd[512];
     char *array[100] = {0};
     strcpy(cmd,cmd_orig);
 
-    int isrecur = starts_with("recur ", cmd_orig);
+    int isrecur = starts_with("recur ", cmd_orig) || (strcmp("recur", cmd_orig) == 0);
     if(isrecur) {
         // split arguments into pieces
         int i = 0;
@@ -933,11 +933,12 @@ void init(int argc, char **argv)
             {"bc",                    required_argument, 0, 1011},
             {"hc",                    required_argument, 0, 1012},
             {"textafter",             no_argument,       0, 'a'},
+            {"name",                  required_argument, 0, 1013},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHITPWFS", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1059,6 +1060,10 @@ void init(int argc, char **argv)
                 text_after = 1;
                 break;
 
+            case 1013:
+                program_name = optarg;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1072,6 +1077,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"    Functinal options:\n");
                 fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
                 fprintf (stderr,"        -H, --help                        Shows this help message\n");
+                fprintf (stderr,"        --name                            POSIX-esque way to specify the first part of WM_CLASS\n");
+                fprintf (stderr,"                                          (default: environment variable RESOURCE_NAME or argv[0])\n");
                 fprintf (stderr,"        -n, --noprompt                    Hides the prompt, only allowing selection by icon\n");
                 fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
                 fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
@@ -1142,16 +1149,12 @@ void init(int argc, char **argv)
 /* the program... */
 int main(int argc, char **argv)
 {
-    program_name = argv[0];
     /* events we get from X */
     XEvent ev;
     /* our virtual framebuffer image we draw into */
     Imlib_Image buffer;
     /* a font */
     Imlib_Font font;
-    /* our color range */
-    Imlib_Color_Range rangebg;
-    Imlib_Color_Range range;
     char title[255];
 
     /* width and height values */
@@ -1159,6 +1162,13 @@ int main(int argc, char **argv)
 
     // set initial variables now
     init(argc, argv);
+
+    if(program_name == NULL) {
+        program_name = getenv("RESOURCE_NAME");
+        if(program_name == NULL) {
+            program_name = argv[0];
+        }
+    }
     joincmdlinetext();
 
     // If an instance is already running, quit
@@ -1192,7 +1202,6 @@ int main(int argc, char **argv)
     imlib_add_path_to_font_path("/usr/local/share/fonts");
     imlib_add_path_to_font_path("/usr/share/fonts/truetype");
     imlib_add_path_to_font_path("/usr/share/fonts/TTF");
-    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
     /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
     /* the images we use use less than 2Mb of RAM (that is uncompressed) */
     imlib_set_cache_size(2048 * screen_width);
@@ -1216,6 +1225,20 @@ int main(int argc, char **argv)
 
     /* tell X what events we are interested in */
     XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
+    /* set our name */
+    XClassHint* classHint;
+
+    /* set the titlebar name */
+    XStoreName(disp, win, "xlunch: Graphical app launcher");
+
+    /* set the name and class hints for the window manager to use */
+    classHint = XAllocClassHint();
+    if (classHint) {
+        classHint->res_name = basename(program_name);
+        classHint->res_class = (windowed ? "xlunch_windowed" : (desktop_mode ? "xlunch_desktop" : "xlunch_fullscreen"));
+    }
+    XSetClassHint(disp, win, classHint);
+    XFree(classHint);
     /* show the window */
     XMapRaised(disp, win);
 

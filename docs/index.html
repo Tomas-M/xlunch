@@ -33,7 +33,7 @@
 
         <section id="main_content">
 
-<p>Welcome. This is xlunch, the coolest graphical app launcher for Xorg/X11.
+<p>Welcome! This is xlunch, the coolest graphical app launcher for Xorg/X11.
 It requires only pure Xlib and Imlib2. It allows you to run programs, commands,
 or simply select something out of a list using your mouse, keyboard, or both!
 UTF8 is fully supported meaning you can have text of all kinds. The prompt
@@ -65,7 +65,7 @@ killing it with SIGTERM).
 <p>Keep in mind that if you use desktop mode while you are running some other desktop already,
 you may end up with launcher running under your other desktop, thus it may be inaccessible.
 The desktop mode is intended only for users without another desktop (such as WM-only systems
-like i3). There are also some other flags that could be of interest in this moe, see below.</p>
+like i3). There are also some other flags that could be of interest in this mode, see below.</p>
 
 <p><img src="https://raw.githubusercontent.com/Tomas-M/xlunch/Screenshot/screenshot2.png" alt="Screenshot" title="Screenshot" style="border: 10px solid #ddd;"></p>
 
@@ -77,6 +77,8 @@ Functional options (these changes what xlunch does, or how it does it):
                                   or a command. In this mode xlunch never terminates.
 -v, --version                     Returns the version of xlunch
 -H, --help                        Shows this help message
+--name                            POSIX-esque way to specify the first part of WM_CLASS
+                                  (default: environment variable RESOURCE_NAME or argv[0])
 -n, --noprompt                    Hides the prompt, only allowing selection by icon
 -o, --outputonly                  Do not run the selected entry, only output it to stdout
 -S, --selectonly                  Only allow an actual entry and not free-typed commands
@@ -128,6 +130,12 @@ entry dependent on the size of the text instead. Note however that this by defau
 <code>--textafter</code> mode is enabled <code>--textpadding</code> is used as padding between the
 entry columns and <code>--iconpadding</code> is used on all sides of the entry box.</p>
 
+<p>When loading fonts xlunch will look for them in the folders: <code>~/.local/share/fonts</code>,
+<code>~/.fonts</code>, <code>/usr/local/share/fonts</code>, <code>/usr/local/share/truetype</code>,
+and <code>/usr/local/share/TTF</code>. Imlib however does not search recursively, so to load a font
+in for example <code>~/.local/share/fonts/FontFamily/FontName.ttf</code> in size 10 we would have to
+pass <code>-f "FontFamily/FontName/10"</code>.</p>
+
 
 <p><strong>Multi monitor setup</strong></p>
 
@@ -149,7 +157,13 @@ place/monitor. Use the following options:</p>
 <p>For example, if you have two 800x600 monitors side by side, xlunch sees it as 1600x800.
 You can put it to first monitor by: <code>-x 0 -y 0 -w 800 -h 600</code>, or to second monitor by
 using <code>-x 800 -y 0 -w 800 -h 600</code>. Remember that all these settings might be overridden
-by your window manager unless you start xlunch in Desktop mode.</p>
+by your window manager unless you start xlunch in Desktop mode. Another thing that is helpful
+is that xlunch sets three distinct <code>WM_CLASS</code> values, "xlunch_fullscreen" for it's
+default mode, "xlunch_desktop" for the desktop mode, and "xlunch_windowed" for it's windowed mode.
+This makes it easy to tell your window manager to treat each of the different kinds properly.
+Alternatively you can use the <code>--name</code> option or the environment variable
+<code>RESOURCE_NAME</code> to set the first part of <code>WM_CLASS</code>, note however that this
+value is also the program called by recur.</p>
 
 <p><strong>Compile:</strong></p>
 
@@ -178,10 +192,12 @@ empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunc
 create a menu hierarchy, you should use a special syntax. This syntax allows xlunch to replace its
 old process with the new one so you only have a single instance of xlunch running and don't get any
 overhead from running it through bash. In order to do this simply put <code>recur [options]</code>
-in the <code>cmd</code> field. This will reuse the program name you originally used to call xlunch
-with but replace the options with anything you add after recur. NOTE: this mode relies on splitting
-the list of arguments, this is currently only done on spaces, even those inside quotes, so it's not
-possible to pass arguments with spaces in them when using recur.</p>
+as the <code>cmd</code> field. This will reuse the program name you originally used to call xlunch
+with but replace the options with anything you add after recur. If you want to run a program by the
+name recur, simply add a space in front of it. NOTE: recur relies on splitting the list of
+arguments, this is currently only done on spaces, even those inside quotes, so it's not possible to
+pass arguments with spaces in them when using recur (this is how previous versions did all launching).
+</p>
 
 <p>During compilation, a sample entries file is created for you. By default, this entries file is
 installed into <code>/etc/xlunch/entries.dsv</code>. The file is created by reading the freedesktop
@@ -211,13 +227,12 @@ xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entri
 
 <p>If you wish to run xlunch as app launcher, best practice is to
 set up a keyboard shortcut to start xlunch, such as Alt+F2.
-Or you can have a button in taskbar to run it.</p>
+Or you can put a button in a taskbar to run it.</p>
 
 <p>For example, to start xlunch on Alt+F2 in i3wm, add this line to ~/.i3/config:</p>
 
 <pre><code>bindsym $mod+F2 exec /usr/bin/xlunch
 </code></pre>
-
 
 <p>To have xlunch running as a desktop with icons in i3wm, add this to ~/.i3/config:</p>
 
