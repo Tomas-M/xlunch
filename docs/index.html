@@ -51,42 +51,82 @@ is no need to specify any commandline parameter for this mode. In this mode, xlu
 opens as a fullscreen application, and offers a screen with icons to select
 applications to run, plus commandline which serves as a filter for the icons at
 the same time. Running any app or command ends the launcher. You can also cancel
-the launcher with Esc key, or click with right mouse button.</li>
+the launcher (by default) with the Esc key, or click with right mouse button.</li>
 <li style="padding-left: 0">Desktop mode - this mode is activated with -d. In this mode,
 xlunch sends itself to the lowest position in the window stack, so all other windows
 are above it. Your window manager will not have any control over it, so xlunch
 does not receive any input or focus and it cannot be raised to front. This emulates
-desktop with icons. In Desktop mode, applications start using fork (as another process).
-Xlunch in this mode cannot be terminated (except by killing it with SIGTERM).
+desktop with icons. In Desktop mode, applications start using fork (as another process)
+and don't terminate the launcher. xlunch in this mode cannot be terminated (except by
+killing it with SIGTERM).
 </li>
 </ul>
 
 <p>Keep in mind that if you use desktop mode while you are running some other desktop already,
 you may end up with launcher running under your other desktop, thus it may be inaccessible.
-The desktop mode is intended only for users without other desktop.</p>
+The desktop mode is intended only for users without another desktop (such as WM-only systems
+like i3). There are also some other flags that could be of interest in this moe, see below.</p>
 
 <p><img src="https://raw.githubusercontent.com/Tomas-M/xlunch/Screenshot/screenshot2.png" alt="Screenshot" title="Screenshot" style="border: 10px solid #ddd;"></p>
 
 <p><strong>Commandline options:</strong></p>
 
-<pre><code>-d        desktop mode, keep the launcher lowest (behind other windows)
--r        use root window's background. Fails if you lack one
--k        hide the prompt, and allow user to only run app by icon
--g [file] image to set as background (jpg/png)
--m [i]    margin (integer) specifies margin in pixels between icons
--p [i]    padding (integer) specifies padding inside icons in pixels
--b [i]    border (integer) specifies spacing border size in pixels
--i [i]    icon size (integer) in pixels
--c [file] path to config file which describes titles, icons and commands
--n        Disable fullscreen
--t [i]    Top position (integer) in pixels for the Run commandline
--T [i]    Top position (integer) in pixels for the icons (overides top border)
--x [text] string to display instead of 'Run: '
--f [name] font name including size after slash, ex: DejaVuSans/10
--s        disable single-instance check - allow multiple instances running.
-          This may be useful if you want to run xlunch from another xlunch
--v        Enable closing xlunch when clicking empty space (i.e. not on an icon) - practical for touch screens
+Functional options (these changes what xlunch does, or how it does it):
+<pre><code>-d, --desktop                     Desktop mode, always keep the launcher at background
+                                  (behind other windows) and keep it running after executing an app
+                                  or a command. In this mode xlunch never terminates.
+-v, --version                     Returns the version of xlunch
+-H, --help                        Shows this help message
+-n, --noprompt                    Hides the prompt, only allowing selection by icon
+-o, --outputonly                  Do not run the selected entry, only output it to stdout
+-S, --selectonly                  Only allow an actual entry and not free-typed commands
+-i, --input [file]                File to read entries from, defaults to stdin if data is available
+                                  otherwise it reads from $HOME/.xlunch/entries.dsv
+                                  or /etc/xlunch/entries.dsv
+-m, --multiple                    Allow multiple instances running
+-t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
+                                  practical for touch screens.
+-W, --windowed                    Start in windowed mode
 </code></pre>
+
+Style options (these changes how xlunch looks):
+<pre><code>-p, --prompt [text]               The prompt asking for input (default: \"Run: \")
+-f, --font [name]                 Font name including size after slash
+                                  (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")
+-F, --promptfont [name]           Font to use for the prompt (default: same as --font)
+-G, --rootwindowbackground        Use root windows background image
+-g, --background [file]           Image to set as background (jpg/png)
+-I, --iconpadding [i]             Padding around icons (default: 10)
+-T, --textpadding [i]             Padding around entry titles (default: 10)
+                                  When --textafter is set this is the space between columns.
+-c, --columns [i]                 Number of columns to show (without this the max amount possible
+                                  is used)
+-r, --rows [i]                    Numbers of rows to show (without this the max amount possible is
+                                  used)
+-b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th
+                                  of screen width)
+-P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
+-s, --iconsize [i]                Size of the icons (default: 48)
+-a, --textafter                   Draw the title to the right of the icon instead of below, this
+                                  option automatically sets --columns to 1 but this can
+                                  be overridden.
+--tc, --textcolor [color]         Color to use for the text on the format rrggbbaa
+                                  (default: ffffffff)
+--pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
+--bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)
+                                  (NOTE: transparent background color does nothing)
+--hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)
+</code></pre>
+
+<p>If you want to completely hide icons (to eg. use xlunch to only select between text entries like
+dmenu) you should set <code>--iconsize</code> to 0 and turn on <code>--textafter</code> mode.
+This will cause xlunch to remove the extra margin that would normally be around an icon and instead
+show only the text. Since the entries in xlunch are normally based on icon size and their padding
+this would make each entry super small, but the <code>--textafter</code> mode makes the size of each
+entry dependent on the size of the text instead. Note however that this by default sets
+<code>--columns</code> to 1, so override it with how many columns of text you would like. When 
+<code>--textafter</code> mode is enabled <code>--textpadding</code> is used as padding between the
+entry columns and <code>--iconpadding</code> is used on all sides of the entry box.</p>
 
 
 <p><strong>Multi monitor setup</strong></p>
@@ -94,20 +134,21 @@ The desktop mode is intended only for users without other desktop.</p>
 <p>xlunch does not know how to detect your output monitors, it sees your monitors
 as a big single screen. If you run it, your window manager positions the window and makes
 it fullscreen, so it is up to your window manager to decide what monitor xlunch runs on.
-If you, however, start xlunch in Desktop mode (which bypasses your window manager) or
-if you do not have any WM at all, you can customize the size and position of the window
-manually by providing the top/left coordinates and width/height of your monitor screen,
-which effectively positions xlunch on the desired place/monitor. Use the following options:</p>
+If you, however configure your WM to make xlunch floating, start xlunch in Desktop mode
+(which bypasses your window manager) or if you do not have any WM at all, you can customize
+the size and position of the window manually by providing the top/left coordinates and
+width/height of your monitor screen, which effectively positions xlunch on the desired
+place/monitor. Use the following options:</p>
 
-<pre><code>   -a [i]     the x coordinates (integer) of the top left corner of launcher window
-   -e [i]     the y coordinates (integer) of the top left corner of launcher window
-   -y [i]     the width (integer) of launcher window on your screen
-   -z [i]     the height (integer) of launcher window on your screen
+<pre><code>-x, --xposition [i]               The x coordinate of the launcher window
+-y, --yposition [i]               The y coordinate of the launcher window
+-w, --width [i]                   The width of the launcher window
+-h, --height [i]                  The height of the launcher window
 </code></pre>
 
 <p>For example, if you have two 800x600 monitors side by side, xlunch sees it as 1600x800.
-You can put it to first monitor by: -a 0 -e 0 -y 800 -z 600, or to second monitor by
-using -a 800 -e 0 -y 800 -z 600. Remember that all these settings are overridden
+You can put it to first monitor by: <code>-x 0 -y 0 -w 800 -h 600</code>, or to second monitor by
+using <code>-x 800 -y 0 -w 800 -h 600</code>. Remember that all these settings might be overridden
 by your window manager unless you start xlunch in Desktop mode.</p>
 
 <p><strong>Compile:</strong></p>
@@ -117,15 +158,11 @@ make test
 make install
 </code></pre>
 
+Uninstall with <code>make remove</code>
 
-<p><strong>Configuration file:</strong></p>
+<p><strong>Entries file:</strong></p>
 
-<p>During compilation, sample config file is created for you. By default,
-the config file is installed into /etc/xlunch/icons.conf.
-You should always manually edit the file and adapt it to your needs,
-remove all the icons you don't like, etc. When xlunch starts, it firstly
-tries to load your config file from ~/.xlunch/icons.conf. If this fails,
-system-wide config is loaded from /etc/xlunch/icons.conf. Format of the configuration file is following:</p>
+xlunch can accept entries to show either over stdin or through a file. The format used in both cases are:</p>
 
 <pre><code>title;icon_path;cmd
 title;icon_path;cmd
@@ -133,14 +170,41 @@ title;icon_path;cmd
 title;icon_path;cmd
 </code></pre>
 
+<p><code>title</code> is the name of the program which will be shown, <code>icon_path</code> is a
+path to an icon to show for the entry (png or jpg), and <code>cmd</code> is the command to be run
+or returned when this entry is selected. By default xlunch will show a ghost icon if the icon you
+specified couldn't be found, if you want to not have an icon you can simply leave the icon field
+empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
+create a menu hierarchy, you should use a special syntax. This syntax allows xlunch to replace its
+old process with the new one so you only have a single instance of xlunch running and don't get any
+overhead from running it through bash. In order to do this simply put <code>recur [options]</code>
+in the <code>cmd</code> field. This will reuse the program name you originally used to call xlunch
+with but replace the options with anything you add after recur. NOTE: this mode relies on splitting
+the list of arguments, this is currently only done on spaces, even those inside quotes, so it's not
+possible to pass arguments with spaces in them when using recur.</p>
+
+<p>During compilation, a sample entries file is created for you. By default, this entries file is
+installed into <code>/etc/xlunch/entries.dsv</code>. The file is created by reading the freedesktop
+"Desktop Entry Specification" files (<code>.desktop</code>) found in
+<code>$HOME/.local/share/applications</code> and <code>/usr/share/applications</code> these files
+are read in priority so you can override the versions installed by your package manager by putting a
+file with the same name in the user local directory. The file generated is static, so if you want to
+add new programs to the list that xlunch sees then you could run the extras/genentries script again.
+The output of this script is in the format expected from <code>entries.dsv</code> files and can be
+customized to your needs and to create custom menus. When xlunch starts without the
+<code>--input</code> flag, it first checks stdin to see if you have piped it any entries. If nothing
+is found there it tries to load your entries file from <code>~/.xlunch/entries.dsv</code>. If this
+fails, system-wide entries is loaded from <code>/etc/xlunch/entries.dsv</code>. By passing
+<code>--input</code> the file specified is used instead and all other entries (including stdin) are
+ignored.</p>
 
 <p><strong>Example usage:</strong></p>
 
 <pre><code># launcher mode:
-xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg
+xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entries.dsv
 
 # desktop mode:
-xlunch -g wp.jpg -f "OpenSans-Regular.ttf/10" -c sample_config.cfg -d -k -s
+xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entries.dsv --desktop --multiple --noprompt
 </code></pre>
 
 <p><strong>Tips and tricks:</strong></p>
@@ -157,8 +221,11 @@ Or you can have a button in taskbar to run it.</p>
 
 <p>To have xlunch running as a desktop with icons in i3wm, add this to ~/.i3/config:</p>
 
-<pre><code>exec /usr/bin/xlunch -d -k -s
+<pre><code>exec /usr/bin/xlunch --desktop --multiple --noprompt
 </code></pre>
+
+<p>Note that you can also use the position flags from the multi-monitor section to display multiple
+menus on your desktop.</p>
 
 <p>xlunch is a perfect dmenu replacement, or rofi replacement.</p>
 

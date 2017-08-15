@@ -1,0 +1,51 @@
+usage: xlunch [options]
+    xlunch is a program launcher/option selector similar to dmenu or rofi.
+    By default it launches in full-screen mode and terminates after a selection is made,
+    it is also possible to close xlunch by pressing Esc or the right mouse button.
+    Some options changes this behaviour, the most notable being the desktop mode switch:
+        -d, --desktop                     Desktop mode, always keep the launcher at background (behind other windows)
+                                          and keep it running after executing an app or a command.
+                                          In this mode xlunch never terminates.
+
+    Functinal options:
+        -v, --version                     Returns the version of xlunch
+        -H, --help                        Shows this help message
+        -n, --noprompt                    Hides the prompt, only allowing selection by icon
+        -o, --outputonly                  Do not run the selected entry, only output it to stdout
+        -S, --selectonly                  Only allow an actual entry and not free-typed commands
+        -i, --input [file]                File to read entries from, defaults to stdin if data is available
+                                          otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv
+        -m, --multiple                    Allow multiple instances running
+        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
+                                          practical for touch screens.
+        -W, --windowed                    Start in windowed mode
+
+    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
+    as a big single screen. You can customize this manually by setting windowed mode and
+    providing the top/left coordinates and width/height of your monitor screen which
+    effectively positions xlunch on the desired monitor. Use the following options:
+        -x, --xposition [i]               The x coordinate of the launcher window
+        -y, --yposition [i]               The y coordinate of the launcher window
+        -w, --width [i]                   The width of the launcher window
+        -h, --height [i]                  The height of the launcher window
+
+    Style options:
+        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")
+        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")
+        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)
+        -G, --rootwindowbackground        Use root windows background image
+        -g, --background [file]           Image to set as background (jpg/png)
+        -I, --iconpadding [i]             Padding around icons (default: 10)
+        -T, --textpadding [i]             Padding around entry titles (default: 10)
+        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)
+        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)
+        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)
+        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
+        -s, --iconsize [i]                Size of the icons (default: 48)
+        -a, --textafter                   Draw the title to the right of the icon instead of below, this option
+                                          automatically sets --columns to 1 but this can be overridden.
+        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)
+        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
+        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)
+                                          (NOTE: transparent background color does nothing)
+        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)

@@ -688,8 +688,12 @@ void run_command(char * cmd_orig)
 {
     if(output_only){
         fprintf(stdout, "%s\n", cmd_orig);
-        cleanup();
-        exit(0);
+        if(!desktop_mode){
+            cleanup();
+            exit(0);
+        } else {
+            return;
+        }
     }
 
     char cmd[255];
@@ -895,23 +899,23 @@ void init(int argc, char **argv)
     static struct option long_options[] =
         {
             {"version",               no_argument,       0, 'v'},
-            {"help",                  no_argument,       0, 1000},
+            {"help",                  no_argument,       0, 'H'},
             {"desktop",               no_argument,       0, 'd'},
-            {"rootwindowbackground",  no_argument,       0, 1005},
+            {"rootwindowbackground",  no_argument,       0, 'G'},
             {"noprompt",              no_argument,       0, 'n'},
             {"background",            required_argument, 0, 'g'},
-            {"iconpadding",           required_argument, 0, 1001},
-            {"textpadding",           required_argument, 0, 1006},
+            {"iconpadding",           required_argument, 0, 'I'},
+            {"textpadding",           required_argument, 0, 'T'},
             {"columns",               required_argument, 0, 'c'},
             {"rows",                  required_argument, 0, 'r'},
             {"border",                required_argument, 0, 'b'},
-            {"promptspacing",         required_argument, 0, 1002},
+            {"promptspacing",         required_argument, 0, 'P'},
             {"iconsize",              required_argument, 0, 's'},
             {"input",                 required_argument, 0, 'i'},
-            {"windowed",              no_argument,       0, 1003},
+            {"windowed",              no_argument,       0, 'W'},
             {"prompt",                required_argument, 0, 'p'},
             {"font",                  required_argument, 0, 'f'},
-            {"promptfont",            required_argument, 0, 1004},
+            {"promptfont",            required_argument, 0, 'F'},
             {"multiple",              no_argument,       0, 'm'},
             {"voidclickterminate",    no_argument,       0, 't'},
             {"xposition",             required_argument, 0, 'x'},
@@ -919,17 +923,21 @@ void init(int argc, char **argv)
             {"width",                 required_argument, 0, 'w'},
             {"height",                required_argument, 0, 'h'},
             {"outputonly",            no_argument,       0, 'o'},
-            {"selectonly",            no_argument,       0, 1008},
+            {"selectonly",            no_argument,       0, 'S'},
             {"textcolor",             required_argument, 0, 1009},
             {"promptcolor",           required_argument, 0, 1010},
             {"backgroundcolor",       required_argument, 0, 1011},
             {"highlightcolor",        required_argument, 0, 1012},
+            {"tc",                    required_argument, 0, 1009},
+            {"pc",                    required_argument, 0, 1010},
+            {"bc",                    required_argument, 0, 1011},
+            {"hc",                    required_argument, 0, 1012},
             {"textafter",             no_argument,       0, 'a'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oa", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHITPWFS", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -939,7 +947,7 @@ void init(int argc, char **argv)
                 desktop_mode = 1;
                 break;
 
-            case 1005:
+            case 'G':
                 use_root_img = 1;
                 break;
 
@@ -951,11 +959,11 @@ void init(int argc, char **argv)
                 background_file = optarg;
                 break;
 
-            case 1001:
+            case 'I':
                 icon_padding = atoi(optarg);
                 break;
 
-            case 1006:
+            case 'T':
                 text_padding = atoi(optarg);
                 break;
 
@@ -971,7 +979,7 @@ void init(int argc, char **argv)
                 uborder = atoi(optarg);
                 break;
 
-            case 1002:
+            case 'P':
                 prompt_spacing = atoi(optarg);
                 break;
 
@@ -983,7 +991,7 @@ void init(int argc, char **argv)
                 input_file = optarg;
                 break;
 
-            case 1003:
+            case 'W':
                 windowed = 1;
                 break;
 
@@ -995,7 +1003,7 @@ void init(int argc, char **argv)
                 font_name = optarg;
                 break;
 
-            case 1004:
+            case 'F':
                 prompt_font_name = optarg;
                 break;
 
@@ -1027,7 +1035,7 @@ void init(int argc, char **argv)
                 output_only = 1;
                 break;
 
-            case 1008:
+            case 'S':
                 select_only = 1;
                 break;
 
@@ -1052,55 +1060,55 @@ void init(int argc, char **argv)
                 break;
 
             case '?':
-            case 1000:
+            case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
                 fprintf (stderr,"    xlunch is a program launcher/option selector similar to dmenu or rofi.\n");
                 fprintf (stderr,"    By default it launches in full-screen mode and terminates after a selection is made,\n");
                 fprintf (stderr,"    it is also possible to close xlunch by pressing Esc or the right mouse button.\n");
                 fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
-                fprintf (stderr,"        -d, --desktop               Desktop mode, always keep the launcher at background (behind other windows)\n");
-                fprintf (stderr,"                                    and keep it running after executing an app or a command.\n");
-                fprintf (stderr,"                                    In this mode xlunch never terminates.\n\n");
+                fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background (behind other windows)\n");
+                fprintf (stderr,"                                          and keep it running after executing an app or a command.\n");
+                fprintf (stderr,"                                          In this mode xlunch never terminates.\n\n");
                 fprintf (stderr,"    Functinal options:\n");
-                fprintf (stderr,"        -v, --version               Returns the version of xlunch\n");
-                fprintf (stderr,"        --help                      Shows this help message\n");
-                fprintf (stderr,"        -n, --noprompt              Hides the prompt, only allowing selection by icon\n");
-                fprintf (stderr,"        -o, --outputonly            Do not run the selected entry, only output it to stdout\n");
-                fprintf (stderr,"        --selectonly                Only allow an actual entry and not free-typed commands\n");
-                fprintf (stderr,"        -i, --input [file]          File to read entries from, defaults to stdin if data is available\n");
-                fprintf (stderr,"                                    otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
-                fprintf (stderr,"        -m, --multiple              Allow multiple instances running\n");
-                fprintf (stderr,"        -t, --voidclickterminate    Clicking anywhere that's not an entry terminates xlunch,\n");
-                fprintf (stderr,"                                    practical for touch screens.\n");
-                fprintf (stderr,"        --windowed                  Start in windowed mode\n\n");
+                fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
+                fprintf (stderr,"        -H, --help                        Shows this help message\n");
+                fprintf (stderr,"        -n, --noprompt                    Hides the prompt, only allowing selection by icon\n");
+                fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
+                fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
+                fprintf (stderr,"        -i, --input [file]                File to read entries from, defaults to stdin if data is available\n");
+                fprintf (stderr,"                                          otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
+                fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
+                fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
+                fprintf (stderr,"                                          practical for touch screens.\n");
+                fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
                 fprintf (stderr,"    effectively positions xlunch on the desired monitor. Use the following options:\n");
-                fprintf (stderr,"        -x, --xposition [i]         The x coordinate of the launcher window\n");
-                fprintf (stderr,"        -y, --yposition [i]         The y coordinate of the launcher window\n");
-                fprintf (stderr,"        -w, --width [i]             The width of the launcher window\n");
-                fprintf (stderr,"        -h, --height [i]            The height of the launcher window\n\n");
+                fprintf (stderr,"        -x, --xposition [i]               The x coordinate of the launcher window\n");
+                fprintf (stderr,"        -y, --yposition [i]               The y coordinate of the launcher window\n");
+                fprintf (stderr,"        -w, --width [i]                   The width of the launcher window\n");
+                fprintf (stderr,"        -h, --height [i]                  The height of the launcher window\n\n");
                 fprintf (stderr,"    Style options:\n");
-                fprintf (stderr,"        -p, --prompt [text]         The prompt asking for input (default: \"Run: \")\n");
-                fprintf (stderr,"        -f, --font [name]           Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n");
-                fprintf (stderr,"        --promptfont [name]         Font to use for the prompt (default: same as --font)\n");
-                fprintf (stderr,"        --rootwindowbackground      Use root windows background image\n");
-                fprintf (stderr,"        -g, --background [file]     Image to set as background (jpg/png)\n");
-                fprintf (stderr,"        --iconpadding [i]           Padding around icons (default: 10)\n");
-                fprintf (stderr,"        --textpadding [i]           Padding around entry titles (default: 10)\n");
-                fprintf (stderr,"        -c, --columns [i]           Number of columns to show (without this the max amount possible is used)\n");
-                fprintf (stderr,"        -r, --rows [i]              Numbers of rows to show (without this the max amount possible is used)\n");
-                fprintf (stderr,"        -b, --border [i]            Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
-                fprintf (stderr,"        --promptspacing [i]         Distance between the prompt and the icons (default: 48)\n");
-                fprintf (stderr,"        -s, --iconsize [i]          Size of the icons (default: 48)\n");
-                fprintf (stderr,"        -a, --textafter             Draw the title to the right of the icon instead of below, this option\n");
-                fprintf (stderr,"                                    automatically sets --columns to 1 but this can be overridden.\n");
-                fprintf (stderr,"        --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
-                fprintf (stderr,"        --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
-                fprintf (stderr,"        --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
-                fprintf (stderr,"                                    (NOTE: transparent background color does nothing)\n");
-                fprintf (stderr,"        --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
+                fprintf (stderr,"        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")\n");
+                fprintf (stderr,"        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n");
+                fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
+                fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
+                fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
+                fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
+                fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
+                fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
+                fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
+                fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
+                fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
+                fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
+                fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
+                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
+                fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
+                fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
+                fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
+                fprintf (stderr,"                                          (NOTE: transparent background color does nothing)\n");
+                fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
                 // Check if we came from the error block above or if this was a call with --help
                 if(c == '?'){
                     exit(1);
