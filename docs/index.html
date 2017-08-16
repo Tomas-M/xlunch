@@ -184,11 +184,11 @@ title;icon_path;cmd
 title;icon_path;cmd
 </code></pre>
 
-<p><code>title</code> is the name of the program which will be shown, <code>icon_path</code> is a
-path to an icon to show for the entry (png or jpg), and <code>cmd</code> is the command to be run
-or returned when this entry is selected. By default xlunch will show a ghost icon if the icon you
-specified couldn't be found, if you want to not have an icon you can simply leave the icon field
-empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
+<p><code>title</code> is the name of the program which will be shown (max length: 255), <code>icon_path</code> is a
+path to an icon to show for the entry (png or jpg, max length: 255), and <code>cmd</code> is the command to be run
+or returned when this entry is selected (max length: 511). A newline is required on the end of your last entry for it to be read.
+By default xlunch will show a ghost icon if the icon you specified couldn't be found, if you want to
+not have an icon you can simply leave the icon field empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
 create a menu hierarchy, you should use a special syntax. This syntax allows xlunch to replace its
 old process with the new one so you only have a single instance of xlunch running and don't get any
 overhead from running it through bash. In order to do this simply put <code>recur [options]</code>

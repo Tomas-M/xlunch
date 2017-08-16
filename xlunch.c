@@ -98,6 +98,7 @@ int prompt_x;
 int prompt_y;
 char * background_file = "";
 char * input_file = "";
+FILE * input_source = NULL;
 char * prompt = "";
 char * font_name = "";
 char * prompt_font_name = "";
@@ -384,14 +385,26 @@ Imlib_Image load_image(char * icon) {
                 break;
         }
         fprintf(stderr, "\n");
+        /*
         cleanup();
-        exit(1);
+        exit(1);*/
     }
     return image;
 }
 
 
-void push_app(char * title, char * icon, char * cmd, int x, int y)
+void clear_entries(){
+    node_t * current = entries;
+    entries = NULL;
+    while(current != NULL){
+        node_t * last = current;
+        current = current->next;
+        free(last);
+    }
+}
+
+
+void push_entry(char * title, char * icon, char * cmd, int x, int y)
 {
     node_t * current = entries;
     int hasicon = (strlen(icon) != 0);
@@ -400,7 +413,7 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
     if (hasicon) {
         Imlib_Image image = load_image(icon);
         if (image == NULL) {
-            icon = "/usr/share/icons/hicolor/48x48/entries/xlunch_ghost.png";
+            icon = "/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png";
         }
     }
     // empty list, add first directly
@@ -437,6 +450,23 @@ void push_app(char * title, char * icon, char * cmd, int x, int y)
 }
 
 
+void filter_entries()
+{
+    node_t * current = entries;
+
+    while (current != NULL)
+    {
+        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
+        else {
+            current->hidden=1;
+            current->hovered=0;
+            current->clicked=0;
+        }
+        current=current->next;
+    }
+}
+
+
 char *strtok_new(char * string, char const * delimiter){
    static char *source = NULL;
    char *p, *riturn = 0;
@@ -464,8 +494,7 @@ char* concat(const char *s1, const char *s2)
 }
 
 
-void parse_app_icons()
-{
+FILE * determine_input_source(){
     FILE * fp;
     char * homeconf = NULL;
 
@@ -474,7 +503,7 @@ void parse_app_icons()
     {
         homeconf = concat(home,"/.xlunch/entries.dsv");
     }
-
+    
     if (strlen(input_file)==0){
         fp = stdin;
         struct pollfd fds;
@@ -499,20 +528,40 @@ void parse_app_icons()
             fprintf(stderr, "title;icon_path;command\n");
             fprintf(stderr, "title;icon_path;command\n");
             fprintf(stderr, "title;icon_path;command\n");
-            return;
         }
     }
+    return fp;
+}
 
+
+int parse_entries()
+{
     char title[256]= {0};
     char icon[256]= {0};
     char cmd[512]= {0};
 
-    // title, icon, and cmd can each be 254 characters long
     char line[1022] = {0};
-    char *token;    
-
-    while(fgets(line, 1021, fp) != 0)
+    char *token;
+    int changed = 0;
+    if(input_source == stdin){
+        struct pollfd fds;
+        fds.fd = 0; /* this is STDIN */
+        fds.events = POLLIN;
+        int p = poll(&fds, 1, 0);
+        printf("Polling: %d\n", p);
+        if (p == 0){
+            return changed;
+        }
+    }
+    printf("Reading input\n" );
+    while(fgets(line, 1022, input_source))
     {
+        printf("Read line: %s\n",line);
+        if(strcmp(line,"\n") == 0){
+            clear_entries();
+            changed = 1;
+            continue;
+        }
         token = strtok_new(line, ";");
         int parsing = 0;
         while(token != NULL){
@@ -523,11 +572,8 @@ void parse_app_icons()
             int maxlen = (parsing == 2 ? 511 : 255);
             if(strlen(token) > maxlen){
                 fprintf(stderr, "Entry too long \"%s\", maximum length is %d characters!\n", token, maxlen);
-                //exit(1);
-                for(int i = parsing; i < 3; i++){
-                    token = strtok_new(NULL, ";\n");
-                }
-                continue;
+                parsing = 0;
+                break;
             }
             switch(parsing){
                 case 0:
@@ -540,14 +586,34 @@ void parse_app_icons()
                     strcpy(cmd, token);
                     break;
             }
-            parsing++;
             token = strtok_new(NULL, ";\n");
+            parsing++;
         }
-        push_app(title,icon,cmd,0,0);
+        if(parsing == 3) {
+            push_entry(title,icon,cmd,0,0);
+            changed = 1;
+        }
+        if(input_source == stdin){
+            struct pollfd fds;
+            fds.fd = 0; /* this is STDIN */
+            fds.events = POLLIN;
+            int p = poll(&fds, 1, 0);
+            if (p == 0){
+                break;
+            }
+        }
     }
-
-    arrange_positions();
-    fclose(fp);
+    printf("feof: %d\n", feof(input_source));
+    if(feof(input_source)){
+        fclose(input_source);
+        input_source = NULL;
+    }
+    printf("changed: %d\n", changed);
+    if(changed) {
+        filter_entries();
+        arrange_positions();
+    }
+    return changed;
 }
 
 
@@ -627,23 +693,6 @@ int get_root_image_to_imlib_data(DATA32 * direct)
 
     XDestroyImage(img);
     return 1;
-}
-
-
-void filter_entries()
-{
-    node_t * current = entries;
-
-    while (current != NULL)
-    {
-        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
-        else {
-            current->hidden=1;
-            current->hovered=0;
-            current->clicked=0;
-        }
-        current=current->next;
-    }
 }
 
 
@@ -1260,8 +1309,11 @@ int main(int argc, char **argv)
     // send to back or front, depending on settings
     restack();
 
-    // parse config file
-    parse_app_icons();
+    // parse entries file
+    input_source = determine_input_source();
+    if(input_source != NULL){
+        parse_entries();
+    }
 
 
     // prepare message for window manager that we are requesting fullscreen
@@ -1292,6 +1344,13 @@ int main(int argc, char **argv)
     {
         /* init our updates to empty */
         updates = imlib_updates_init();
+
+        if(input_source == stdin) {
+            int changed = parse_entries(input_source);
+            if(changed){
+                updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+            }
+        }
 
         /* while there are events form X - handle them */
         do

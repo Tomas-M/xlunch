@@ -1,7 +1,7 @@
 CC = gcc
 LDFLAGS = -lImlib2 -lX11
-CFLAGS ?= -O2 -s
-#CFLAGS ?= -ggdb # For debugging
+#CFLAGS ?= -O2 -s
+CFLAGS ?= -ggdb # For debugging
 
 all: xlunch entries.dsv
 
