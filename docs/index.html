@@ -73,8 +73,7 @@ like i3). There are also some other flags that could be of interest in this mode
 
 Functional options (these changes what xlunch does, or how it does it):
 <pre><code>-d, --desktop                     Desktop mode, always keep the launcher at background
-                                  (behind other windows) and keep it running after executing an app
-                                  or a command. In this mode xlunch never terminates.
+                                  (behind other windows), and ignore ESC and right mouse click.
 -v, --version                     Returns the version of xlunch
 -H, --help                        Shows this help message
 --name                            POSIX-esque way to specify the first part of WM_CLASS
@@ -88,6 +87,7 @@ Functional options (these changes what xlunch does, or how it does it):
 -m, --multiple                    Allow multiple instances running
 -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
                                   practical for touch screens.
+-q, --dontquit                    When an option is selected, don't close xlunch.
 -W, --windowed                    Start in windowed mode
 </code></pre>
 
@@ -129,6 +129,10 @@ entry dependent on the size of the text instead. Note however that this by defau
 <code>--columns</code> to 1, so override it with how many columns of text you would like. When 
 <code>--textafter</code> mode is enabled <code>--textpadding</code> is used as padding between the
 entry columns and <code>--iconpadding</code> is used on all sides of the entry box.</p>
+
+<p>In previous version desktop mode would by default fork of processes instead of terminating. This
+is now a separate option (<code>--dontquit</code>) so you can keep xlunch running no matter the
+mode.</p>
 
 <p>When loading fonts xlunch will look for them in the folders: <code>~/.local/share/fonts</code>,
 <code>~/.fonts</code>, <code>/usr/local/share/fonts</code>, <code>/usr/local/share/truetype</code>,
@@ -184,11 +188,11 @@ title;icon_path;cmd
 title;icon_path;cmd
 </code></pre>
 
-<p><code>title</code> is the name of the program which will be shown (max length: 255), <code>icon_path</code> is a
-path to an icon to show for the entry (png or jpg, max length: 255), and <code>cmd</code> is the command to be run
-or returned when this entry is selected (max length: 511). A newline is required on the end of your last entry for it to be read.
-By default xlunch will show a ghost icon if the icon you specified couldn't be found, if you want to
-not have an icon you can simply leave the icon field empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
+<p><code>title</code> is the name of the program which will be shown, <code>icon_path</code> is a
+path to an icon to show for the entry (png or jpg), and <code>cmd</code> is the command to be run
+or returned when this entry is selected. By default xlunch will show a ghost icon if the icon you
+specified couldn't be found, if you want to not have an icon you can simply leave the icon field
+empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
 create a menu hierarchy, you should use a special syntax. This syntax allows xlunch to replace its
 old process with the new one so you only have a single instance of xlunch running and don't get any
 overhead from running it through bash. In order to do this simply put <code>recur [options]</code>
@@ -198,6 +202,25 @@ name recur, simply add a space in front of it. NOTE: recur relies on splitting t
 arguments, this is currently only done on spaces, even those inside quotes, so it's not possible to
 pass arguments with spaces in them when using recur (this is how previous versions did all launching).
 </p>
+
+<p>If a completely empty line is encountered (ie. two sequential newlines), then all entries read
+up until that point will be removed and only entries after this empty line will appear. This is a
+feature that is intended for interfacing with xlunch from other scripts. If you create a named
+pipe and keep it open while starting xlunch it will read from this pipe and update the entries on
+the fly. This means that a script can write entries to this pipe and they will appear in xlunch,
+and all entries can be removed by passing two newlines in a row. Example:</p>
+
+<pre><code>mkfifo /tmp/xlunch-input # Create a named pipe
+cat > /tmp/xlunch-input & # Ensure that the pipe is open
+cat /tmp/xlunch-input | xlunch & # Start xlunch in the background, reading from the pipe
+echo "Hello;<icon path>;notify-send "Hello from xlunch" > /tmp/xlunch-input
+# This last line will add the entry "Hello" to the already running xlunch menu
+echo "Xlunch is great;;notify-send "quite great indeed" > /tmp/xlunch-input
+# This adds yet another entry
+echo "\nAll alone;;notify-send "where did the others go?" > /tmp/xlunch-input
+# Because of the first character being a newline xlunch will clear the two other
+# entries and add this one as the only entry.
+</code></pre>
 
 <p>During compilation, a sample entries file is created for you. By default, this entries file is
 installed into <code>/etc/xlunch/entries.dsv</code>. The file is created by reading the freedesktop
@@ -220,7 +243,7 @@ ignored.</p>
 xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entries.dsv
 
 # desktop mode:
-xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entries.dsv --desktop --multiple --noprompt
+xlunch --background wp.jpg --font "OpenSans-Regular.ttf/10" --input sample_entries.dsv --desktop --multiple --noprompt --dontquit
 </code></pre>
 
 <p><strong>Tips and tricks:</strong></p>

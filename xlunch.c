@@ -115,6 +115,7 @@ int uwidth = 0;
 int uheight = 0;
 int uborder = 0;
 int void_click_terminate = 0;
+int dont_quit = 0;
 int output_only = 0;
 int select_only = 0;
 int text_after = 0;
@@ -323,7 +324,6 @@ void pop_key()
 
 void cleanup()
 {
-    printf("Cleaning up!\n");
     flock(lock, LOCK_UN | LOCK_NB);
     // destroy window, disconnect display, and exit
     XDestroyWindow(disp,win);
@@ -332,7 +332,6 @@ void cleanup()
     if(input_source == stdin){
         fclose(input_source);
     }
-    printf("Done!\n");
 }
 
 
@@ -553,64 +552,72 @@ int parse_entries()
     char cmd[512]= {0};
 
     char line[1022] = {0};
-    char *token;
+    //char *token;
     int changed = 0;
+    int parsing = 0;
+    int position = 0;
+    int readstatus;
 
-    printf("Reading input\n" );
     struct pollfd fds;
-    fds.fd = 0; /* this is STDIN */
+    fds.fd = fileno(input_source);
     fds.events = POLLIN;
-    while((input_source == stdin ? poll(&fds, 1, 0) : 1) && fgets(line, 1022, input_source))
-    {
-        printf("Read line: %s, len: %d, chars: ",line, strlen(line));
-        for(int i=0;i<strlen(line);i++){
-            printf("%#x ", line[i]);
+    while(poll(&fds, 1, 0)) {
+        if(parsing == 3){
+            fprintf(stderr, "Unknown format, only three sections are allowed!\n");
+            exit(1);
         }
-        printf("\n");
-        if(strcmp(line,"\n") == 0){
-            clear_entries();
-            changed = 1;
-            continue;
+        char b;
+        readstatus = read(fds.fd, &b, 1);
+        if(readstatus <= 0){
+            break;
         }
-        token = strtok_new(line, ";");
-        int parsing = 0;
-        while(token != NULL){
-            if(parsing == 3){
-                fprintf(stderr, "Unknown format in line \"%s\", only three sections are allowed!\n", line);
-                exit(1);
+        if(b == ';') {
+            b = '\0';    
+        } else if (b == '\n') {
+            b = '\0';
+            if(parsing == 0){
+                clear_entries();
+                changed = 1;
+                continue;
             }
-            int maxlen = (parsing == 2 ? 511 : 255);
-            if(strlen(token) > maxlen){
-                fprintf(stderr, "Entry too long \"%s\", maximum length is %d characters!\n", token, maxlen);
-                parsing = 0;
+        }
+        switch(parsing){
+            case 0: 
+                title[position] = b;
                 break;
-            }
-            switch(parsing){
-                case 0:
-                    strcpy(title, token);
-                    break;
-                case 1:
-                    strcpy(icon, token);
-                    break;
-                case 2:
-                    strcpy(cmd, token);
-                    break;
-            }
-            token = strtok_new(NULL, ";\n");
-            parsing++;
+            case 1: 
+                icon[position] = b;
+                break;
+            case 2:
+                cmd[position] = b;
+                break;
         }
-        if(parsing == 3) {
-            printf("New entry %s\n",title);
+        position++;
+        if(b == '\0') {
+            position = 0;
+            if(parsing == 2) {
+                push_entry(title,icon,cmd,0,0);
+                changed = 1;
+                parsing = 0;
+            } else {
+                parsing++;
+            }
+        }
+        int maxlen = (parsing == 2 ? 511 : 255);
+        if(position == maxlen){
+            fprintf(stderr, "Entry too long, maximum length is %d characters!\n", maxlen);
+            break;
+        }
+    }
+    if(readstatus == 0){
+        if(parsing == 2){
+            cmd[position]='\0';
             push_entry(title,icon,cmd,0,0);
             changed = 1;
         }
-    }
-    printf("feof: %d\n", feof(input_source));
-    if(feof(input_source)){
-        fclose(input_source);
+        close(fds.fd);
         input_source = NULL;
     }
-    printf("changed: %d\n", changed);
     if(changed) {
         filter_entries();
         arrange_positions();
@@ -739,7 +746,7 @@ void run_command(char * cmd_orig)
 {
     if(output_only){
         fprintf(stdout, "%s\n", cmd_orig);
-        if(!desktop_mode){
+        if(!dont_quit){
             cleanup();
             exit(0);
         } else {
@@ -776,7 +783,7 @@ void run_command(char * cmd_orig)
 
     restack();
 
-    if (desktop_mode)
+    if (dont_quit)
     {
         pid_t pid=fork();
         if (pid==0) // child process
@@ -985,11 +992,12 @@ void init(int argc, char **argv)
             {"hc",                    required_argument, 0, 1012},
             {"textafter",             no_argument,       0, 'a'},
             {"name",                  required_argument, 0, 1013},
+            {"dontquit",              required_argument, 0, 'q'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:q", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1115,6 +1123,10 @@ void init(int argc, char **argv)
                 program_name = optarg;
                 break;
 
+            case 'q':
+                dont_quit = 1;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1122,7 +1134,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"    By default it launches in full-screen mode and terminates after a selection is made,\n");
                 fprintf (stderr,"    it is also possible to close xlunch by pressing Esc or the right mouse button.\n");
                 fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
-                fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background (behind other windows)\n");
+                fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background\n");
+                fprintf (stderr,"                                          (behind other windows), and ignore ESC and right mouse click.\n");
                 fprintf (stderr,"                                          and keep it running after executing an app or a command.\n");
                 fprintf (stderr,"                                          In this mode xlunch never terminates.\n\n");
                 fprintf (stderr,"    Functinal options:\n");
@@ -1138,6 +1151,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
                 fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                          practical for touch screens.\n");
+                fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
