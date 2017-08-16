@@ -41,6 +41,8 @@ Display *disp;
 Window   win;
 Visual  *vis;
 Colormap cm;
+int x11_fd;
+struct pollfd eventfds[2];
 
 XIM im;
 XIC ic;
@@ -321,11 +323,16 @@ void pop_key()
 
 void cleanup()
 {
+    printf("Cleaning up!\n");
     flock(lock, LOCK_UN | LOCK_NB);
     // destroy window, disconnect display, and exit
     XDestroyWindow(disp,win);
     XFlush(disp);
     XCloseDisplay(disp);
+    if(input_source == stdin){
+        fclose(input_source);
+    }
+    printf("Done!\n");
 }
 
 
@@ -506,6 +513,11 @@ FILE * determine_input_source(){
     
     if (strlen(input_file)==0){
         fp = stdin;
+        int flags;
+        int fd = fileno(fp);
+        flags = fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        fcntl(fd, F_SETFL, flags);
         struct pollfd fds;
         fds.fd = 0; /* this is STDIN */
         fds.events = POLLIN;
@@ -543,20 +555,18 @@ int parse_entries()
     char line[1022] = {0};
     char *token;
     int changed = 0;
-    if(input_source == stdin){
-        struct pollfd fds;
-        fds.fd = 0; /* this is STDIN */
-        fds.events = POLLIN;
-        int p = poll(&fds, 1, 0);
-        printf("Polling: %d\n", p);
-        if (p == 0){
-            return changed;
-        }
-    }
+
     printf("Reading input\n" );
-    while(fgets(line, 1022, input_source))
+    struct pollfd fds;
+    fds.fd = 0; /* this is STDIN */
+    fds.events = POLLIN;
+    while((input_source == stdin ? poll(&fds, 1, 0) : 1) && fgets(line, 1022, input_source))
     {
-        printf("Read line: %s\n",line);
+        printf("Read line: %s, len: %d, chars: ",line, strlen(line));
+        for(int i=0;i<strlen(line);i++){
+            printf("%#x ", line[i]);
+        }
+        printf("\n");
         if(strcmp(line,"\n") == 0){
             clear_entries();
             changed = 1;
@@ -590,17 +600,9 @@ int parse_entries()
             parsing++;
         }
         if(parsing == 3) {
+            printf("New entry %s\n",title);
             push_entry(title,icon,cmd,0,0);
             changed = 1;
-        }
-        if(input_source == stdin){
-            struct pollfd fds;
-            fds.fd = 0; /* this is STDIN */
-            fds.events = POLLIN;
-            int p = poll(&fds, 1, 0);
-            if (p == 0){
-                break;
-            }
         }
     }
     printf("feof: %d\n", feof(input_source));
@@ -1338,6 +1340,15 @@ int main(int argc, char **argv)
     if (!windowed && !desktop_mode)
         XSendEvent(disp, DefaultRootWindow(disp), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*)&msg);
 
+    // Get the FD of the X11 display
+    x11_fd = ConnectionNumber(disp);
+    eventfds[0].fd = x11_fd;
+    eventfds[0].events = POLLIN || POLLPRI || POLLOUT || POLLRDHUP;
+    if(input_source == stdin) {
+        eventfds[1].fd = 0; /* this is STDIN */
+        eventfds[1].events = POLLIN;
+    }
+
 
     /* infinite event loop */
     for (;;)
@@ -1345,363 +1356,385 @@ int main(int argc, char **argv)
         /* init our updates to empty */
         updates = imlib_updates_init();
 
-        if(input_source == stdin) {
+        /*if(input_source == stdin) {
             int changed = parse_entries(input_source);
             if(changed){
                 updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
             }
+        }*/
+
+        // Poll for events, while blocking until one becomes available
+        int poll_result;
+        if(!XPending(disp)){
+            poll_result = poll(eventfds, (input_source == stdin ? 2 : 1), -1);
+        } else {
+            poll_result = 1;
+            eventfds[0].revents = 1;
         }
+        //int poll_result = 1;
+        //eventfds[0].revents = 1;
 
-        /* while there are events form X - handle them */
-        do
-        {
-            XNextEvent(disp, &ev);
-
-            // allow through only UTF8 events
-            if (XFilterEvent(&ev, win)) continue;
-
-            switch (ev.type)
-            {
-
-            case Expose:
-                /* window rectangle was exposed - add it to the list of */
-                /* rectangles we need to re-render */
-                updates = imlib_update_append_rect(updates, ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
-                break;
-
-            case FocusIn:
-                restack();
-                break;
-
-            case FocusOut:
-                restack();
-                break;
-
-
-            case ConfigureNotify:
-            {
-                if (screen_width!=ev.xconfigure.width || screen_height!=ev.xconfigure.height)
-                {
-                    screen_width=ev.xconfigure.width;
-                    screen_height=ev.xconfigure.height;
-                    if (!use_root_img) update_background_image();
-                    recalc_cells();
-                    arrange_positions();
+        if(poll_result < 0){
+            // An error occured, abort
+            cleanup();
+            exit(1);
+        } else {
+            if(input_source == stdin && eventfds[1].revents != 0){
+                int changed = parse_entries(input_source);
+                if(changed){
                     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
                 }
-                break;
             }
-
-            case ButtonPress:
-            {
-                if (ev.xbutton.button==3 && !desktop_mode) {
-                    cleanup();
-                    exit(0);
-                }
-                if (ev.xbutton.button!=1) break;
-                node_t * current = entries;
-                int voidclicked = 1;
-                while (current != NULL)
+            if(eventfds[0].revents != 0) {
+                /* while there are events form X - handle them */
+                while (XPending(disp))
                 {
-                    if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                        set_clicked(current,1);
-                        voidclicked = 0;
-                    }
-                    else set_clicked(current,0);
-                    current = current->next;
-                }
+                    XNextEvent(disp, &ev);
 
-                if (voidclicked && void_click_terminate) {
-                    cleanup();
-                    exit(0);
-                }
-                break;
-            }
+                    // allow through only UTF8 events
+                    if (XFilterEvent(&ev, win)) continue;
 
-            case ButtonRelease:
-            {
-                node_t * current = entries;
-
-                while (current != NULL)
-                {
-                    if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
-                    set_clicked(current, 0); // button release means all cells are not clicked
-                    current = current->next;
-                }
-
-                break;
-            }
-
-            // refresh keyboard layout if changed
-            case KeymapNotify:
-                XRefreshKeyboardMapping(&ev.xmapping);
-                break;
-
-            case KeyPress:
-            {
-                // keyboard events
-                int count = 0;
-                KeySym keycode = 0;
-                Status status = 0;
-                char kbdbuf[20]= {0};
-                count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
-
-                if (keycode==XK_Escape && !desktop_mode)
-                {
-                    cleanup();
-                    exit(0);
-                }
-
-                if (keycode==XK_Return || keycode==XK_KP_Enter)
-                {
-                    // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
-                    node_t * current = entries;
-                    node_t * selected = NULL;
-                    node_t * selected_one = NULL;
-                    int nb=0;
-                    while (current != NULL)
+                    switch (ev.type)
                     {
-                        if (!current->hidden)
+
+                    case Expose:
+                        /* window rectangle was exposed - add it to the list of */
+                        /* rectangles we need to re-render */
+                        updates = imlib_update_append_rect(updates, ev.xexpose.x, ev.xexpose.y, ev.xexpose.width, ev.xexpose.height);
+                        break;
+
+                    case FocusIn:
+                        restack();
+                        break;
+
+                    case FocusOut:
+                        restack();
+                        break;
+
+
+                    case ConfigureNotify:
+                    {
+                        if (screen_width!=ev.xconfigure.width || screen_height!=ev.xconfigure.height)
                         {
-                            nb++;
-                            selected_one=current;
+                            screen_width=ev.xconfigure.width;
+                            screen_height=ev.xconfigure.height;
+                            if (!use_root_img) update_background_image();
+                            recalc_cells();
+                            arrange_positions();
+                            updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
                         }
-                        if (!current->hidden && current->hovered) selected=current;
-                        current=current->next;
+                        break;
                     }
-                    /* if only 1 app was filtered, consider it selected */
-                    if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd);
-                    else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
-                    // else run the command entered by commandline, if the command prompt is used
-                    else if (!no_prompt && !select_only) run_command(commandline);
-                }
 
-                if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
-                        || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right
-                        || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
-                {
-                    int i=0;
-                    if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
-                    if (keycode==XK_Up || keycode==XK_KP_Up || keycode==XK_Page_Up) i=-columns;
-                    if (keycode==XK_Down || keycode==XK_KP_Down || keycode==XK_Page_Down) i=columns;
-                    if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
-
-                    int j=0,n=0;
-                    node_t * current = entries;
-                    node_t * selected = NULL;
-                    while (current != NULL)
+                    case ButtonPress:
                     {
-                        if (!current->hidden)
+                        if (ev.xbutton.button==3 && !desktop_mode) {
+                            cleanup();
+                            exit(0);
+                        }
+                        if (ev.xbutton.button!=1) break;
+                        node_t * current = entries;
+                        int voidclicked = 1;
+                        while (current != NULL)
                         {
-                            if (current->y+cell_height<=screen_height-border) n++;
-                            if (selected==NULL) j++;
-                            if (current->hovered) selected=current;
+                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+                                set_clicked(current,1);
+                                voidclicked = 0;
+                            }
+                            else set_clicked(current,0);
+                            current = current->next;
+                        }
+
+                        if (voidclicked && void_click_terminate) {
+                            cleanup();
+                            exit(0);
+                        }
+                        break;
+                    }
+
+                    case ButtonRelease:
+                    {
+                        node_t * current = entries;
+
+                        while (current != NULL)
+                        {
+                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
+                            set_clicked(current, 0); // button release means all cells are not clicked
+                            current = current->next;
+                        }
+
+                        break;
+                    }
+
+                    // refresh keyboard layout if changed
+                    case KeymapNotify:
+                        XRefreshKeyboardMapping(&ev.xmapping);
+                        break;
+
+                    case KeyPress:
+                    {
+                        // keyboard events
+                        int count = 0;
+                        KeySym keycode = 0;
+                        Status status = 0;
+                        char kbdbuf[20]= {0};
+                        count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
+
+                        if (keycode==XK_Escape && !desktop_mode)
+                        {
+                            cleanup();
+                            exit(0);
+                        }
+
+                        if (keycode==XK_Return || keycode==XK_KP_Enter)
+                        {
+                            // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
+                            node_t * current = entries;
+                            node_t * selected = NULL;
+                            node_t * selected_one = NULL;
+                            int nb=0;
+                            while (current != NULL)
+                            {
+                                if (!current->hidden)
+                                {
+                                    nb++;
+                                    selected_one=current;
+                                }
+                                if (!current->hidden && current->hovered) selected=current;
+                                current=current->next;
+                            }
+                            /* if only 1 app was filtered, consider it selected */
+                            if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd);
+                            else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
+                            // else run the command entered by commandline, if the command prompt is used
+                            else if (!no_prompt && !select_only) run_command(commandline);
+                        }
+
+                        if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
+                                || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right
+                                || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
+                        {
+                            int i=0;
+                            if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
+                            if (keycode==XK_Up || keycode==XK_KP_Up || keycode==XK_Page_Up) i=-columns;
+                            if (keycode==XK_Down || keycode==XK_KP_Down || keycode==XK_Page_Down) i=columns;
+                            if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
+
+                            int j=0,n=0;
+                            node_t * current = entries;
+                            node_t * selected = NULL;
+                            while (current != NULL)
+                            {
+                                if (!current->hidden)
+                                {
+                                    if (current->y+cell_height<=screen_height-border) n++;
+                                    if (selected==NULL) j++;
+                                    if (current->hovered) selected=current;
+                                    set_hover(current,0);
+                                }
+                                current=current->next;
+                            }
+
+                            if (selected==NULL) {
+                                selected=entries;
+                                i=0;
+                                j=0;
+                            }
+                            current=entries;
+
+                            int k=i+j;
+                            if (k>n || keycode==XK_End) k=n;
+                            if (k<1 || keycode==XK_Home) k=1;
+                            while (current != NULL)
+                            {
+                                if (!current->hidden)
+                                {
+                                    k--;
+                                    if (k==0) {
+                                        set_hover(current,1);
+                                        hoverset=KEYBOARD;
+                                    }
+                                }
+                                current=current->next;
+                            }
+
+                            continue; // do not conitnue
+                        }
+
+                        if (keycode==XK_Delete || keycode==XK_BackSpace)
+                            pop_key();
+                        else if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
+                            if (!no_prompt) push_key(kbdbuf);
+
+                        joincmdline();
+                        joincmdlinetext();
+                        filter_entries();
+                        arrange_positions();
+
+                        // we used keyboard to type command. So unselect all icons.
+                        node_t * current = entries;
+                        while (current != NULL)
+                        {
                             set_hover(current,0);
+                            set_clicked(current,0);
+                            current = current->next;
                         }
-                        current=current->next;
+
+                        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                        break;
                     }
 
-                    if (selected==NULL) {
-                        selected=entries;
-                        i=0;
-                        j=0;
-                    }
-                    current=entries;
+                    case KeyRelease:
+                        break;
 
-                    int k=i+j;
-                    if (k>n || keycode==XK_End) k=n;
-                    if (k<1 || keycode==XK_Home) k=1;
-                    while (current != NULL)
+                    case MotionNotify:
                     {
-                        if (!current->hidden)
+                        node_t * current = entries;
+
+                        while (current != NULL)
                         {
-                            k--;
-                            if (k==0) {
+                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
                                 set_hover(current,1);
-                                hoverset=KEYBOARD;
+                                hoverset=MOUSE;
+                            }
+                            else {
+                                set_hover(current,0);
+                                set_clicked(current,0);
+                            }
+                            current = current->next;
+                        }
+                        break;
+                    }
+
+                    default:
+                        /* any other events - do nothing */
+                        break;
+                    }
+                }
+            }
+            /* no more events for now ? ok - idle time so lets draw stuff */
+
+            /* take all the little rectangles to redraw and merge them into */
+            /* something sane for rendering */
+            updates = imlib_updates_merge_for_rendering(updates, screen_width, screen_height);
+
+            for (current_update = updates;   current_update;    current_update = imlib_updates_get_next(current_update))
+            {
+                int up_x, up_y, up_w, up_h;
+
+                /* find out where the first update is */
+                imlib_updates_get_coordinates(current_update, &up_x, &up_y, &up_w, &up_h);
+
+                /* create our buffer image for rendering this update */
+                buffer = imlib_create_image(up_w, up_h);
+
+                /* we can blend stuff now */
+                imlib_context_set_blend(1);
+
+                imlib_context_set_image(buffer);
+                /* blend background image onto the buffer */
+                imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
+
+                node_t * current = entries;
+                int drawn = 0;
+                Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
+
+                while (current != NULL)
+                {
+                    if (!current->hidden)
+                    {
+                        if (current->hovered)
+                        {
+                            imlib_context_set_image(buffer);
+                            c = XCreateFontCursor(disp,XC_hand1);
+                            imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
+                            imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
+                        }
+                        if (strlen(current->icon) != 0) {
+                            image=imlib_load_image(current->icon);
+                            if (image)
+                            {
+                                imlib_context_set_image(image);
+                                w = imlib_image_get_width();
+                                h = imlib_image_get_height();
+                                imlib_context_set_image(buffer);
+
+                                int d;
+                                if (current->clicked) d=2;
+                                else d=0;
+
+                                imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
+                                                                 current->x - up_x + icon_padding+d, current->y - up_y +icon_padding+d, icon_size-d*2, icon_size-d*2);
+                                
+                                imlib_context_set_image(image);
+                                imlib_free_image();
                             }
                         }
-                        current=current->next;
-                    }
-
-                    continue; // do not conitnue
-                }
-
-                if (keycode==XK_Delete || keycode==XK_BackSpace)
-                    pop_key();
-                else if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
-                    if (!no_prompt) push_key(kbdbuf);
-
-                joincmdline();
-                joincmdlinetext();
-                filter_entries();
-                arrange_positions();
-
-                // we used keyboard to type command. So unselect all icons.
-                node_t * current = entries;
-                while (current != NULL)
-                {
-                    set_hover(current,0);
-                    set_clicked(current,0);
-                    current = current->next;
-                }
-
-                updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-                break;
-            }
-
-            case KeyRelease:
-                break;
-
-            case MotionNotify:
-            {
-                node_t * current = entries;
-
-                while (current != NULL)
-                {
-                    if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                        set_hover(current,1);
-                        hoverset=MOUSE;
-                    }
-                    else {
-                        set_hover(current,0);
-                        set_clicked(current,0);
-                    }
-                    current = current->next;
-                }
-                break;
-            }
-
-            default:
-                /* any other events - do nothing */
-                break;
-            }
-        }
-
-
-        while (XPending(disp));
-        /* no more events for now ? ok - idle time so lets draw stuff */
-
-        /* take all the little rectangles to redraw and merge them into */
-        /* something sane for rendering */
-        updates = imlib_updates_merge_for_rendering(updates, screen_width, screen_height);
-
-        for (current_update = updates;   current_update;    current_update = imlib_updates_get_next(current_update))
-        {
-            int up_x, up_y, up_w, up_h;
-
-            /* find out where the first update is */
-            imlib_updates_get_coordinates(current_update, &up_x, &up_y, &up_w, &up_h);
-
-            /* create our buffer image for rendering this update */
-            buffer = imlib_create_image(up_w, up_h);
-
-            /* we can blend stuff now */
-            imlib_context_set_blend(1);
-
-            imlib_context_set_image(buffer);
-            /* blend background image onto the buffer */
-            imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
-
-            node_t * current = entries;
-            int drawn = 0;
-            Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
-
-            while (current != NULL)
-            {
-                if (!current->hidden)
-                {
-                    if (current->hovered)
-                    {
-                        imlib_context_set_image(buffer);
-                        c = XCreateFontCursor(disp,XC_hand1);
-                        imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
-                        imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
-                    }
-                    if (strlen(current->icon) != 0) {
-                        image=imlib_load_image(current->icon);
-                        if (image)
+                        /* draw text under icon */
+                        font = load_font();
+                        if (font)
                         {
-                            imlib_context_set_image(image);
-                            w = imlib_image_get_width();
-                            h = imlib_image_get_height();
                             imlib_context_set_image(buffer);
+                            int text_w;
+                            int text_h;
+
+                            const size_t osz = strlen(current->title);
+                            size_t sz = osz;
+                            imlib_context_set_font(font);
+                            do
+                            {
+                                strncpyutf8(title,current->title,sz);
+                                if(sz != osz)
+                                    strcat(title,"..");
+                                imlib_get_text_size(title, &text_w, &text_h);
+                                sz--;
+                            } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*3 : icon_padding*2) + icon_size : 2*text_padding) && sz>0);
 
                             int d;
-                            if (current->clicked) d=2;
+                            if (current->clicked==1) d=4;
                             else d=0;
 
-                            imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                             current->x - up_x + icon_padding+d, current->y - up_y +icon_padding+d, icon_size-d*2, icon_size-d*2);
-                            
-                            imlib_context_set_image(image);
-                            imlib_free_image();
+                            if (text_after) {
+                                draw_text_with_shadow(current->x - up_x + (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size, current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+                            } else {
+                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + icon_padding*2 + icon_size, title, text_color);
+                            }
+
+                            /* free the font */
+                            imlib_free_font();
                         }
+                        drawn++;
                     }
-                    /* draw text under icon */
-                    font = load_font();
+                    if (drawn == columns*rows)
+                        break;
+                    current = current->next;
+                }
+
+                XDefineCursor(disp,win,c);
+
+                /* set the buffer image as our current image */
+                imlib_context_set_image(buffer);
+
+                /* draw text */
+                if (!no_prompt) {
+                    font = load_prompt_font();
                     if (font)
                     {
-                        imlib_context_set_image(buffer);
-                        int text_w;
-                        int text_h;
-
-                        const size_t osz = strlen(current->title);
-                        size_t sz = osz;
                         imlib_context_set_font(font);
-                        do
-                        {
-                            strncpyutf8(title,current->title,sz);
-                            if(sz != osz)
-                                strcat(title,"..");
-                            imlib_get_text_size(title, &text_w, &text_h);
-                            sz--;
-                        } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*3 : icon_padding*2) + icon_size : 2*text_padding) && sz>0);
-
-                        int d;
-                        if (current->clicked==1) d=4;
-                        else d=0;
-
-                        if (text_after) {
-                            draw_text_with_shadow(current->x - up_x + (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size, current->y - up_y + cell_height/2 - font_height/2, title, text_color);
-                        } else {
-                            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + icon_padding*2 + icon_size, title, text_color);
-                        }
-
+                        draw_text_with_shadow(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext, prompt_color);
                         /* free the font */
                         imlib_free_font();
                     }
-                    drawn++;
                 }
-                if (drawn == columns*rows)
-                    break;
-                current = current->next;
+
+
+                /* don't blend the image onto the drawable - slower */
+                imlib_context_set_blend(0);
+                /* render the image at 0, 0 */
+                imlib_render_image_on_drawable(up_x, up_y);
+                /* don't need that temporary buffer image anymore */
+                imlib_free_image();
             }
-
-            XDefineCursor(disp,win,c);
-
-            /* set the buffer image as our current image */
-            imlib_context_set_image(buffer);
-
-            /* draw text */
-            if (!no_prompt) {
-                font = load_prompt_font();
-                if (font)
-                {
-                    imlib_context_set_font(font);
-                    draw_text_with_shadow(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext, prompt_color);
-                    /* free the font */
-                    imlib_free_font();
-                }
-            }
-
-
-            /* don't blend the image onto the drawable - slower */
-            imlib_context_set_blend(0);
-            /* render the image at 0, 0 */
-            imlib_render_image_on_drawable(up_x, up_y);
-            /* don't need that temporary buffer image anymore */
-            imlib_free_image();
         }
         /* if we had updates - free them */
         if (updates)
