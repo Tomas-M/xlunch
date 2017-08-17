@@ -906,45 +906,42 @@ void update_background_image()
 
     /* fill the window background */
     background = imlib_create_image(screen_width, screen_height);
-    imlib_context_set_image(background);
+    // When xlunch is launched and there is another full screen window 'background' was NULL
+    if(background) {
+        imlib_context_set_image(background);
 
-    if (use_root_img)
-    {
-        DATA32 * direct = imlib_image_get_data();
-        int ok = get_root_image_to_imlib_data(direct);
-        if (ok)
-        {
-            imlib_image_put_back_data(direct);
-            imlib_context_set_color(0, 0, 0, 100);
-            imlib_context_set_blend(1);
-            imlib_image_fill_rectangle(0,0, screen_width, screen_height);
-            imlib_context_set_blend(0);
-        }
-    }
-    else // load background from file
-        if (strlen(background_file)>0)
-        {
-            image = imlib_load_image(background_file);
-            imlib_context_set_image(image);
-            if (image)
-            {
-                int w = imlib_image_get_width();
-                int h = imlib_image_get_height();
-                imlib_context_set_image(background);
+        if (use_root_img) {
+            DATA32 * direct = imlib_image_get_data();
+            int ok = get_root_image_to_imlib_data(direct);
+            if (ok) {
+                imlib_image_put_back_data(direct);
                 imlib_context_set_color(0, 0, 0, 100);
                 imlib_context_set_blend(1);
-                imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
                 imlib_image_fill_rectangle(0,0, screen_width, screen_height);
                 imlib_context_set_blend(0);
-                imlib_context_set_image(image);
-                imlib_free_image();
+            }
+        } else{ // load background from file
+            if (strlen(background_file)>0) {
+                image = imlib_load_image(background_file);
+                if (image) {
+                    imlib_context_set_image(image);
+                    int w = imlib_image_get_width();
+                    int h = imlib_image_get_height();
+                    imlib_context_set_image(background);
+                    imlib_context_set_color(0, 0, 0, 100);
+                    imlib_context_set_blend(1);
+                    imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
+                    imlib_image_fill_rectangle(0,0, screen_width, screen_height);
+                    imlib_context_set_blend(0);
+                    imlib_context_set_image(image);
+                    imlib_free_image();
+                }
+            } else {
+                imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
+                imlib_image_fill_rectangle(0,0, screen_width, screen_height);
             }
         }
-        else
-        {
-            imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
-            imlib_image_fill_rectangle(0,0, screen_width, screen_height);
-        }
+    }
 }
 
 void draw_text_with_shadow(int posx, int posy, char * text, color_t color) {
@@ -1003,7 +1000,7 @@ void init(int argc, char **argv)
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:S:qR", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqR", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
