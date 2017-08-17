@@ -1223,8 +1223,7 @@ void init(int argc, char **argv)
 }
 
 /* the program... */
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     /* events we get from X */
     XEvent ev;
     /* our virtual framebuffer image we draw into */
@@ -1311,7 +1310,7 @@ int main(int argc, char **argv)
     classHint = XAllocClassHint();
     if (classHint) {
         classHint->res_name = basename(program_name);
-        classHint->res_class = (windowed ? "xlunch_windowed" : (desktop_mode ? "xlunch_desktop" : "xlunch_fullscreen"));
+        classHint->res_class = (windowed ? "xlunch-windowed" : (desktop_mode ? "xlunch-desktop" : "xlunch-fullscreen"));
     }
     XSetClassHint(disp, win, classHint);
     XFree(classHint);
