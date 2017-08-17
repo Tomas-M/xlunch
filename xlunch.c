@@ -426,11 +426,11 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     }
 
     // Set default values for internal state
-    new_node->x=0;
-    new_node->y=0;
-    new_node->hidden=0;
-    new_node->hovered=0;
-    new_node->clicked=0;
+    new_entry->x=0;
+    new_entry->y=0;
+    new_entry->hidden=0;
+    new_entry->hovered=0;
+    new_entry->clicked=0;
 
     // empty list, add first directly
     if (current==NULL)
@@ -441,7 +441,6 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     }
 
     // Otherwise determine position
-    node_t * new_node;
     if(!reverse){
         // Go to end of list and add there
         while (current->next != NULL) {
@@ -449,12 +448,10 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
         }
         current->next = new_entry;
         current->next->next = NULL;
-        new_node = current->next;
     } else {
         // Add at head of list
-        new_node = new_entry;
-        new_node->next = entries;
-        entries = new_node;
+        new_entry->next = entries;
+        entries = new_entry;
     }
 }
 
@@ -1006,7 +1003,7 @@ void init(int argc, char **argv)
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:qR", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:S:qR", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
