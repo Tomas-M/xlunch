@@ -88,6 +88,7 @@ Functional options (these changes what xlunch does, or how it does it):
 -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
                                   practical for touch screens.
 -q, --dontquit                    When an option is selected, don't close xlunch.
+-R, --reverse                     All entries in xlunch are reversly ordered
 -W, --windowed                    Start in windowed mode
 </code></pre>
 
@@ -205,20 +206,25 @@ pass arguments with spaces in them when using recur (this is how previous versio
 
 <p>If a completely empty line is encountered (ie. two sequential newlines), then all entries read
 up until that point will be removed and only entries after this empty line will appear. This is a
-feature that is intended for interfacing with xlunch from other scripts. If you create a named
-pipe and keep it open while starting xlunch it will read from this pipe and update the entries on
-the fly. This means that a script can write entries to this pipe and they will appear in xlunch,
-and all entries can be removed by passing two newlines in a row. Example:</p>
+feature that is intended for interfacing with xlunch from other scripts. There are many programs
+that create this kind of output, like for example Conky, which can be piped directly to xlunch.
+Sometimes you want new output to appear on the top of the list instead of at the bottom, to achieve
+this you can use the <code>--reverse</code> switch. To add entries yourself you can create a named
+pipe and keep it open while starting xlunch. xlunch will then read from this pipe and update the
+entries on the fly. So you can write a script that passes entries to this pipe and they will appear
+in xlunch, and all entries can be removed by passing two newlines in a row. Example:</p>
 
 <pre><code>mkfifo /tmp/xlunch-input # Create a named pipe
-cat > /tmp/xlunch-input & # Ensure that the pipe is open
+cat > /tmp/xlunch-input & # Ensure that the pipe stays open
+cat entries.dsv > /tmp/xlunch-input & # Write some initial data to the pipe
+# This is neccesarry to avoid xlunch seeing the pipe as empty
 cat /tmp/xlunch-input | xlunch & # Start xlunch in the background, reading from the pipe
-echo "Hello;<icon path>;notify-send "Hello from xlunch" > /tmp/xlunch-input
+echo "Hello;<icon path>;notify-send 'Hello from xlunch'" > /tmp/xlunch-input
 # This last line will add the entry "Hello" to the already running xlunch menu
-echo "Xlunch is great;;notify-send "quite great indeed" > /tmp/xlunch-input
+echo "Xlunch is great;;notify-send 'quite great indeed'" > /tmp/xlunch-input
 # This adds yet another entry
-echo "\nAll alone;;notify-send "where did the others go?" > /tmp/xlunch-input
-# Because of the first character being a newline xlunch will clear the two other
+echo -e "\nAll alone;;notify-send 'where did the others go?'" > /tmp/xlunch-input
+# Because of the first character being a newline xlunch will clear the other
 # entries and add this one as the only entry.
 </code></pre>
 

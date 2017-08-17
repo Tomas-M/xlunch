@@ -116,6 +116,7 @@ int uheight = 0;
 int uborder = 0;
 int void_click_terminate = 0;
 int dont_quit = 0;
+int reverse = 0;
 int output_only = 0;
 int select_only = 0;
 int text_after = 0;
@@ -410,49 +411,51 @@ void clear_entries(){
 }
 
 
-void push_entry(char * title, char * icon, char * cmd, int x, int y)
+void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int x, int y)
 {
     node_t * current = entries;
-    int hasicon = (strlen(icon) != 0);
+    int hasicon = (strlen(new_entry->icon) != 0);
+    
     /* Pre-load the image into the cache, this is done to check for error messages
      * If a user has more images then can be shown this might incur a performance hit */
     if (hasicon) {
-        Imlib_Image image = load_image(icon);
+        Imlib_Image image = load_image(new_entry->icon);
         if (image == NULL) {
-            icon = "/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png";
+            strcpy(new_entry->icon, "/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png");
         }
     }
+
+    // Set default values for internal state
+    new_node->x=0;
+    new_node->y=0;
+    new_node->hidden=0;
+    new_node->hovered=0;
+    new_node->clicked=0;
+
     // empty list, add first directly
     if (current==NULL)
     {
-        entries = malloc(sizeof(node_t));
-        strcpy(entries->title,title);
-        strcpy(entries->icon,icon);
-        strcpy(entries->cmd,cmd);
-        entries->x=0;
-        entries->y=0;
-        entries->hidden=0;
-        entries->hovered=0;
-        entries->clicked=0;
+        entries = new_entry;
         entries->next = NULL;
         return;
     }
 
-    while (current->next != NULL) {
-        current = current->next;
+    // Otherwise determine position
+    node_t * new_node;
+    if(!reverse){
+        // Go to end of list and add there
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = new_entry;
+        current->next->next = NULL;
+        new_node = current->next;
+    } else {
+        // Add at head of list
+        new_node = new_entry;
+        new_node->next = entries;
+        entries = new_node;
     }
-
-    /* now we can add a new variable */
-    current->next = malloc(sizeof(node_t));
-    strcpy(current->next->title,title);
-    strcpy(current->next->icon,icon);
-    strcpy(current->next->cmd,cmd);
-    current->next->x=x;
-    current->next->y=y;
-    current->next->hidden=0;
-    current->next->hovered=0;
-    current->next->clicked=0;
-    current->next->next = NULL;
 }
 
 
@@ -520,7 +523,8 @@ FILE * determine_input_source(){
         struct pollfd fds;
         fds.fd = 0; /* this is STDIN */
         fds.events = POLLIN;
-        if (poll(&fds, 1, 0) == 0){
+        // Give poll a little timeout to make give the piping program some time
+        if (poll(&fds, 1, 10) == 0){
             fp = fopen(homeconf, "rb");
         }
     } else {
@@ -547,9 +551,9 @@ FILE * determine_input_source(){
 
 int parse_entries()
 {
-    char title[256]= {0};
+    /*char title[256]= {0};
     char icon[256]= {0};
-    char cmd[512]= {0};
+    char cmd[512]= {0};*/
 
     char line[1022] = {0};
     //char *token;
@@ -561,7 +565,11 @@ int parse_entries()
     struct pollfd fds;
     fds.fd = fileno(input_source);
     fds.events = POLLIN;
+    node_t * current_entry;
     while(poll(&fds, 1, 0)) {
+        if(parsing == 0 && position == 0){
+            current_entry = malloc(sizeof(node_t));
+        }
         if(parsing == 3){
             fprintf(stderr, "Unknown format, only three sections are allowed!\n");
             exit(1);
@@ -583,20 +591,20 @@ int parse_entries()
         }
         switch(parsing){
             case 0: 
-                title[position] = b;
+                current_entry->title[position] = b;
                 break;
             case 1: 
-                icon[position] = b;
+                current_entry->icon[position] = b;
                 break;
             case 2:
-                cmd[position] = b;
+                current_entry->cmd[position] = b;
                 break;
         }
         position++;
         if(b == '\0') {
             position = 0;
             if(parsing == 2) {
-                push_entry(title,icon,cmd,0,0);
+                push_entry(current_entry);
                 changed = 1;
                 parsing = 0;
             } else {
@@ -611,8 +619,8 @@ int parse_entries()
     }
     if(readstatus == 0){
         if(parsing == 2){
-            cmd[position]='\0';
-            push_entry(title,icon,cmd,0,0);
+            current_entry->cmd[position]='\0';
+            push_entry(current_entry);
             changed = 1;
         }
         close(fds.fd);
@@ -992,12 +1000,13 @@ void init(int argc, char **argv)
             {"hc",                    required_argument, 0, 1012},
             {"textafter",             no_argument,       0, 'a'},
             {"name",                  required_argument, 0, 1013},
-            {"dontquit",              required_argument, 0, 'q'},
+            {"dontquit",              no_argument,       0, 'q'},
+            {"reverse",               no_argument,       0, 'R'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:q", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oaGHI:T:P:WF:S:qR", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1127,6 +1136,10 @@ void init(int argc, char **argv)
                 dont_quit = 1;
                 break;
 
+            case 'R':
+                reverse = 1;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1152,6 +1165,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                          practical for touch screens.\n");
                 fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch.\n");
+                fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
