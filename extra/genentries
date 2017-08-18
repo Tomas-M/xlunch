@@ -3,16 +3,23 @@
 globalappfolder=/usr/share/applications
 localappfolder=$HOME/.local/share/applications
 pixmaps=/usr/share/pixmaps
-globaliconfolder=/usr/share/icons
-localiconfolder=$HOME/.local/share/icons
-homeiconfolder=$HOME/.icons
-# Not all machines have all three folders, so pipe errors to null
-globalicons="$(find $globaliconfolder -type f -iname "*.png" -o -iname "*.svg" 2> /dev/null)"
-localicons="$(find $localiconfolder -type f -iname "*.png" -o -iname "*.svg" 2> /dev/null)"
-homeicons="$(find $homeiconfolder -type f -iname "*.png" -o -iname "*.svg" 2> /dev/null)"
-size=48
+
+iconsize=64
+icontheme=$(cat $HOME/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
 
 echo "Generating entries file..." >&2
+if ! [ -z "$icontheme" ]; then
+  if [ -d "$HOME/.local/share/icons/$icontheme" ]; then
+    iconpath="$HOME/.local/share/icons/$icontheme"
+  elif [ -d "$HOME/.icons/$icontheme" ]; then
+    iconpath="$HOME/.icons/$icontheme"
+  else
+    iconpath="/usr/share/icons/$icontheme"
+  fi
+  inherits=$(cat $(find $iconpath -name "index.theme") | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
+  inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
+fi
 
 function readdesktopfile {
   fdata=$(cat "$1")
@@ -31,85 +38,152 @@ function readdesktopfile {
 
     if [ "$iconname" != "" ]; then
       # Look for icons in the correct size
-      icon="$(echo "$localicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
-      if [ "$icon" == "" ]; then
-        icon="$(echo "$homeicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
-      fi
-      if [ "$icon" == "" ]; then
-        icon="$(echo "$globalicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
-      fi
+      #>&2 echo "$1"
+      #>&2  echo "$iconname"
+      if [ -f "$iconname" ]; then
+        icon="$iconname"
+      else
+        if [ "${iconname: -4}" == ".svg" ] || [ "${iconname: -4}" == ".png" ]; then
+          iconname=${iconname:0:-4}
+        fi
+        icon=""
+        for theme in $inherits; do
+          paths=("$HOME/.local/share/icons/$theme" "$HOME/.icons/$theme" "/usr/share/icons/$theme")
+          for themepath in ${paths[@]}; do
+            # >&2 echo $themepath
+            if ! [ -d "$themepath" ]; then
+              continue
+            fi
+            sizes=$(find "$themepath" -type d | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" | sort -u | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
+            sizes=$(echo -e "$(echo "$sizes" | grep "^e.*")\n$(echo "$sizes" | grep "^g.*" | sort -k 2.1n)\nscalable\n$(echo "$sizes" | grep "^l.*" | sort -k 2.1nr)")
+            sizes=$(echo "$sizes" | sed "s|^. ||")
+            for size in $sizes; do
+              for path in $(find $themepath -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$"); do
+                if $cansvg; then
+                  icon=$(find "$path" -type f -name "$iconname.png" -o -name "$iconname.svg")
+                else
+                  icon=$(find "$path" -type f -name "$iconname.png")
+                fi
+                break
+              done
+              if ! [ -z "$icon" ]; then
+                break
+              fi
+            done
+            if ! [ -z "$icon" ]; then
+              break
+            fi
+          done
+          if ! [ -z "$icon" ]; then
+            break
+          fi
+        done
 
-      if [ "$icon" == "" ]; then
-        # If we have the convert program from imagemagick, try to find svg images and convert them to the right size
-        if type convert >/dev/null 2>&1; then
-          svgicon="$(echo "$localicons" | grep $iconname"[.]svg$" | head -n 1)"
-          if [ "$svgicon" == "" ]; then
-            svgicon="$(echo "$homeicons" | grep $iconname"[.]svg$" | head -n 1)"
-          fi
-          if [ "$svgicon" == "" ]; then
-            svgicon="$(echo "$globalicons" | grep $iconname"[.]svg$" | head -n 1)"
-          fi
-          if [ "$svgicon" != "" ]; then
-            mkdir -p "svgicons"
-            convert -size $sizex$size -background none "$svgicon" "svgicons/"$iconname".png"
-            icon="svgicons/"$iconname".png"
-          fi
+        if [ "$icon" == "" ]; then
+          icon="$(find "$pixmaps" -type f | grep $iconname"[.]png$" | head -n 1)"
         fi
       fi
-      # If we still haven't found an icon, try to look for any sized icon
-      # TODO: should be rewritten to search for the closest larger icon first
-      if [ "$icon" == "" ]; then
-        icon="$(echo "$localicons" | grep $iconname"[.]png$" | head -n 1)"
+
+      if [ -z "$icon" ]; then
+        icon=$(find "$HOME/.local/share/icons" -type f | grep $iconname | head -n 1)
       fi
-      if [ "$icon" == "" ]; then
-        icon="$(echo "$homeicons" | grep $iconname"[.]png$" | head -n 1)"
+      if [ -z "$icon" ]; then
+        icon=$(find "$HOME/.icons" -type f | grep $iconname | head -n 1)
       fi
-      if [ "$icon" == "" ]; then
-        icon="$(echo "$globalicons" | grep $iconname"[.]png$" | head -n 1)"
-      fi
-      if [ "$icon" == "" ]; then
-        icon="$(find "$pixmaps" | grep $iconname"[.]png$" | head -n 1)"
+      if [ -z "$icon" ]; then
+        icon=$(find "/usr/share/icons" -type f | grep $iconname | head -n 1)
       fi
 
-      # If we have all the data we need, output an entry
-      if [ "$icon" != "" -a "$cmd" != "" -a "$name" != "" ]; then
+      if [ "${icon: -4}" == ".svg" ]; then
+        if ! [ -f "svgicons/"$iconname".png" ]; then
+          >&2 echo "Converting $icon to png"
+          mkdir -p "svgicons"
+          convert -size $iconsizex$iconsize -background none "$icon" "svgicons/"$iconname".png"
+        fi
+        icon="svgicons/"$iconname".png"
+      fi
+
+      # If we have all the data we need, output an entry. Empty icon is fine
+      if [ "$cmd" != "" -a "$name" != "" ]; then
         echo "$name;$icon;$cmd"
+      else
+        >&2 echo "Couldn't find all required data for $1"
       fi
     fi
   fi
 }
 
-# Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
-declare -A applications
+if ! [ -z "$icontheme" ]; then
+  # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+  declare -A applications
 
-# Set for in separator to newline
-IFS=$'\n'
+  # Set for in separator to newline
+  IFS=$'\n'
 
-# Iterate over files in localappfolder and add them to the array
-files=$(find "$localappfolder" -name "*.desktop")
-for desktopfile in $files
-do
-  bname=$(basename "$desktopfile")
-  entry=$(readdesktopfile "$desktopfile")
-  if ! [ -z "$entry" ]; then
-    applications["$bname"]="$entry"
-  fi
-done
-
-# Iterate over files in globalappfolder and add them to the array if they don't already exists
-files=$(find "$globalappfolder" -name "*.desktop")
-for desktopfile in $files
-do
-  bname=$(basename "$desktopfile")
-  if ! [[ ${applications[$bname]} ]]; then
+  # Iterate over files in localappfolder and add them to the array
+  files=$(find "$localappfolder" -name "*.desktop")
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
     entry=$(readdesktopfile "$desktopfile")
     if ! [ -z "$entry" ]; then
       applications["$bname"]="$entry"
     fi
-  fi
-done
+  done
 
-# Get all the entries and write them out sorted and unique while removing the placeholder
-for key in "${!applications[@]}"; do
-  echo "${applications[$key]}"
-done | sort | uniq | grep -v "^;;$"
+  # Iterate over files in globalappfolder and add them to the array if they don't already exists
+  files=$(find "$globalappfolder" -name "*.desktop")
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
+    if ! [[ ${applications[$bname]} ]]; then
+      entry=$(readdesktopfile "$desktopfile")
+      if ! [ -z "$entry" ]; then
+        applications["$bname"]="$entry"
+      fi
+    fi
+  done
+
+  # Get all the entries and write them out sorted and unique while removing the placeholder
+  for key in "${!applications[@]}"; do
+    echo "${applications[$key]}"
+  done | sort | uniq | grep -v "^;;$"
+fi
+
+
+#      icon="$(echo "$localicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
+#      if [ "$icon" == "" ]; then
+#        icon="$(echo "$homeicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
+#      fi
+#      if [ "$icon" == "" ]; then
+#        icon="$(echo "$globalicons" | grep $size"x"$size | grep $iconname"[.]png$" | head -n 1)"
+#      fi
+#
+#      if [ "$icon" == "" ]; then
+#        # If we have the convert program from imagemagick, try to find svg images and convert them to the right size
+#        if type convert >/dev/null 2>&1; then
+#          svgicon="$(echo "$localicons" | grep $iconname"[.]svg$" | head -n 1)"
+#          if [ "$svgicon" == "" ]; then
+#            svgicon="$(echo "$homeicons" | grep $iconname"[.]svg$" | head -n 1)"
+#          fi
+#          if [ "$svgicon" == "" ]; then
+#            svgicon="$(echo "$globalicons" | grep $iconname"[.]svg$" | head -n 1)"
+#          fi
+#          if [ "$svgicon" != "" ]; then
+#            mkdir -p "svgicons"
+#            convert -size $sizex$size -background none "$svgicon" "svgicons/"$iconname".png"
+#            icon="svgicons/"$iconname".png"
+#          fi
+#        fi
+#      fi
+#      # If we still haven't found an icon, try to look for any sized icon
+#      # TODO: should be rewritten to search for the closest larger icon first
+#      if [ "$icon" == "" ]; then
+#        icon="$(echo "$localicons" | grep $iconname"[.]png$" | head -n 1)"
+#      fi
+#      if [ "$icon" == "" ]; then
+#        icon="$(echo "$homeicons" | grep $iconname"[.]png$" | head -n 1)"
+#      fi
+#      if [ "$icon" == "" ]; then
+#        icon="$(echo "$globalicons" | grep $iconname"[.]png$" | head -n 1)"
+#      fi
