@@ -119,7 +119,8 @@ int dont_quit = 0;
 int reverse = 0;
 int output_only = 0;
 int select_only = 0;
-int text_after = 0;
+int text_after_margin = 0;
+int text_other_side = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -144,7 +145,7 @@ void recalc_cells()
     border=screen_width/10;
     if (uborder>0) border = uborder;
 
-    if (text_after){
+    if (text_after_margin){
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2;
         if(ucolumns == 0)
@@ -192,8 +193,8 @@ void recalc_cells()
         rows = 1;
     }
 
-    if (text_after){
-        cell_width = (usable_width - text_padding*(columns - 1))/columns;
+    if (text_after_margin){
+        cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
     }
 
     // The space between the icon tiles to fill all the space
@@ -992,15 +993,16 @@ void init(int argc, char **argv)
             {"pc",                    required_argument, 0, 1010},
             {"bc",                    required_argument, 0, 1011},
             {"hc",                    required_argument, 0, 1012},
-            {"textafter",             no_argument,       0, 'a'},
+            {"textafter",             required_argument, 0, 'a'},
             {"name",                  required_argument, 0, 1013},
             {"dontquit",              no_argument,       0, 'q'},
             {"reverse",               no_argument,       0, 'R'},
+            {"textotherside",         no_argument,       0, 'O'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqR", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqRO", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1119,7 +1121,7 @@ void init(int argc, char **argv)
                 break;
 
             case 'a':
-                text_after = 1;
+                text_after_margin = atoi(optarg);
                 break;
 
             case 1013:
@@ -1132,6 +1134,10 @@ void init(int argc, char **argv)
 
             case 'R':
                 reverse = 1;
+                break;
+
+            case 'O':
+                text_other_side = 1;
                 break;
 
             case '?':
@@ -1182,8 +1188,10 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
                 fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
                 fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
-                fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
-                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
+                fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");
+                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden. The argument is\n");
+                fprintf (stderr,"                                          the margin to apply between columns (default: n/a).\n");
+                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
@@ -1685,7 +1693,10 @@ int main(int argc, char **argv){
                                 else d=0;
 
                                 imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                                                 current->x - up_x + icon_padding+d, current->y - up_y +icon_padding+d, icon_size-d*2, icon_size-d*2);
+                                        current->x - up_x +
+                                            (text_other_side && text_after_margin ? cell_width - icon_padding - icon_size : icon_padding)+d,
+                                        current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d,
+                                        icon_size-d*2, icon_size-d*2);
                                 
                                 imlib_context_set_image(image);
                                 imlib_free_image();
@@ -1709,16 +1720,16 @@ int main(int argc, char **argv){
                                     strcat(title,"..");
                                 imlib_get_text_size(title, &text_w, &text_h);
                                 sz--;
-                            } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*3 : icon_padding*2) + icon_size : 2*text_padding) && sz>0);
+                            } while(text_w > cell_width-(text_after_margin ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
 
                             int d;
                             if (current->clicked==1) d=4;
                             else d=0;
 
-                            if (text_after) {
-                                draw_text_with_shadow(current->x - up_x + (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size, current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+                            if (text_after_margin) {
+                                draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
                             } else {
-                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + icon_padding*2 + icon_size, title, text_color);
+                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : icon_padding*2 + icon_size), title, text_color);
                             }
 
                             /* free the font */
