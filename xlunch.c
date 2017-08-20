@@ -89,6 +89,7 @@ int row_margin = 0;
 int icon_padding = 10;
 int text_padding = 10;
 int border;
+int side_border;
 int cell_width;
 int cell_height;
 int font_height;
@@ -114,6 +115,7 @@ int uposy = 0;
 int uwidth = 0;
 int uheight = 0;
 int uborder = 0;
+int uside_border = 0;
 int void_click_terminate = 0;
 int dont_quit = 0;
 int reverse = 0;
@@ -121,6 +123,8 @@ int output_only = 0;
 int select_only = 0;
 int text_after_margin = 0;
 int text_other_side = 0;
+int clear_memory = 0;
+int upside_down = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -144,6 +148,8 @@ void recalc_cells()
 {
     border=screen_width/10;
     if (uborder>0) border = uborder;
+    side_border = border;
+    if (uside_border>0) side_border = uside_border;
 
     if (text_after_margin){
         cell_width=icon_size+icon_padding*2;
@@ -159,7 +165,7 @@ void recalc_cells()
     int usable_height;
     // These do while loops should run at most three times, it's just to avoid copying code
     do {
-        usable_width = screen_width-border*2;
+        usable_width = screen_width-side_border*2;
         if (no_prompt) {
             usable_height = screen_height-border*2;
         } else {
@@ -168,7 +174,7 @@ void recalc_cells()
 
         // If the usable_width is too small, take some space away from the border
         if (usable_width < cell_width) {
-            border = (screen_width - cell_width - 1)/2;
+            side_border = (screen_width - cell_width - 1)/2;
         } else if (usable_height < cell_height) {
             border = (screen_height - cell_height - prompt_spacing - prompt_font_height - 1)/2;
         }
@@ -210,8 +216,12 @@ void recalc_cells()
     }
 
     // These are kept in case manual positioning is reintroduced
-    prompt_x = border;
+    prompt_x = side_border;
     prompt_y = border;
+    /*
+    if(uside_border == 0){
+        side_border = border;
+    }*/
 }
 
 
@@ -259,11 +269,14 @@ void arrange_positions()
         }
         else
         {
-            current->x = border + i * (cell_width+column_margin);
+            current->x = side_border + i * (cell_width+column_margin);
             if (no_prompt) {
                 current->y = border + j * (cell_height+row_margin);
             } else {
                 current->y = border + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
+            }
+            if (upside_down) {
+                current->y=screen_height - cell_height - current->y;
             }
             if (i == columns-1) {
                 i = 0;
@@ -324,6 +337,23 @@ void pop_key()
 }
 
 
+void clear_entries(){
+    node_t * current = entries;
+    entries = NULL;
+    while (current != NULL) {
+        node_t * last = current;
+        current = current->next;
+        if (clear_memory) {
+            memset(last->title, 0, 256);
+            memset(last->icon, 0, 256);
+            memset(last->cmd, 0, 256);
+            memset(last, 0, sizeof(node_t));
+        }
+        free(last);
+    }
+}
+
+
 void cleanup()
 {
     flock(lock, LOCK_UN | LOCK_NB);
@@ -334,6 +364,7 @@ void cleanup()
     if(input_source == stdin){
         fclose(input_source);
     }
+    clear_entries();
 }
 
 
@@ -398,17 +429,6 @@ Imlib_Image load_image(char * icon) {
         exit(1);*/
     }
     return image;
-}
-
-
-void clear_entries(){
-    node_t * current = entries;
-    entries = NULL;
-    while(current != NULL){
-        node_t * last = current;
-        current = current->next;
-        free(last);
-    }
 }
 
 
@@ -966,6 +986,7 @@ void init(int argc, char **argv)
             {"columns",               required_argument, 0, 'c'},
             {"rows",                  required_argument, 0, 'r'},
             {"border",                required_argument, 0, 'b'},
+            {"sideborder",            required_argument, 0, 'B'},
             {"promptspacing",         required_argument, 0, 'P'},
             {"iconsize",              required_argument, 0, 's'},
             {"input",                 required_argument, 0, 'i'},
@@ -994,11 +1015,13 @@ void init(int argc, char **argv)
             {"dontquit",              no_argument,       0, 'q'},
             {"reverse",               no_argument,       0, 'R'},
             {"textotherside",         no_argument,       0, 'O'},
+            {"clearmemory",           no_argument,       0, 'M'},
+            {"upsidedown",            no_argument,       0, 'u'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqRO", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMu", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1038,6 +1061,10 @@ void init(int argc, char **argv)
 
             case 'b':
                 uborder = atoi(optarg);
+                break;
+
+            case 'B':
+                uside_border = atoi(optarg);
                 break;
 
             case 'P':
@@ -1136,6 +1163,14 @@ void init(int argc, char **argv)
                 text_other_side = 1;
                 break;
 
+            case 'M':
+                clear_memory = 1;
+                break;
+
+            case 'u':
+                upside_down = 1;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1162,7 +1197,9 @@ void init(int argc, char **argv)
                 fprintf (stderr,"                                          practical for touch screens.\n");
                 fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch.\n");
                 fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
-                fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n\n");
+                fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
+                fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
+                fprintf (stderr,"                                          information through xlunch.\n\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
@@ -1182,12 +1219,14 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
+                fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
                 fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
                 fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
                 fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");
                 fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden. The argument is\n");
                 fprintf (stderr,"                                          the margin to apply between columns (default: n/a).\n");
                 fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.");
+                fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
@@ -1749,7 +1788,11 @@ int main(int argc, char **argv){
                     if (font)
                     {
                         imlib_context_set_font(font);
-                        draw_text_with_shadow(prompt_x+1 - up_x, prompt_y+1 - up_y, commandlinetext, prompt_color);
+                        if(upside_down) {
+                            draw_text_with_shadow(prompt_x - up_x, (screen_height - prompt_font_height) - (prompt_y - up_y), commandlinetext, prompt_color);
+                        } else {
+                            draw_text_with_shadow(prompt_x - up_x, prompt_y - up_y, commandlinetext, prompt_color);
+                        }
                         /* free the font */
                         imlib_free_font();
                     }

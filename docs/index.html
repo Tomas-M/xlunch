@@ -90,6 +90,8 @@ Functional options (these changes what xlunch does, or how it does it):
 -q, --dontquit                    When an option is selected, don't close xlunch.
 -R, --reverse                     All entries in xlunch are reversly ordered
 -W, --windowed                    Start in windowed mode
+-M, --clearmemory                 Set the memory of each entry to null before exiting. Used for
+                                  passing sensitive information through xlunch.
 </code></pre>
 
 Style options (these changes how xlunch looks):
@@ -108,11 +110,16 @@ Style options (these changes how xlunch looks):
                                   used)
 -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th
                                   of screen width)
+-B, --sideborder [i]              Size of the border on the sides, if this is used --border will be
+                                  only top and bottom
 -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
 -s, --iconsize [i]                Size of the icons (default: 48)
 -a, --textafter                   Draw the title to the right of the icon instead of below, this
                                   option automatically sets --columns to 1 but this can
                                   be overridden.
+-O, --textotherside               Draw the text on the other side of the icon from where it is
+                                  normally drawn.
+-u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.
 --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa
                                   (default: ffffffff)
 --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
@@ -131,9 +138,19 @@ entry dependent on the size of the text instead. Note however that this by defau
 <code>--textafter</code> mode is enabled <code>--textpadding</code> is used as padding between the
 entry columns and <code>--iconpadding</code> is used on all sides of the entry box.</p>
 
+<p>There are two different border settings. If you set only <code>--border</code> it will be applied
+to all four sides. By setting <code>--sideborder</code> you override the border setting and this new
+border size will be used for the right and left border, while the regular border is used for top and
+bottom.</p>
+
 <p>In previous version desktop mode would by default fork of processes instead of terminating. This
 is now a separate option (<code>--dontquit</code>) so you can keep xlunch running no matter the
 mode.</p>
+
+<p>If you want to use xlunch to for example choose a password you can use the <code>--clearmemory</code>
+mode. This will set all the data for the entries to NULL when they are destroyed (ie. xlunch closes
+or a new set of data is passed over stdin, see below). This is not bulletproof, all the data will still
+be stored in plaintext in memory while xlunch is running, but it's better than nothing.</p>
 
 <p>When loading fonts xlunch will look for them in the folders: <code>~/.local/share/fonts</code>,
 <code>~/.fonts</code>, <code>/usr/local/share/fonts</code>, <code>/usr/local/share/truetype</code>,
@@ -267,7 +284,7 @@ Or you can put a button in a taskbar to run it.</p>
 
 <p>To have xlunch running as a desktop with icons in i3wm, add this to ~/.i3/config:</p>
 
-<pre><code>exec /usr/bin/xlunch --desktop --multiple --noprompt
+<pre><code>exec /usr/bin/xlunch --desktop --multiple --noprompt --dontquit
 </code></pre>
 
 <p>Note that you can also use the position flags from the multi-monitor section to display multiple
