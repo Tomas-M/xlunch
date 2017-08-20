@@ -10,10 +10,10 @@ pixmaps=/usr/share/pixmaps
 iconsize=48
 icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
-# File formats supported by most imlib2 installations. Only four letter words
-formats=(".png" ".jpg" ".tif" "tiff" ".xpm" ".bmp" ".gif" ".pnm" ".tga")
+# File formats supported by most imlib2 installations.
+formats=("png" "jpg" "jpeg" "tif" "tiff" "xpm" "bmp" "gif" "pnm" "tga")
 if $cansvg; then
-  formats+=(".svg")
+  formats+=("svg")
 fi
 
 echo "Generating entries file..." >&2
@@ -55,14 +55,19 @@ function readdesktopfile {
       # Look for icons in the correct size
       #>&2 echo "$1"
       #>&2  echo "$iconname"
-      if [ -f "$iconname" ] && elementIn "${iconname: -4}" "${formats[@]}"; then
+      if [ -f "$iconname" ] && elementIn "${iconname##*.}" "${formats[@]}"; then
         icon="$iconname"
 				iconname=$(basename "$iconname")
 				iconname="${iconname%.*}"
       else
-        if elementIn "${iconname: -4}" "${formats[@]}"; then
+        if elementIn "${iconname##*.}" "${formats[@]}"; then
           iconname=${iconname%.*}
         fi
+				# Create arguments for the find call to get all supported file formats
+				findargs=()
+				for t in "${formats[@]}"; do
+					findargs+=(-name "$iconname.$t" -o)
+				done
         icon=""
         for theme in $inherits; do
           paths=("$user_home/.local/share/icons/$theme" "$user_home/.icons/$theme" "/usr/share/icons/$theme")
@@ -76,14 +81,7 @@ function readdesktopfile {
             sizes=$(echo "$sizes" | sed "s|^. ||")
             for size in $sizes; do
               for path in $(find $themepath -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$"); do
-                # This should be written as a better find command
-                #for format in "${formats[@]}"; do
-                #done
-                if $cansvg; then
-                  icon=$(find "$path" -type f -name "$iconname.png" -o -name "$iconname.svg")
-                else
-                  icon=$(find "$path" -type f -name "$iconname.png")
-                fi
+								icon=$(find "$path" -type f \( "${findargs[@]}" -false \) | head -n 1 )
                 break
               done
               if ! [ -z "$icon" ]; then
@@ -101,16 +99,16 @@ function readdesktopfile {
 
 				# If we can't find anything that matches the theme, just search anywhere
         if [ "$icon" == "" ]; then
-          icon="$(find "$pixmaps" -type f | grep $iconname"[.]png$" | head -n 1)"
+          icon="$(find "$pixmaps" -type f \( "${findargs[@]}" -false \) | head -n 1)"
         fi
 				if [ -z "$icon" ]; then
-					icon=$(find "$user_home/.local/share/icons" -type f | grep $iconname | head -n 1)
+					icon=$(find "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
 				fi
 				if [ -z "$icon" ]; then
-					icon=$(find "$user_home/.icons" -type f | grep $iconname | head -n 1)
+					icon=$(find "$user_home/.icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
 				fi
 				if [ -z "$icon" ]; then
-					icon=$(find "/usr/share/icons" -type f | grep $iconname | head -n 1)
+					icon=$(find "/usr/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
 				fi
       fi
 
