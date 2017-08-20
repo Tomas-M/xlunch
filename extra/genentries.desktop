@@ -1,4 +1,4 @@
 [Desktop Entry]
 Name=Regenerate entries for xlunch
-Exec=mkdir -p $HOME/.xlunch && sh /etc/xlunch/genentries > $HOME/.xlunch/entries.dsv && notify-send -a xlunch -i /usr/share/icons/hicolor/48x48/apps/xlunch.png "Done generating new entries" || notify-send -a xlunch -i /usr/share/icons/hicolor/48x48/apps/xlunch.png "Error generating new entries"
+Exec=mkdir -p $HOME/.config/xlunch && mkdir -p $HOME/.local/share/xlunch && sh /usr/bin/genentries > $HOME/.config/xlunch/entries.dsv && ( notify-send -a xlunch -i /usr/share/icons/hicolor/48x48/apps/xlunch.png "Done generating new entries" && mv svgicons $HOME/.local/share/xlunch ) || notify-send -a xlunch -i /usr/share/icons/hicolor/48x48/apps/xlunch.png "Error generating new entries"
 Icon=xlunch

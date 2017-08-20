@@ -1,25 +1,40 @@
 #!/bin/bash
 
+# Get the users actual home directory in case we're running this with sudo
+user_home=$(eval echo ~${SUDO_USER})
+
 globalappfolder=/usr/share/applications
-localappfolder=$HOME/.local/share/applications
+localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
-iconsize=64
-icontheme=$(cat $HOME/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+iconsize=48
+icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
+# File formats supported by most imlib2 installations. Only four letter words
+formats=(".png" ".jpg" ".tif" "tiff" ".xpm" ".bmp" ".gif" ".pnm" ".tga")
+if $cansvg; then
+  formats+=(".svg")
+fi
 
 echo "Generating entries file..." >&2
 if ! [ -z "$icontheme" ]; then
-  if [ -d "$HOME/.local/share/icons/$icontheme" ]; then
-    iconpath="$HOME/.local/share/icons/$icontheme"
-  elif [ -d "$HOME/.icons/$icontheme" ]; then
-    iconpath="$HOME/.icons/$icontheme"
+  if [ -d "$user_home/.local/share/icons/$icontheme" ]; then
+    iconpath="$user_home/.local/share/icons/$icontheme"
+  elif [ -d "$user_home/.icons/$icontheme" ]; then
+    iconpath="$user_home/.icons/$icontheme"
   else
     iconpath="/usr/share/icons/$icontheme"
   fi
   inherits=$(cat $(find $iconpath -name "index.theme") | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
   inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
 fi
+
+function elementIn {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
 
 function readdesktopfile {
   fdata=$(cat "$1")
@@ -40,15 +55,17 @@ function readdesktopfile {
       # Look for icons in the correct size
       #>&2 echo "$1"
       #>&2  echo "$iconname"
-      if [ -f "$iconname" ]; then
+      if [ -f "$iconname" ] && elementIn "${iconname: -4}" "${formats[@]}"; then
         icon="$iconname"
+				iconname=$(basename "$iconname")
+				iconname="${iconname%.*}"
       else
-        if [ "${iconname: -4}" == ".svg" ] || [ "${iconname: -4}" == ".png" ]; then
-          iconname=${iconname:0:-4}
+        if elementIn "${iconname: -4}" "${formats[@]}"; then
+          iconname=${iconname%.*}
         fi
         icon=""
         for theme in $inherits; do
-          paths=("$HOME/.local/share/icons/$theme" "$HOME/.icons/$theme" "/usr/share/icons/$theme")
+          paths=("$user_home/.local/share/icons/$theme" "$user_home/.icons/$theme" "/usr/share/icons/$theme")
           for themepath in ${paths[@]}; do
             # >&2 echo $themepath
             if ! [ -d "$themepath" ]; then
@@ -59,6 +76,9 @@ function readdesktopfile {
             sizes=$(echo "$sizes" | sed "s|^. ||")
             for size in $sizes; do
               for path in $(find $themepath -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$"); do
+                # This should be written as a better find command
+                #for format in "${formats[@]}"; do
+                #done
                 if $cansvg; then
                   icon=$(find "$path" -type f -name "$iconname.png" -o -name "$iconname.svg")
                 else
@@ -79,26 +99,26 @@ function readdesktopfile {
           fi
         done
 
+				# If we can't find anything that matches the theme, just search anywhere
         if [ "$icon" == "" ]; then
           icon="$(find "$pixmaps" -type f | grep $iconname"[.]png$" | head -n 1)"
         fi
-      fi
-
-      if [ -z "$icon" ]; then
-        icon=$(find "$HOME/.local/share/icons" -type f | grep $iconname | head -n 1)
-      fi
-      if [ -z "$icon" ]; then
-        icon=$(find "$HOME/.icons" -type f | grep $iconname | head -n 1)
-      fi
-      if [ -z "$icon" ]; then
-        icon=$(find "/usr/share/icons" -type f | grep $iconname | head -n 1)
+				if [ -z "$icon" ]; then
+					icon=$(find "$user_home/.local/share/icons" -type f | grep $iconname | head -n 1)
+				fi
+				if [ -z "$icon" ]; then
+					icon=$(find "$user_home/.icons" -type f | grep $iconname | head -n 1)
+				fi
+				if [ -z "$icon" ]; then
+					icon=$(find "/usr/share/icons" -type f | grep $iconname | head -n 1)
+				fi
       fi
 
       if [ "${icon: -4}" == ".svg" ]; then
         if ! [ -f "svgicons/"$iconname".png" ]; then
           >&2 echo "Converting $icon to png"
           mkdir -p "svgicons"
-          convert -size $iconsizex$iconsize -background none "$icon" "svgicons/"$iconname".png"
+					convert -size $iconsizex$iconsize -background none "$icon" "svgicons/"$iconname".png"
         fi
         icon="svgicons/"$iconname".png"
       fi

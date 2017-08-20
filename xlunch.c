@@ -508,7 +508,7 @@ FILE * determine_input_source(){
     char * home = getenv("HOME");
     if (home!=NULL)
     {
-        homeconf = concat(home,"/.xlunch/entries.dsv");
+        homeconf = concat(home,"/.config/xlunch/entries.dsv");
     }
     
     if (strlen(input_file)==0){
@@ -549,15 +549,10 @@ FILE * determine_input_source(){
 
 int parse_entries()
 {
-    /*char title[256]= {0};
-    char icon[256]= {0};
-    char cmd[512]= {0};*/
-
-    char line[1022] = {0};
-    //char *token;
-    int changed = 0;
-    int parsing = 0;
-    int position = 0;
+    int changed = 0; // if the list of elements have changed or not
+    int parsing = 0; // section currently being read
+    int position = 0; // position in the current entry
+    int line = 1; // line count for error messages
     int readstatus;
 
     struct pollfd fds;
@@ -568,18 +563,19 @@ int parse_entries()
         if(parsing == 0 && position == 0){
             current_entry = malloc(sizeof(node_t));
         }
-        if(parsing == 3){
-            fprintf(stderr, "Unknown format, only three sections are allowed!\n");
-            exit(1);
-        }
         char b;
         readstatus = read(fds.fd, &b, 1);
         if(readstatus <= 0){
             break;
         }
-        if(b == ';') {
+        if(b == '\0') {
+            fprintf(stderr, "Null-byte encountered while reading entries at line %d. Aborting.\n", line);
+        }
+        // Check for semi-colons only for the first two elements to support bash commands with semi-colons in them
+        if(b == ';' && parsing != 2) {
             b = '\0';    
         } else if (b == '\n') {
+            line++;
             b = '\0';
             if(parsing == 0){
                 clear_entries();
@@ -611,7 +607,7 @@ int parse_entries()
         }
         int maxlen = (parsing == 2 ? 511 : 255);
         if(position == maxlen){
-            fprintf(stderr, "Entry too long, maximum length is %d characters!\n", maxlen);
+            fprintf(stderr, "Entry too long on line %d, maximum length is %d characters!\n", line, maxlen);
             break;
         }
     }
@@ -1160,7 +1156,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
                 fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
                 fprintf (stderr,"        -i, --input [file]                File to read entries from, defaults to stdin if data is available\n");
-                fprintf (stderr,"                                          otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
+                fprintf (stderr,"                                          otherwise it reads from $HOME/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
                 fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
                 fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                          practical for touch screens.\n");

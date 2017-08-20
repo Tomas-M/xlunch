@@ -82,7 +82,7 @@ Functional options (these changes what xlunch does, or how it does it):
 -o, --outputonly                  Do not run the selected entry, only output it to stdout
 -S, --selectonly                  Only allow an actual entry and not free-typed commands
 -i, --input [file]                File to read entries from, defaults to stdin if data is available
-                                  otherwise it reads from $HOME/.xlunch/entries.dsv
+                                  otherwise it reads from $HOME/.config/xlunch/entries.dsv
                                   or /etc/xlunch/entries.dsv
 -m, --multiple                    Allow multiple instances running
 -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
@@ -191,17 +191,19 @@ title;icon_path;cmd
 
 <p><code>title</code> is the name of the program which will be shown, <code>icon_path</code> is a
 path to an icon to show for the entry (png or jpg), and <code>cmd</code> is the command to be run
-or returned when this entry is selected. By default xlunch will show a ghost icon if the icon you
-specified couldn't be found, if you want to not have an icon you can simply leave the icon field
-empty (ie. <code>title;;cmd</code>). If you want to run xlunch from within xlunch, for example to
-create a menu hierarchy, you should use a special syntax. This syntax allows xlunch to replace its
-old process with the new one so you only have a single instance of xlunch running and don't get any
-overhead from running it through bash. In order to do this simply put <code>recur [options]</code>
-as the <code>cmd</code> field. This will reuse the program name you originally used to call xlunch
-with but replace the options with anything you add after recur. If you want to run a program by the
-name recur, simply add a space in front of it. NOTE: recur relies on splitting the list of
-arguments, this is currently only done on spaces, even those inside quotes, so it's not possible to
-pass arguments with spaces in them when using recur (this is how previous versions did all launching).
+or returned when this entry is selected. To allow complex bash commands using semi-colons xlunch
+simply parses the <code>cmd</code> field until a new-line is encountered. By default xlunch will
+show a ghost icon if the icon you specified couldn't be found, if you want to not have an icon you
+can simply leave the icon field empty (ie. <code>title;;cmd</code>). If you want to run xlunch from
+within xlunch, for example to create a menu hierarchy, you should use a special syntax. This syntax
+allows xlunch to replace its old process with the new one so you only have a single instance of
+xlunch running and don't get any overhead from running it through bash. In order to do this simply
+put <code>recur [options]</code> as the <code>cmd</code> field. This will reuse the program name
+you originally used to call xlunch with but replace the options with anything you add after recur.
+If you want to run a program by the name recur, simply add a space in front of it. NOTE: recur
+relies on splitting the list of arguments, this is currently only done on spaces, even those inside
+quotes, so it's not possible to pass arguments with spaces in them when using recur (this is how
+previous versions of xlunch did all launching).
 </p>
 
 <p>If a completely empty line is encountered (ie. two sequential newlines), then all entries read
