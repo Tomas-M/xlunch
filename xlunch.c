@@ -39,8 +39,8 @@ const int VERSION_PATCH = 0; // Patch version, changes when something is changed
 /* some globals for our window & X display */
 Display *disp;
 Window   win;
-Visual  *vis;
-Colormap cm;
+XVisualInfo vinfo;
+XSetWindowAttributes attr;
 int x11_fd;
 struct pollfd eventfds[2];
 
@@ -926,6 +926,10 @@ void update_background_image()
     // When xlunch is launched and there is another full screen window 'background' was NULL
     if(background) {
         imlib_context_set_image(background);
+        //if(background_color.a != 255){
+        imlib_image_set_has_alpha(1);
+        imlib_image_clear();
+        //}
 
         if (use_root_img) {
             DATA32 * direct = imlib_image_get_data();
@@ -1248,11 +1252,15 @@ void init(int argc, char **argv)
         exit(2);
     }
 
+    XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo);
+
+    attr.colormap = XCreateColormap(disp, DefaultRootWindow(disp), vinfo.visual, AllocNone);
+    attr.border_pixel = 0;
+    attr.background_pixel = 0;
+
     /* get default visual , colormap etc. you could ask imlib2 for what it */
     /* thinks is the best, but this example is intended to be simple */
     screen = DefaultScreen(disp);
-    vis   = DefaultVisual(disp, screen);
-    cm    = DefaultColormap(disp, screen);
 
     /* get/set screen size */
     if (uwidth==0) screen_width=DisplayWidth(disp,screen);
@@ -1273,7 +1281,7 @@ int main(int argc, char **argv){
     char title[255];
 
     /* width and height values */
-    int w, h;
+    int w, h, x, y;
 
     // set initial variables now
     init(argc, argv);
@@ -1297,7 +1305,8 @@ int main(int argc, char **argv){
         }
     }
 
-    win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
+    //win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
+    win = XCreateWindow(disp, DefaultRootWindow(disp), 0, 0, 300, 200, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
 
     // absolute fullscreen mode by overide redirect
     if (!windowed && desktop_mode)
@@ -1327,19 +1336,20 @@ int main(int argc, char **argv){
     load_prompt_font();
     recalc_cells();
     /* set the maximum number of colors to allocate for 8bpp and less to 128 */
-    imlib_set_color_usage(128);
+    //imlib_set_color_usage(128);
     /* dither for depths < 24bpp */
-    imlib_context_set_dither(1);
+    //imlib_context_set_dither(1);
     /* set the display , visual, colormap and drawable we are using */
     imlib_context_set_display(disp);
-    imlib_context_set_visual(vis);
-    imlib_context_set_colormap(cm);
+    imlib_context_set_visual(vinfo.visual);
+    imlib_context_set_colormap(attr.colormap);
     imlib_context_set_drawable(win);
 
     update_background_image();
 
     /* tell X what events we are interested in */
     XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
+    GC gc = XCreateGC(disp, win, 0, 0);
     /* set our name */
     XClassHint* classHint;
 
@@ -1412,7 +1422,6 @@ int main(int argc, char **argv){
         eventfds[1].fd = 0; /* this is STDIN */
         eventfds[1].events = POLLIN;
     }
-
 
     /* infinite event loop */
     for (;;)
@@ -1696,8 +1705,20 @@ int main(int argc, char **argv){
                 imlib_context_set_blend(1);
 
                 imlib_context_set_image(buffer);
+
+                imlib_image_set_has_alpha(1);
+                //imlib_context_set_color(255,255,255,255);
+                imlib_image_clear();
                 /* blend background image onto the buffer */
                 imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
+                //if(background_color.a != 255) {
+                //imlib_image_copy_alpha_rectangle_to_image(background, 0, 0, screen_width, screen_height, - up_x, - up_y);
+                //}
+                    Imlib_Color color;
+                    imlib_context_set_image(background);
+                    imlib_image_query_pixel(10,10,&color);
+                    printf("Color: %d, %d, %d, %d\n",color.red, color.green, color.blue, color.alpha);
+                    imlib_context_set_image(buffer);
 
                 node_t * current = entries;
                 int drawn = 0;
@@ -1722,16 +1743,16 @@ int main(int argc, char **argv){
                                 w = imlib_image_get_width();
                                 h = imlib_image_get_height();
                                 imlib_context_set_image(buffer);
-
                                 int d;
                                 if (current->clicked) d=2;
                                 else d=0;
+                                x = current->x - up_x +
+                                            (text_other_side && text_after_margin ? cell_width - icon_padding - icon_size : icon_padding)+d;
+                                y = current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d;
 
-                                imlib_blend_image_onto_image(image, 0, 0, 0, w, h,
-                                        current->x - up_x +
-                                            (text_other_side && text_after_margin ? cell_width - icon_padding - icon_size : icon_padding)+d,
-                                        current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d,
-                                        icon_size-d*2, icon_size-d*2);
+                                //imlib_context_set_color(255,255,255,255);
+                                imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
+                                //imlib_image_copy_alpha_rectangle_to_image(image, 0, 0, icon_size-d*2, icon_size-d*2, x, y);
                                 
                                 imlib_context_set_image(image);
                                 imlib_free_image();
@@ -1802,6 +1823,7 @@ int main(int argc, char **argv){
                 /* don't blend the image onto the drawable - slower */
                 imlib_context_set_blend(0);
                 /* render the image at 0, 0 */
+                //XClearArea(disp, win, up_x, up_y, up_w, up_h, 1);
                 imlib_render_image_on_drawable(up_x, up_y);
                 /* don't need that temporary buffer image anymore */
                 imlib_free_image();
