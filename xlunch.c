@@ -128,6 +128,7 @@ int upside_down = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
+int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
 
 #define MOUSE 1
@@ -926,17 +927,15 @@ void update_background_image()
     // When xlunch is launched and there is another full screen window 'background' was NULL
     if(background) {
         imlib_context_set_image(background);
-        //if(background_color.a != 255){
         imlib_image_set_has_alpha(1);
         imlib_image_clear();
-        //}
 
         if (use_root_img) {
             DATA32 * direct = imlib_image_get_data();
             int ok = get_root_image_to_imlib_data(direct);
             if (ok) {
                 imlib_image_put_back_data(direct);
-                imlib_context_set_color(0, 0, 0, 100);
+                imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
                 imlib_context_set_blend(1);
                 imlib_image_fill_rectangle(0,0, screen_width, screen_height);
                 imlib_context_set_blend(0);
@@ -949,7 +948,7 @@ void update_background_image()
                     int w = imlib_image_get_width();
                     int h = imlib_image_get_height();
                     imlib_context_set_image(background);
-                    imlib_context_set_color(0, 0, 0, 100);
+                    imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
                     imlib_context_set_blend(1);
                     imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
                     imlib_image_fill_rectangle(0,0, screen_width, screen_height);
@@ -1037,6 +1036,12 @@ void init(int argc, char **argv)
 
             case 'G':
                 use_root_img = 1;
+                if(background_color_set == 0){
+                    background_color.r = 0;
+                    background_color.g = 0;
+                    background_color.b = 0;
+                    background_color.a = 100;
+                }
                 break;
 
             case 'n':
@@ -1045,6 +1050,12 @@ void init(int argc, char **argv)
 
             case 'g':
                 background_file = optarg;
+                if(background_color_set == 0){
+                    background_color.r = 0;
+                    background_color.g = 0;
+                    background_color.b = 0;
+                    background_color.a = 100;
+                }
                 break;
 
             case 'I':
@@ -1141,6 +1152,7 @@ void init(int argc, char **argv)
 
             case 1011:
                 sscanf(optarg, "%02x%02x%02x%02x", &background_color.r, &background_color.g, &background_color.b, &background_color.a);
+                background_color_set = 1;
                 break;
 
             case 1012:
@@ -1306,7 +1318,7 @@ int main(int argc, char **argv){
     }
 
     //win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
-    win = XCreateWindow(disp, DefaultRootWindow(disp), 0, 0, 300, 200, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
+    win = XCreateWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
 
     // absolute fullscreen mode by overide redirect
     if (!windowed && desktop_mode)
@@ -1336,9 +1348,9 @@ int main(int argc, char **argv){
     load_prompt_font();
     recalc_cells();
     /* set the maximum number of colors to allocate for 8bpp and less to 128 */
-    //imlib_set_color_usage(128);
+    imlib_set_color_usage(128);
     /* dither for depths < 24bpp */
-    //imlib_context_set_dither(1);
+    imlib_context_set_dither(1);
     /* set the display , visual, colormap and drawable we are using */
     imlib_context_set_display(disp);
     imlib_context_set_visual(vinfo.visual);
@@ -1429,13 +1441,6 @@ int main(int argc, char **argv){
         /* init our updates to empty */
         updates = imlib_updates_init();
 
-        /*if(input_source == stdin) {
-            int changed = parse_entries(input_source);
-            if(changed){
-                updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-            }
-        }*/
-
         // Poll for events, while blocking until one becomes available
         int poll_result;
         if(!XPending(disp)){
@@ -1444,8 +1449,6 @@ int main(int argc, char **argv){
             poll_result = 1;
             eventfds[0].revents = 1;
         }
-        //int poll_result = 1;
-        //eventfds[0].revents = 1;
 
         if(poll_result < 0){
             // An error occured, abort
@@ -1707,18 +1710,9 @@ int main(int argc, char **argv){
                 imlib_context_set_image(buffer);
 
                 imlib_image_set_has_alpha(1);
-                //imlib_context_set_color(255,255,255,255);
                 imlib_image_clear();
                 /* blend background image onto the buffer */
                 imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
-                //if(background_color.a != 255) {
-                //imlib_image_copy_alpha_rectangle_to_image(background, 0, 0, screen_width, screen_height, - up_x, - up_y);
-                //}
-                    Imlib_Color color;
-                    imlib_context_set_image(background);
-                    imlib_image_query_pixel(10,10,&color);
-                    printf("Color: %d, %d, %d, %d\n",color.red, color.green, color.blue, color.alpha);
-                    imlib_context_set_image(buffer);
 
                 node_t * current = entries;
                 int drawn = 0;
@@ -1750,9 +1744,7 @@ int main(int argc, char **argv){
                                             (text_other_side && text_after_margin ? cell_width - icon_padding - icon_size : icon_padding)+d;
                                 y = current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d;
 
-                                //imlib_context_set_color(255,255,255,255);
                                 imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
-                                //imlib_image_copy_alpha_rectangle_to_image(image, 0, 0, icon_size-d*2, icon_size-d*2, x, y);
                                 
                                 imlib_context_set_image(image);
                                 imlib_free_image();
@@ -1823,7 +1815,6 @@ int main(int argc, char **argv){
                 /* don't blend the image onto the drawable - slower */
                 imlib_context_set_blend(0);
                 /* render the image at 0, 0 */
-                //XClearArea(disp, win, up_x, up_y, up_w, up_h, 1);
                 imlib_render_image_on_drawable(up_x, up_y);
                 /* don't need that temporary buffer image anymore */
                 imlib_free_image();
