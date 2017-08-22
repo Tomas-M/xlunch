@@ -124,7 +124,7 @@ Style options (these changes how xlunch looks):
                                   (default: ffffffff)
 --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
 --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)
-                                  (NOTE: transparent background color does nothing)
+                                  (NOTE: transparent background color requires a compositor)
 --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)
 </code></pre>
 
@@ -142,6 +142,15 @@ entry columns and <code>--iconpadding</code> is used on all sides of the entry b
 to all four sides. By setting <code>--sideborder</code> you override the border setting and this new
 border size will be used for the right and left border, while the regular border is used for top and
 bottom.</p>
+
+<p>For transparent background colors you need to have a compositor installed. This will make the
+background of xlunch transparent. Note that the transparency is not additive, meaning that if you set
+background to 50% transparency and highlight to 70% transparency the highlighted areas will be 70%
+total transparency and not 70% of the 50%, ie. 35%. When a background image is supplied, or the
+<code>--rootwindowbackground</code> switch is used xlunch will apply a slight black tint to the image
+to make text more readable. By setting the background color manually this color will be used instead,
+including transparency, so to disable the tint simply pass a fully transparent color (this does not
+require a compositor).
 
 <p>In previous version desktop mode would by default fork of processes instead of terminating. This
 is now a separate option (<code>--dontquit</code>) so you can keep xlunch running no matter the

@@ -1246,7 +1246,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
-                fprintf (stderr,"                                          (NOTE: transparent background color does nothing)\n");
+                fprintf (stderr,"                                          (NOTE: transparent background color requires a compositor)\n");
                 fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
                 // Check if we came from the error block above or if this was a call with --help
                 if(c == '?'){
