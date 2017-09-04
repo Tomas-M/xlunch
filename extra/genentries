@@ -1,0 +1,173 @@
+#!/bin/bash
+
+# Get the users actual home directory in case we're running this with sudo
+user_home=$(eval echo ~${SUDO_USER})
+
+globalappfolder=/usr/share/applications
+localappfolder=$user_home/.local/share/applications
+pixmaps=/usr/share/pixmaps
+
+iconsize=48
+icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
+# File formats supported by most imlib2 installations.
+formats=("png" "jpg" "jpeg" "tif" "tiff" "xpm" "bmp" "gif" "pnm" "tga")
+if $cansvg; then
+  formats+=("svg")
+fi
+
+echo "Generating entries file..." >&2
+if ! [ -z "$icontheme" ]; then
+  if [ -d "$user_home/.local/share/icons/$icontheme" ]; then
+    iconpath="$user_home/.local/share/icons/$icontheme"
+  elif [ -d "$user_home/.icons/$icontheme" ]; then
+    iconpath="$user_home/.icons/$icontheme"
+  else
+    iconpath="/usr/share/icons/$icontheme"
+  fi
+  inherits=$(cat $(find $iconpath -name "index.theme") | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
+  inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
+fi
+
+function elementIn {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
+
+function readdesktopfile {
+  fdata=$(cat "$1")
+  if ! [[ -z $(echo "$fdata" | grep -i "^NoDisplay=true$") ]]; then
+    # Add a placeholder so the global app folder won't override it
+    echo ";;"
+  else
+    name="$(echo "$fdata" | grep -i "^Name=" | head -n 1 | cut -d "=" -f 2-)"
+    # Remove % arguments from the .desktop files as they are not supported by xlunch (WARNING: this might cause programs to misbehave)
+    cmd="$(echo "$fdata" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
+    iconname="$(echo "$fdata" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
+    useterm="$(echo "$fdata" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
+    if [ "$useterm" = "true" ]; then
+      cmd="$TERM -e ""$cmd"
+    fi
+
+    if [ "$iconname" != "" ]; then
+      # Look for icons in the correct size
+      #>&2 echo "$1"
+      #>&2  echo "$iconname"
+      if [ -f "$iconname" ] && elementIn "${iconname##*.}" "${formats[@]}"; then
+        icon="$iconname"
+        iconname=$(basename "$iconname")
+        iconname="${iconname%.*}"
+      else
+        if elementIn "${iconname##*.}" "${formats[@]}"; then
+          iconname=${iconname%.*}
+        fi
+        # Create arguments for the find call to get all supported file formats
+        findargs=()
+        for t in "${formats[@]}"; do
+          findargs+=(-name "$iconname.$t" -o)
+        done
+        icon=""
+        for theme in $inherits; do
+          paths=()
+          if [ -d "$user_home/.local/share/icons/$theme" ]; then
+            paths+=("$user_home/.local/share/icons/$theme")
+          fi
+          if [ -d "$user_home/.icons/$theme" ]; then
+            paths+=("$user_home/.icons/$theme")
+          fi
+          if [ -d "/usr/share/icons/$theme" ]; then
+            paths+=("/usr/share/icons/$theme")
+          fi
+          for themepath in ${paths[@]}; do
+            if ! [ -d "$themepath" ]; then
+              continue
+            fi
+            sizes=$(find "$themepath" -type d | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" | sort -u | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
+            sizes=$(echo -e "$(echo "$sizes" | grep "^e.*")\n$(echo "$sizes" | grep "^g.*" | sort -k 2.1n)\nscalable\n$(echo "$sizes" | grep "^l.*" | sort -k 2.1nr)")
+            sizes=$(echo "$sizes" | sed "s|^. ||")
+            for size in $sizes; do
+              while read path; do
+                if ! [ -z "$path" ]; then
+                  icon=$(find "$path" -type f "${findargs[@]}" -false | head -n 1 )
+                  if ! [ -z "$icon" ]; then
+                    break 4
+                  fi
+                fi
+              done <<< $(find "$themepath" -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$") 
+            done
+          done
+        done
+
+        # If we can't find anything that matches the theme, just search anywhere
+        if [ -z "$icon" ]; then
+          icon="$(find "$pixmaps" -type f \( "${findargs[@]}" -false \) | head -n 1)"
+        fi
+        if [ -z "$icon" ] && [ -d "$user_home/.local/share/icons" ]; then
+          icon=$(find "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+        fi
+        if [ -z "$icon" ] && [ -d "$user_home/.icons" ]; then
+          icon=$(find "$user_home/.icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+        fi
+        if [ -z "$icon" ] && [ -d "/usr/share/icons" ]; then
+          icon=$(find "/usr/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+        fi
+      fi
+
+      if [ "${icon: -4}" == ".svg" ]; then
+        if ! [ -f "svgicons/"$iconname".png" ]; then
+          >&2 echo "Converting $icon to png"
+          mkdir -p "svgicons"
+          convert -density 500 -resize "$iconsize"x"$iconsize" -background none "$icon" "svgicons/"$iconname".png"
+        fi
+        icon="svgicons/"$iconname".png"
+      fi
+
+      # If we have all the data we need, output an entry. Empty icon is fine
+      if [ "$cmd" != "" -a "$name" != "" ]; then
+        echo "$name;$icon;$cmd"
+      else
+        >&2 echo "Couldn't find all required data for $1"
+      fi
+    fi
+  fi
+}
+
+if ! [ -z "$icontheme" ]; then
+  # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+  declare -A applications
+
+  # Set for in separator to newline
+  IFS=$'\n'
+
+  # Iterate over files in localappfolder and add them to the array
+  files=$(find "$localappfolder" -name "*.desktop")
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
+    entry=$(readdesktopfile "$desktopfile")
+    if ! [ -z "$entry" ]; then
+      applications["$bname"]="$entry"
+    fi
+  done
+
+  # Iterate over files in globalappfolder and add them to the array if they don't already exists
+  files=$(find "$globalappfolder" -name "*.desktop")
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
+    if ! [[ ${applications[$bname]} ]]; then
+      entry=$(readdesktopfile "$desktopfile")
+      if ! [ -z "$entry" ]; then
+        applications["$bname"]="$entry"
+      fi
+    fi
+  done
+
+  # Get all the entries and write them out sorted and unique while removing the placeholder
+  for key in "${!applications[@]}"; do
+    echo "${applications[$key]}"
+  done | sort | uniq | grep -v "^;;$"
+fi
+
