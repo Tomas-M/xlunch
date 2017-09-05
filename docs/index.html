@@ -73,7 +73,9 @@ like i3). There are also some other flags that could be of interest in this mode
 
 Functional options (these changes what xlunch does, or how it does it):
 <pre><code>-d, --desktop                     Desktop mode, always keep the launcher at background
-                                  (behind other windows), and ignore ESC and right mouse click.
+                                  (behind other windows), and ignore ESC and right mouse
+                                  click. Combined with --dontquit xlunch never exits
+                                  (behaviour of --desktop from previous versions.
 -v, --version                     Returns the version of xlunch
 -H, --help                        Shows this help message
 --name                            POSIX-esque way to specify the first part of WM_CLASS
@@ -81,50 +83,53 @@ Functional options (these changes what xlunch does, or how it does it):
 -n, --noprompt                    Hides the prompt, only allowing selection by icon
 -o, --outputonly                  Do not run the selected entry, only output it to stdout
 -S, --selectonly                  Only allow an actual entry and not free-typed commands
--i, --input [file]                File to read entries from, defaults to stdin if data is available
-                                  otherwise it reads from $HOME/.config/xlunch/entries.dsv
-                                  or /etc/xlunch/entries.dsv
+-i, --input [file]                File to read entries from, defaults to stdin if data is
+                                  available otherwise it reads from
+                                  ~/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv
 -m, --multiple                    Allow multiple instances running
 -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
                                   practical for touch screens.
--q, --dontquit                    When an option is selected, don't close xlunch.
+-q, --dontquit                    When an option is selected, don't close xlunch. Combined
+                                  with --desktop xlunch never exits (behaviour of
+                                  --desktop from previous versions).
 -R, --reverse                     All entries in xlunch are reversly ordered
 -W, --windowed                    Start in windowed mode
--M, --clearmemory                 Set the memory of each entry to null before exiting. Used for
-                                  passing sensitive information through xlunch.
+-M, --clearmemory                 Set the memory of each entry to null before exiting.
+                                  Used for passing sensitive information through xlunch.
 </code></pre>
 
 Style options (these changes how xlunch looks):
-<pre><code>-p, --prompt [text]               The prompt asking for input (default: \"Run: \")
+<pre><code>-p, --prompt [text]               The prompt asking for input (default: "Run: ")
 -f, --font [name]                 Font name including size after slash
-                                  (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")
+                                  (default: "OpenSans-Regular/10" and  "DejaVuSans/10")
 -F, --promptfont [name]           Font to use for the prompt (default: same as --font)
 -G, --rootwindowbackground        Use root windows background image
 -g, --background [file]           Image to set as background (jpg/png)
 -I, --iconpadding [i]             Padding around icons (default: 10)
--T, --textpadding [i]             Padding around entry titles (default: 10)
-                                  When --textafter is set this is the space between columns.
--c, --columns [i]                 Number of columns to show (without this the max amount possible
-                                  is used)
--r, --rows [i]                    Numbers of rows to show (without this the max amount possible is
-                                  used)
--b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th
-                                  of screen width)
--B, --sideborder [i]              Size of the border on the sides, if this is used --border will be
-                                  only top and bottom
+-T, --textpadding [i]             Padding around entry titles (default: 10). When
+                                  --textafter is set this is the space between columns.
+-c, --columns [i]                 Number of columns to show (without this the max amount
+                                  possible is used)
+-r, --rows [i]                    Numbers of rows to show (without this the max amount
+                                  possible is used)
+-b, --border [i]                  Size of the border around the icons and prompt
+                                  (default: 1/10th of screen width)
+-B, --sideborder [i]              Size of the border on the sides, if this is used
+                                  --border will be only top and bottom
 -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
 -s, --iconsize [i]                Size of the icons (default: 48)
--a, --textafter                   Draw the title to the right of the icon instead of below, this
-                                  option automatically sets --columns to 1 but this can
-                                  be overridden.
--O, --textotherside               Draw the text on the other side of the icon from where it is
-                                  normally drawn.
--u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.
+-a, --textafter                   Draw the title to the right of the icon instead of
+                                  below, this option automatically sets --columns to 1
+                                  but this can be overridden.
+-O, --textotherside               Draw the text on the other side of the icon from where
+                                  it it normally drawn.
+-u, --upsidedown                  Draw the prompt on the bottom and have icons sort from
+                                  bottom to top.
 --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa
                                   (default: ffffffff)
 --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
 --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)
-                                  (NOTE: transparent background color requires a compositor)
+                                  NOTE: transparent background color requires a compositor
 --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)
 </code></pre>
 

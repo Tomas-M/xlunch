@@ -191,7 +191,6 @@ void recalc_cells()
     } else{
         rows = urows;
     }
-    
     // If we don't have space for a single column or row, force it.
     if (columns == 0) {
         columns = 1;
@@ -437,7 +436,6 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
 {
     node_t * current = entries;
     int hasicon = (strlen(new_entry->icon) != 0);
-    
     /* Pre-load the image into the cache, this is done to check for error messages
      * If a user has more images then can be shown this might incur a performance hit */
     if (hasicon) {
@@ -531,7 +529,7 @@ FILE * determine_input_source(){
     {
         homeconf = concat(home,"/.config/xlunch/entries.dsv");
     }
-    
+
     if (strlen(input_file)==0){
         fp = stdin;
         int flags;
@@ -594,7 +592,7 @@ int parse_entries()
         }
         // Check for semi-colons only for the first two elements to support bash commands with semi-colons in them
         if(b == ';' && parsing != 2) {
-            b = '\0';    
+            b = '\0';
         } else if (b == '\n') {
             line++;
             b = '\0';
@@ -605,10 +603,10 @@ int parse_entries()
             }
         }
         switch(parsing){
-            case 0: 
+            case 0:
                 current_entry->title[position] = b;
                 break;
-            case 1: 
+            case 1:
                 current_entry->icon[position] = b;
                 break;
             case 2:
@@ -877,7 +875,7 @@ int get_font_height(Imlib_Font font){
 }
 
 Imlib_Font load_font()
-{   
+{
     Imlib_Font font;
     if (strlen(font_name) == 0){
         font = load_default_font();
@@ -1196,8 +1194,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
                 fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background\n");
                 fprintf (stderr,"                                          (behind other windows), and ignore ESC and right mouse click.\n");
-                fprintf (stderr,"                                          and keep it running after executing an app or a command.\n");
-                fprintf (stderr,"                                          In this mode xlunch never terminates.\n\n");
+                fprintf (stderr,"                                          Combined with --dontquit xlunch never exits (behaviour of --desktop\n");
+                fprintf (stderr,"                                          from previous versions).\n");
                 fprintf (stderr,"    Functinal options:\n");
                 fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
                 fprintf (stderr,"        -H, --help                        Shows this help message\n");
@@ -1211,7 +1209,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
                 fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                          practical for touch screens.\n");
-                fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch.\n");
+                fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
+                fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n")
                 fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
                 fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
@@ -1745,7 +1744,7 @@ int main(int argc, char **argv){
                                 y = current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d;
 
                                 imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
-                                
+
                                 imlib_context_set_image(image);
                                 imlib_free_image();
                             }
