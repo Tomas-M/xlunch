@@ -183,6 +183,7 @@ pre {
   color: #f2f2f2;
   text-shadow: none;
   background: #303030;
+  overflow-x: hidden;
 }
 pre code {
   padding: 0;
