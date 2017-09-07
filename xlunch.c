@@ -1210,7 +1210,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
                 fprintf (stderr,"                                          practical for touch screens.\n");
                 fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
-                fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n")
+                fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n");
                 fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
                 fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
