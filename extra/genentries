@@ -1,5 +1,22 @@
 #!/bin/bash
 
+svgpath="svgicons"
+iconsize=48
+
+if [ "$#" -gt 0 ]; then
+  if [ "$1" == "--help" ] || [ "$1" == "-h" ] || [ "$#" -gt 3 ]; then
+    echo "Usage: genentries [icon size [svgpath [.desktop file]]]"
+    exit 0
+  else
+    iconsize="$1"
+    if [ "$#" -gt 1 ]; then
+      svgpath="$2"
+      if [ "$#" -gt 2 ]; then
+        desktopfile="$3"
+      fi
+    fi
+  fi
+fi
 # Get the users actual home directory in case we're running this with sudo
 user_home=$(eval echo ~${SUDO_USER})
 
@@ -7,10 +24,10 @@ globalappfolder=/usr/share/applications
 localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
-iconsize=48
 icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
 # File formats supported by most imlib2 installations.
+declare -a formats
 formats=("png" "jpg" "jpeg" "tif" "tiff" "xpm" "bmp" "gif" "pnm" "tga")
 if $cansvg; then
   formats+=("svg")
@@ -122,12 +139,12 @@ function readdesktopfile {
       fi
 
       if [ "${icon: -4}" == ".svg" ]; then
-        if ! [ -f "svgicons/"$iconname".png" ]; then
+        if ! [ -f "$svgpath/"$iconname".png" ]; then
           >&2 echo "Converting $icon to png"
-          mkdir -p "svgicons"
-          convert -density 500 -resize "$iconsize"x"$iconsize" -background none "$icon" "svgicons/"$iconname".png"
+          mkdir -p "$svgpath"
+          convert -density 500 -resize "$iconsize"x"$iconsize" -background none "$icon" "$svgpath/"$iconname".png"
         fi
-        icon="svgicons/"$iconname".png"
+        icon="$svgpath/"$iconname".png"
       fi
 
       # If we have all the data we need, output an entry. Empty icon is fine
@@ -140,40 +157,43 @@ function readdesktopfile {
   fi
 }
 
-if ! [ -z "$icontheme" ]; then
-  # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
-  declare -A applications
+if [ ! -z "$desktopfile" ]; then
+  readdesktopfile "$desktopfile"
+else
+  if ! [ -z "$icontheme" ]; then
+    # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+    declare -A applications
 
-  # Set for in separator to newline
-  IFS=$'\n'
+    # Set for in separator to newline
+    IFS=$'\n'
 
-  # Iterate over files in localappfolder and add them to the array
-  files=$(find "$localappfolder" -name "*.desktop")
-  for desktopfile in $files
-  do
-    bname=$(basename "$desktopfile")
-    entry=$(readdesktopfile "$desktopfile")
-    if ! [ -z "$entry" ]; then
-      applications["$bname"]="$entry"
-    fi
-  done
-
-  # Iterate over files in globalappfolder and add them to the array if they don't already exists
-  files=$(find "$globalappfolder" -name "*.desktop")
-  for desktopfile in $files
-  do
-    bname=$(basename "$desktopfile")
-    if ! [[ ${applications[$bname]} ]]; then
+    # Iterate over files in localappfolder and add them to the array
+    files=$(find "$localappfolder" -name "*.desktop")
+    for desktopfile in $files
+    do
+      bname=$(basename "$desktopfile")
       entry=$(readdesktopfile "$desktopfile")
       if ! [ -z "$entry" ]; then
         applications["$bname"]="$entry"
       fi
-    fi
-  done
+    done
 
-  # Get all the entries and write them out sorted and unique while removing the placeholder
-  for key in "${!applications[@]}"; do
-    echo "${applications[$key]}"
-  done | sort | uniq | grep -v "^;;$"
+    # Iterate over files in globalappfolder and add them to the array if they don't already exists
+    files=$(find "$globalappfolder" -name "*.desktop")
+    for desktopfile in $files
+    do
+      bname=$(basename "$desktopfile")
+      if ! [[ ${applications[$bname]} ]]; then
+        entry=$(readdesktopfile "$desktopfile")
+        if ! [ -z "$entry" ]; then
+          applications["$bname"]="$entry"
+        fi
+      fi
+    done
+
+    # Get all the entries and write them out sorted and unique while removing the placeholder
+    for key in "${!applications[@]}"; do
+      echo "${applications[$key]}"
+    done | sort | uniq | grep -v "^;;$"
+  fi
 fi
-
