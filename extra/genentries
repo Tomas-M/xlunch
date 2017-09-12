@@ -1,22 +1,40 @@
 #!/bin/bash
 
 svgpath="svgicons"
-iconsize=48
-
-if [ "$#" -gt 0 ]; then
-  if [ "$1" == "--help" ] || [ "$1" == "-h" ] || [ "$#" -gt 3 ]; then
-    echo "Usage: genentries [icon size [svgpath [.desktop file]]]"
-    exit 0
-  else
-    iconsize="$1"
-    if [ "$#" -gt 1 ]; then
-      svgpath="$2"
-      if [ "$#" -gt 2 ]; then
-        desktopfile="$3"
-      fi
-    fi
-  fi
+iconsize=$XLUNCHICONSIZE
+if [ -z "$iconsize" ]; then
+  iconsize=48
 fi
+
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -s|--size)
+    iconsize="$2"
+    shift # past argument
+    ;;
+    -p|--path)
+    svgpath="$2"
+    shift # past argument
+    ;;
+    -f|--file)
+    desktopfile="$2"
+    shift # past argument
+    ;;
+    -h|--help)
+    echo "Usage: genentries [-s|--size <icon size>] [-p|--path <path for converted icons>] [-f|--file <desktop file to parse>]"
+    exit 0
+    ;;
+    *)
+    echo "Unknown option $key"
+    exit 1
+    ;;
+esac
+shift # past argument or value
+done
+
 # Get the users actual home directory in case we're running this with sudo
 user_home=$(eval echo ~${SUDO_USER})
 
