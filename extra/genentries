@@ -50,8 +50,7 @@ localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
 if [ -z "$icontheme" ]; then
-  #icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
-  icontheme=""
+  icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
 fi
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
 # File formats supported by most imlib2 installations.
@@ -70,7 +69,7 @@ if [ $debug == "true" ]; then
   for t in "${formats[@]}"; do
     echo -n "$t " >&2
   done
-  echo ""
+  echo "" >&2
   echo $svgpath >&2
   echo $iconsize >&2
 fi
