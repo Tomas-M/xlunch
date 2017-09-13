@@ -51,6 +51,18 @@ pixmaps=/usr/share/pixmaps
 
 if [ -z "$icontheme" ]; then
   icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+  if [ -z "$icontheme" ]; then
+    icontheme=$(cat $user_home/.config/gtk-3.0/settings.ini | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+  fi
+  if [ -z "$icontheme" ]; then
+    icontheme=$(cat $user_home/.kde4/share/config/kdeglobals | grep -A 1 "\[Icons\]" | tail -n1 | sed -n 's/^Theme=//p')
+  fi
+  if [ -z "$icontheme" ] && [ $(type xfconf-query >/dev/null 2>&1) ]; then
+    icontheme=$(xfconf-query -c xsettings -p /Net/ThemeName)
+  fi
+  if [ -z "$icontheme" ] && [ $(type gsettings >/dev/null 2>&1) ]; then
+    icontheme=$(gsettings get org.gnome.desktop.interface gtk-theme)
+  fi
 fi
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
 # File formats supported by most imlib2 installations.
