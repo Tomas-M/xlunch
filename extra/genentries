@@ -23,8 +23,15 @@ case $key in
     desktopfile="$2"
     shift # past argument
     ;;
+    -t|--theme)
+    icontheme="$2"
+    shift
+    ;;
+    -d|--debug)
+    debug="true"
+    ;;
     -h|--help)
-    echo "Usage: genentries [-s|--size <icon size>] [-p|--path <path for converted icons>] [-f|--file <desktop file to parse>]"
+    echo "Usage: genentries [-s|--size <icon size>] [-p|--path <path for converted icons>] [-f|--file <desktop file to parse>] [-t|--theme <manually theme override>] [-d|--debug]"
     exit 0
     ;;
     *)
@@ -42,7 +49,10 @@ globalappfolder=/usr/share/applications
 localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
-icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+if [ -z "$icontheme" ]; then
+  #icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+  icontheme=""
+fi
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
 # File formats supported by most imlib2 installations.
 declare -a formats
@@ -51,8 +61,26 @@ if $cansvg; then
   formats+=("svg")
 fi
 
+# Debug statements
+if [ $debug == "true" ]; then
+  echo $(bash --version | head -n1) >&2
+  echo $user_home >&2
+  echo $icontheme  >&2
+  echo $cansvg >&2
+  for t in "${formats[@]}"; do
+    echo -n "$t " >&2
+  done
+  echo ""
+  echo $svgpath >&2
+  echo $iconsize >&2
+fi
+
 echo "Generating entries file..." >&2
-if ! [ -z "$icontheme" ]; then
+if [ -z "$icontheme" ]; then
+  echo "Unable to auto-detect icon theme, defaulting to 'hicolor'. Use --theme '<theme name>' to manually override theme." >&2
+  icontheme="hicolor"
+  inherits="hicolor"
+else
   if [ -d "$user_home/.local/share/icons/$icontheme" ]; then
     iconpath="$user_home/.local/share/icons/$icontheme"
   elif [ -d "$user_home/.icons/$icontheme" ]; then
@@ -65,9 +93,13 @@ if ! [ -z "$icontheme" ]; then
     echo "Could not find index.theme in $iconpath for theme $icontheme"
     exit 1
   fi
-
   inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
   inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
+fi
+if [ $debug == "true" ]; then
+  echo $iconpath >&2
+  echo $indexfile >&2
+  echo $inherits >&2
 fi
 
 function elementIn {
@@ -105,6 +137,7 @@ function readdesktopfile {
           iconname=${iconname%.*}
         fi
         # Create arguments for the find call to get all supported file formats
+        declare -a findargs
         findargs=()
         for t in "${formats[@]}"; do
           findargs+=(-name "$iconname.$t" -o)
