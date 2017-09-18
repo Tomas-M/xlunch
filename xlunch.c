@@ -76,9 +76,17 @@ typedef struct color {
     int r, g, b, a;
 } color_t;
 
+typedef struct fuzzynode {
+    struct node * node;
+    int score;
+} fuzzynode_t;
+
+int entries_count = 0;
 node_t * entries = NULL;
+fuzzynode_t * fuzzy_entries = NULL;
 keynode_t * cmdline = NULL;
 
+int fuzzy_search = 0;
 int icon_size = 48;
 int ucolumns = 0;
 int columns;
@@ -256,9 +264,15 @@ char* strncpyutf8(char* dst, const char* src, size_t num)
 
 void arrange_positions()
 {
-    node_t * current = entries;
+    node_t * current;
+    if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+        current = fuzzy_entries[0].node;
+    } else {
+        current = entries;
+    }
     int i = 0;
     int j = 0;
+    int current_entry = 0;
 
     while (current != NULL)
     {
@@ -285,7 +299,16 @@ void arrange_positions()
                 i++;
             }
         }
-        current = current->next;
+        current_entry ++;
+        if(fuzzy_search && commandline[0] != '\0'){
+            if(current_entry < entries_count) {
+                current = fuzzy_entries[current_entry].node;
+            } else {
+                current = NULL;
+            }
+        } else {
+            current = current->next;
+        }
     }
 }
 
@@ -434,6 +457,7 @@ Imlib_Image load_image(char * icon) {
 
 void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int x, int y)
 {
+    entries_count++;
     node_t * current = entries;
     int hasicon = (strlen(new_entry->icon) != 0);
     /* Pre-load the image into the cache, this is done to check for error messages
@@ -452,6 +476,11 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     new_entry->hovered=0;
     new_entry->clicked=0;
 
+    if(fuzzy_search){
+        fuzzy_entries = realloc(fuzzy_entries, sizeof(fuzzynode_t)*entries_count);
+        fuzzy_entries[entries_count-1].node = new_entry;
+        fuzzy_entries[entries_count-1].score = 0;
+    }
     // empty list, add first directly
     if (current==NULL)
     {
@@ -475,20 +504,66 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     }
 }
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+
+int levenshtein(char *s1, char *s2) {
+    unsigned int x, y, s1len, s2len;
+    s1len = strlen(s1);
+    s2len = strlen(s2);
+    unsigned int matrix[s2len+1][s1len+1];
+    matrix[0][0] = 0;
+    for (x = 1; x <= s2len; x++)
+        matrix[x][0] = matrix[x-1][0] + 1;
+    for (y = 1; y <= s1len; y++)
+        matrix[0][y] = matrix[0][y-1] + 1;
+    for (x = 1; x <= s2len; x++)
+        for (y = 1; y <= s1len; y++)
+            matrix[x][y] = MIN3(matrix[x-1][y] + 1, matrix[x][y-1] + 1, matrix[x-1][y-1] + (tolower(s1[y-1]) == tolower(s2[x-1]) ? 0 : 1));
+
+    return(matrix[s2len][s1len]);
+}
+
+int cmpfunc (const void * a, const void * b)
+{
+   return ( ((fuzzynode_t *)a)->score - ((fuzzynode_t *)b)->score );
+}
 
 void filter_entries()
 {
-    node_t * current = entries;
-
-    while (current != NULL)
-    {
-        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
-        else {
-            current->hidden=1;
-            current->hovered=0;
-            current->clicked=0;
+    if(fuzzy_search) {
+        for(int i = 0; i < entries_count; i++){
+            fuzzy_entries[i].node->hidden = 0;
+            fuzzy_entries[i].score = MIN(
+                levenshtein(fuzzy_entries[i].node->title, commandline)*100/strlen(fuzzy_entries[i].node->title),
+                levenshtein(fuzzy_entries[i].node->cmd, commandline)*100/strlen(fuzzy_entries[i].node->cmd)
+            );
+            if(strlen(commandline)!=0){
+                char* title_match = strcasestr(fuzzy_entries[i].node->title, commandline);
+                char* cmd_match = strcasestr(fuzzy_entries[i].node->cmd, commandline);
+                if(title_match != NULL || cmd_match != NULL){
+                    if(title_match == fuzzy_entries[i].node->title || cmd_match == fuzzy_entries[i].node->cmd) {
+                        fuzzy_entries[i].score -= 50;
+                    } else {
+                        fuzzy_entries[i].score -= 25;
+                    }
+                }
+            }
         }
-        current=current->next;
+        qsort(fuzzy_entries, entries_count, sizeof(fuzzynode_t), cmpfunc);
+    } else {
+        node_t * current = entries;
+
+        while (current != NULL)
+        {
+            if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
+            else {
+                current->hidden=1;
+                current->hovered=0;
+                current->clicked=0;
+            }
+            current=current->next;
+        }
     }
 }
 
@@ -1018,11 +1093,12 @@ void init(int argc, char **argv)
             {"textotherside",         no_argument,       0, 'O'},
             {"clearmemory",           no_argument,       0, 'M'},
             {"upsidedown",            no_argument,       0, 'u'},
+            {"fuzzysearch",           no_argument,       0, 'z'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMu", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuz", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1185,6 +1261,10 @@ void init(int argc, char **argv)
                 upside_down = 1;
                 break;
 
+            case 'z':
+                fuzzy_search = 1;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1215,6 +1295,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
                 fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
                 fprintf (stderr,"                                          information through xlunch.\n\n");
+                fprintf (stderr,"        -z, --fuzzysearch                 Uses a fuzzy search agorithm instead of simple substring matching\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
@@ -1596,7 +1677,13 @@ int main(int argc, char **argv){
                             if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
 
                             int j=0,n=0;
-                            node_t * current = entries;
+                            node_t * current;
+                            int current_entry = 0;
+                            if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+                                current = fuzzy_entries[0].node;
+                            } else {
+                                current = entries;
+                            }
                             node_t * selected = NULL;
                             while (current != NULL)
                             {
@@ -1607,7 +1694,12 @@ int main(int argc, char **argv){
                                     if (current->hovered) selected=current;
                                     set_hover(current,0);
                                 }
-                                current=current->next;
+                                current_entry++;
+                                if(fuzzy_search && commandline[0] != '\0'){
+                                    current = fuzzy_entries[current_entry].node;
+                                } else {
+                                    current=current->next;
+                                }
                             }
 
                             if (selected==NULL) {
@@ -1615,7 +1707,13 @@ int main(int argc, char **argv){
                                 i=0;
                                 j=0;
                             }
-                            current=entries;
+
+                            current_entry = 0;
+                            if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+                                current = fuzzy_entries[0].node;
+                            } else {
+                                current = entries;
+                            }
 
                             int k=i+j;
                             if (k>n || keycode==XK_End) k=n;
@@ -1630,7 +1728,12 @@ int main(int argc, char **argv){
                                         hoverset=KEYBOARD;
                                     }
                                 }
-                                current=current->next;
+                                current_entry++;
+                                if(fuzzy_search && commandline[0] != '\0'){
+                                    current = fuzzy_entries[current_entry].node;
+                                } else {
+                                    current=current->next;
+                                }
                             }
 
                             continue; // do not conitnue
@@ -1713,7 +1816,13 @@ int main(int argc, char **argv){
                 /* blend background image onto the buffer */
                 imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
-                node_t * current = entries;
+                node_t * current;
+                int current_entry = 0;
+                if (fuzzy_search && commandline[0] != '\0'){
+                    current = fuzzy_entries[0].node;
+                } else {
+                    current = entries;
+                }
                 int drawn = 0;
                 Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
 
@@ -1786,7 +1895,16 @@ int main(int argc, char **argv){
                     }
                     if (drawn == columns*rows)
                         break;
-                    current = current->next;
+                    current_entry++;
+                    if (fuzzy_search && commandline[0] != '\0'){
+                        if(current_entry < entries_count) {
+                            current = fuzzy_entries[current_entry].node;
+                        } else {
+                            current = NULL;
+                        }
+                    } else {
+                        current = current->next;
+                    }
                 }
 
                 XDefineCursor(disp,win,c);

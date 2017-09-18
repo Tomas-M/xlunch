@@ -97,6 +97,8 @@ Functional options (these changes what xlunch does, or how it does it):
 -W, --windowed                    Start in windowed mode
 -M, --clearmemory                 Set the memory of each entry to null before exiting.
                                   Used for passing sensitive information through xlunch.
+-z, --fuzzysearch                 Uses a fuzzy search algorithm instead of simple
+                                  substring matching.
 </code></pre>
 
 Style options (these changes how xlunch looks):
@@ -166,6 +168,10 @@ mode.</p>
 mode. This will set all the data for the entries to NULL when they are destroyed (ie. xlunch closes
 or a new set of data is passed over stdin, see below). This is not bulletproof, all the data will still
 be stored in plaintext in memory while xlunch is running, but it's better than nothing.</p>
+
+<p>To use fuzzy searchig instead of regular substring matching you can pass the <code>--fuzzysearch</code>
+switch. The fuzzy searching algorithm used is a mix between Levenshtein distance, substring matching,
+and a starts-with test, all ignoring case.</p>
 
 <p>When loading fonts xlunch will look for them in the folders: <code>~/.local/share/fonts</code>,
 <code>~/.fonts</code>, <code>/usr/local/share/fonts</code>, <code>/usr/local/share/truetype</code>,
