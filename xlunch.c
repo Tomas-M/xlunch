@@ -86,7 +86,7 @@ node_t * entries = NULL;
 fuzzynode_t * fuzzy_entries = NULL;
 keynode_t * cmdline = NULL;
 
-int fuzzy_search = 1;
+int fuzzy_search = 0;
 int icon_size = 48;
 int ucolumns = 0;
 int columns;
