@@ -86,7 +86,7 @@ node_t * entries = NULL;
 fuzzynode_t * fuzzy_entries = NULL;
 keynode_t * cmdline = NULL;
 
-int fuzzy_search = 0;
+int fuzzy_search = 1;
 int icon_size = 48;
 int ucolumns = 0;
 int columns;
@@ -265,7 +265,7 @@ char* strncpyutf8(char* dst, const char* src, size_t num)
 void arrange_positions()
 {
     node_t * current;
-    if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+    if (fuzzy_search && entries_count != 0){
         current = fuzzy_entries[0].node;
     } else {
         current = entries;
@@ -300,7 +300,7 @@ void arrange_positions()
             }
         }
         current_entry ++;
-        if(fuzzy_search && commandline[0] != '\0'){
+        if(fuzzy_search){
             if(current_entry < entries_count) {
                 current = fuzzy_entries[current_entry].node;
             } else {
@@ -538,16 +538,8 @@ void filter_entries()
                 levenshtein(fuzzy_entries[i].node->title, commandline)*100/strlen(fuzzy_entries[i].node->title),
                 levenshtein(fuzzy_entries[i].node->cmd, commandline)*100/strlen(fuzzy_entries[i].node->cmd)
             );
-            if(strlen(commandline)!=0){
-                char* title_match = strcasestr(fuzzy_entries[i].node->title, commandline);
-                char* cmd_match = strcasestr(fuzzy_entries[i].node->cmd, commandline);
-                if(title_match != NULL || cmd_match != NULL){
-                    if(title_match == fuzzy_entries[i].node->title || cmd_match == fuzzy_entries[i].node->cmd) {
-                        fuzzy_entries[i].score -= 50;
-                    } else {
-                        fuzzy_entries[i].score -= 25;
-                    }
-                }
+            if(strlen(commandline)==0 || strcasestr(fuzzy_entries[i].node->title, commandline)!=NULL || strcasestr(fuzzy_entries[i].node->cmd, commandline)!=NULL){
+                fuzzy_entries[i].score -= 50;
             }
         }
         qsort(fuzzy_entries, entries_count, sizeof(fuzzynode_t), cmpfunc);
@@ -1294,8 +1286,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
                 fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
-                fprintf (stderr,"                                          information through xlunch.\n\n");
-                fprintf (stderr,"        -z, --fuzzysearch                 Uses a fuzzy search agorithm instead of simple substring matching\n");
+                fprintf (stderr,"                                          information through xlunch.\n");
+                fprintf (stderr,"        -z, --fuzzysearch                 Uses a fuzzy search algorithm instead of simple substring matching.\n\n"); 
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
@@ -1321,7 +1313,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");
                 fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden. The argument is\n");
                 fprintf (stderr,"                                          the margin to apply between columns (default: n/a).\n");
-                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.");
+                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
@@ -1679,7 +1671,7 @@ int main(int argc, char **argv){
                             int j=0,n=0;
                             node_t * current;
                             int current_entry = 0;
-                            if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+                            if (fuzzy_search && entries_count != 0){
                                 current = fuzzy_entries[0].node;
                             } else {
                                 current = entries;
@@ -1695,7 +1687,7 @@ int main(int argc, char **argv){
                                     set_hover(current,0);
                                 }
                                 current_entry++;
-                                if(fuzzy_search && commandline[0] != '\0'){
+                                if(fuzzy_search){
                                     current = fuzzy_entries[current_entry].node;
                                 } else {
                                     current=current->next;
@@ -1709,7 +1701,7 @@ int main(int argc, char **argv){
                             }
 
                             current_entry = 0;
-                            if (fuzzy_search && entries_count != 0 && commandline[0] != '\0'){
+                            if (fuzzy_search && entries_count != 0){
                                 current = fuzzy_entries[0].node;
                             } else {
                                 current = entries;
@@ -1729,7 +1721,7 @@ int main(int argc, char **argv){
                                     }
                                 }
                                 current_entry++;
-                                if(fuzzy_search && commandline[0] != '\0'){
+                                if(fuzzy_search){
                                     current = fuzzy_entries[current_entry].node;
                                 } else {
                                     current=current->next;
@@ -1818,7 +1810,7 @@ int main(int argc, char **argv){
 
                 node_t * current;
                 int current_entry = 0;
-                if (fuzzy_search && commandline[0] != '\0'){
+                if (fuzzy_search){
                     current = fuzzy_entries[0].node;
                 } else {
                     current = entries;
@@ -1896,7 +1888,7 @@ int main(int argc, char **argv){
                     if (drawn == columns*rows)
                         break;
                     current_entry++;
-                    if (fuzzy_search && commandline[0] != '\0'){
+                    if (fuzzy_search){
                         if(current_entry < entries_count) {
                             current = fuzzy_entries[current_entry].node;
                         } else {
