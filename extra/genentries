@@ -73,7 +73,7 @@ if $cansvg; then
 fi
 
 # Debug statements
-if [ $debug == "true" ]; then
+if [ "$debug" == "true" ]; then
   echo $(bash --version | head -n1) >&2
   echo $user_home >&2
   echo $icontheme  >&2
@@ -107,7 +107,7 @@ else
   inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
   inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
 fi
-if [ $debug == "true" ]; then
+if [ "$debug" == "true" ]; then
   echo $iconpath >&2
   echo $indexfile >&2
   echo $inherits >&2
