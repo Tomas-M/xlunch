@@ -87,6 +87,7 @@ fuzzynode_t * fuzzy_entries = NULL;
 keynode_t * cmdline = NULL;
 
 int fuzzy_search = 0;
+int trim_entries = 0;
 int icon_size = 48;
 int ucolumns = 0;
 int columns;
@@ -532,17 +533,36 @@ int cmpfunc (const void * a, const void * b)
 void filter_entries()
 {
     if(fuzzy_search) {
+        int commandlinelen = strlen(commandline);
         for(int i = 0; i < entries_count; i++){
             fuzzy_entries[i].node->hidden = 0;
             fuzzy_entries[i].score = MIN(
                 levenshtein(fuzzy_entries[i].node->title, commandline)*100/strlen(fuzzy_entries[i].node->title),
                 levenshtein(fuzzy_entries[i].node->cmd, commandline)*100/strlen(fuzzy_entries[i].node->cmd)
             );
-            if(strlen(commandline)==0 || strcasestr(fuzzy_entries[i].node->title, commandline)!=NULL || strcasestr(fuzzy_entries[i].node->cmd, commandline)!=NULL){
-                fuzzy_entries[i].score -= 50;
+            char *titleMatch = strcasestr(fuzzy_entries[i].node->title, commandline);
+            char *cmdMatch = strcasestr(fuzzy_entries[i].node->cmd, commandline);
+            
+            if(commandlinelen == 0 || titleMatch!=NULL || cmdMatch!=NULL){
+                fuzzy_entries[i].score /= 3;
+                if(titleMatch != NULL){
+                    if(titleMatch == fuzzy_entries[i].node->title){
+                        fuzzy_entries[i].score /= 3;
+                    } else if(*(titleMatch-1) == ' '){
+                        fuzzy_entries[i].score /= 2;
+                    }
+                }
             }
+            
         }
         qsort(fuzzy_entries, entries_count, sizeof(fuzzynode_t), cmpfunc);
+        if(trim_entries){
+            for(int i = 1; i < entries_count; i++){
+                if(fuzzy_entries[0].score*(commandlinelen > 1 ? 2 : 4) < fuzzy_entries[i].score){
+                    fuzzy_entries[i].node->hidden = 1;
+                }
+            }
+        }
     } else {
         node_t * current = entries;
 
@@ -1085,12 +1105,12 @@ void init(int argc, char **argv)
             {"textotherside",         no_argument,       0, 'O'},
             {"clearmemory",           no_argument,       0, 'M'},
             {"upsidedown",            no_argument,       0, 'u'},
-            {"fuzzysearch",           no_argument,       0, 'z'},
+            {"fuzzysearch",           required_argument, 0, 'z'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuz", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuz:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1255,6 +1275,7 @@ void init(int argc, char **argv)
 
             case 'z':
                 fuzzy_search = 1;
+                trim_entries = strcmp("trim", optarg) == 0;
                 break;
 
             case '?':
@@ -1688,7 +1709,11 @@ int main(int argc, char **argv){
                                 }
                                 current_entry++;
                                 if(fuzzy_search){
-                                    current = fuzzy_entries[current_entry].node;
+                                    if(current_entry < entries_count) {
+                                        current = fuzzy_entries[current_entry].node;
+                                    } else {
+                                        current = NULL;
+                                    }
                                 } else {
                                     current=current->next;
                                 }
@@ -1722,7 +1747,11 @@ int main(int argc, char **argv){
                                 }
                                 current_entry++;
                                 if(fuzzy_search){
-                                    current = fuzzy_entries[current_entry].node;
+                                    if(current_entry < entries_count) {
+                                        current = fuzzy_entries[current_entry].node;
+                                    } else {
+                                        current = NULL;
+                                    }
                                 } else {
                                     current=current->next;
                                 }
