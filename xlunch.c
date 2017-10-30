@@ -1260,7 +1260,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
-                fprintf (stderr,"        -l, --leastmargin                 Adds a margin to the calculation of application sizes, no effect when specified rows and columns.\n");
+                fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes, no effect when specified rows and columns.\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
