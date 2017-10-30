@@ -126,6 +126,7 @@ int text_other_side = 0;
 int clear_memory = 0;
 int upside_down = 0;
 int padding_swap = 0;
+int least_margin = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -148,6 +149,7 @@ Imlib_Image image = NULL;
 
 void recalc_cells()
 {
+    int margined_cell_width, margined_cell_height;
     border=screen_width/10;
     if (uborder>0) border = uborder;
     side_border = border;
@@ -156,11 +158,15 @@ void recalc_cells()
     if (text_after_margin){
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2;
+        margined_cell_width=icon_size+icon_padding*2+least_margin;
+        margined_cell_height=icon_size+icon_padding*2+least_margin;
         if(ucolumns == 0)
             ucolumns = 1;
     } else {
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2+font_height+text_padding;
+        margined_cell_width=icon_size+icon_padding*2+least_margin;
+        margined_cell_height=icon_size+icon_padding*2+font_height+text_padding+least_margin;
     }
 
     int usable_width;
@@ -175,20 +181,20 @@ void recalc_cells()
         }
 
         // If the usable_width is too small, take some space away from the border
-        if (usable_width < cell_width) {
-            side_border = (screen_width - cell_width - 1)/2;
-        } else if (usable_height < cell_height) {
-            border = (screen_height - cell_height - prompt_spacing - prompt_font_height - 1)/2;
+        if (usable_width < margined_cell_width) {
+            side_border = (screen_width - margined_cell_width - 1)/2;
+        } else if (usable_height < margined_cell_height) {
+            border = (screen_height - margined_cell_height - prompt_spacing - prompt_font_height - 1)/2;
         }
-    } while ((usable_width < cell_width && screen_width > cell_width) || (usable_height < cell_height && screen_height > cell_height));
+    } while ((usable_width < margined_cell_width && screen_width > margined_cell_width) || (usable_height < margined_cell_height && screen_height > margined_cell_height));
     // If columns were not manually overriden, calculate the most it can possibly contain
     if (ucolumns == 0){
-        columns = usable_width/cell_width;
+        columns = usable_width/margined_cell_width;
     } else{
         columns = ucolumns;
     }
     if (urows == 0){
-        rows = usable_height/cell_height;
+        rows = usable_height/margined_cell_height;
     } else{
         rows = urows;
     }
@@ -201,7 +207,7 @@ void recalc_cells()
     }
 
     if (text_after_margin){
-        cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
+        margined_cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
     }
 
     // The space between the icon tiles to fill all the space
@@ -1020,11 +1026,12 @@ void init(int argc, char **argv)
             {"clearmemory",           no_argument,       0, 'M'},
             {"upsidedown",            no_argument,       0, 'u'},
             {"paddingswap",           no_argument,       0, 'X'},
+            {"leastmargin",           no_argument,       0, 'l'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuX", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXl:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1191,6 +1198,10 @@ void init(int argc, char **argv)
                 padding_swap = 1;
                 break;
 
+            case 'l':
+                least_margin = atoi(optarg);
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1249,6 +1260,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
+                fprintf (stderr,"        -l, --leastmargin                 Adds a margin to the calculation of application sizes, no effect when specified rows and columns.\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
