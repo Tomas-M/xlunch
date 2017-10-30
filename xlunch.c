@@ -125,6 +125,7 @@ int text_after_margin = 0;
 int text_other_side = 0;
 int clear_memory = 0;
 int upside_down = 0;
+int padding_swap = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -1018,11 +1019,12 @@ void init(int argc, char **argv)
             {"textotherside",         no_argument,       0, 'O'},
             {"clearmemory",           no_argument,       0, 'M'},
             {"upsidedown",            no_argument,       0, 'u'},
+            {"paddingswap",           no_argument,       0, 'X'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMu", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuX", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1185,6 +1187,10 @@ void init(int argc, char **argv)
                 upside_down = 1;
                 break;
 
+            case 'X':
+                padding_swap = 1;
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1240,8 +1246,9 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");
                 fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden. The argument is\n");
                 fprintf (stderr,"                                          the margin to apply between columns (default: n/a).\n");
-                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.");
+                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
+                fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
                 fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
@@ -1774,9 +1781,9 @@ int main(int argc, char **argv){
                             else d=0;
 
                             if (text_after_margin) {
-                                draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+                                draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
                             } else {
-                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : icon_padding*2 + icon_size), title, text_color);
+                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_padding + text_padding : icon_padding*2) + icon_size), title, text_color);
                             }
 
                             /* free the font */
