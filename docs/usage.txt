@@ -3,10 +3,10 @@ usage: xlunch [options]
     By default it launches in full-screen mode and terminates after a selection is made,
     it is also possible to close xlunch by pressing Esc or the right mouse button.
     Some options changes this behaviour, the most notable being the desktop mode switch:
-        -d, --desktop                     Desktop mode, always keep the launcher at background (behind other windows)
-                                          and keep it running after executing an app or a command.
-                                          In this mode xlunch never terminates.
-
+        -d, --desktop                     Desktop mode, always keep the launcher at background
+                                          (behind other windows), and ignore ESC and right mouse click.
+                                          Combined with --dontquit xlunch never exits (behaviour of --desktop
+                                          from previous versions).
     Functinal options:
         -v, --version                     Returns the version of xlunch
         -H, --help                        Shows this help message
@@ -16,11 +16,16 @@ usage: xlunch [options]
         -o, --outputonly                  Do not run the selected entry, only output it to stdout
         -S, --selectonly                  Only allow an actual entry and not free-typed commands
         -i, --input [file]                File to read entries from, defaults to stdin if data is available
-                                          otherwise it reads from $HOME/.xlunch/entries.dsv or /etc/xlunch/entries.dsv
+                                          otherwise it reads from $HOME/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv
         -m, --multiple                    Allow multiple instances running
         -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,
                                           practical for touch screens.
+        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch
+                                          never exits (behaviour of --desktop from previous versions).
+        -R, --reverse                     All entries in xlunch as reversly ordered.
         -W, --windowed                    Start in windowed mode
+        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive
+                                          information through xlunch.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and
@@ -32,8 +37,8 @@ usage: xlunch [options]
         -h, --height [i]                  The height of the launcher window
 
     Style options:
-        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")
-        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")
+        -p, --prompt [text]               The prompt asking for input (default: "Run: ")
+        -f, --font [name]                 Font name including size after slash (default: "OpenSans-Regular/10" and  "DejaVuSans/10")
         -F, --promptfont [name]           Font to use for the prompt (default: same as --font)
         -G, --rootwindowbackground        Use root windows background image
         -g, --background [file]           Image to set as background (jpg/png)
@@ -42,12 +47,19 @@ usage: xlunch [options]
         -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)
         -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)
         -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)
+        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom
         -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
         -s, --iconsize [i]                Size of the icons (default: 48)
-        -a, --textafter                   Draw the title to the right of the icon instead of below, this option
-                                          automatically sets --columns to 1 but this can be overridden.
+        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option
+                                          automatically sets --columns to 1 but this can be overridden. The argument is
+                                          the margin to apply between columns (default: n/a).
+        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.
+        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.
+        -X, --paddingswap                 Icon padding and text padding swaps order around text.
+        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes, no effect when specified rows and columns.
         --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)
         --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    
         --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)
-                                          (NOTE: transparent background color does nothing)
+                                          (NOTE: transparent background color requires a compositor)
         --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)
+
