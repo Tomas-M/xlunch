@@ -207,7 +207,7 @@ void recalc_cells()
     }
 
     if (text_after_margin){
-        margined_cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
+        cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
     }
 
     // The space between the icon tiles to fill all the space
