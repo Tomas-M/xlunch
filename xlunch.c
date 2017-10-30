@@ -890,7 +890,7 @@ Imlib_Font load_font()
         font = imlib_load_font(font_name);
     }
     if (font == NULL) {
-        fprintf(stderr, "Font %s could not be loaded!\n", font_name);
+        fprintf(stderr, "Font %s could not be loaded! Please specify one with -f parameter\n", font_name);
         exit(1);
     }
     font_height = get_font_height(font);
@@ -910,7 +910,7 @@ Imlib_Font load_prompt_font()
         font = imlib_load_font(prompt_font_name);
     }
     if (font == NULL) {
-        fprintf(stderr, "Prompt font %s could not be loaded!\n", prompt_font_name);
+        fprintf(stderr, "Prompt font %s could not be loaded! Please specify one with -F parameter\n", prompt_font_name);
         exit(1);
     }
     prompt_font_height = get_font_height(font);
@@ -1355,6 +1355,7 @@ int main(int argc, char **argv){
     }
     imlib_add_path_to_font_path("/usr/local/share/fonts");
     imlib_add_path_to_font_path("/usr/share/fonts/truetype");
+    imlib_add_path_to_font_path("/usr/share/fonts/truetype/dejavu");
     imlib_add_path_to_font_path("/usr/share/fonts/TTF");
     /* set our cache to 2 Mb so it doesn't have to go hit the disk as long as */
     /* the images we use use less than 2Mb of RAM (that is uncompressed) */
