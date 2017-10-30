@@ -50,12 +50,12 @@ localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
 if [ -z "$icontheme" ]; then
-  icontheme=$(cat $user_home/.gtkrc-2.0 | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+  icontheme=$(cat $user_home/.gtkrc-2.0 2>/dev/null| sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
   if [ -z "$icontheme" ]; then
-    icontheme=$(cat $user_home/.config/gtk-3.0/settings.ini | sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+    icontheme=$(cat $user_home/.config/gtk-3.0/settings.ini 2>/dev/null| sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
   fi
   if [ -z "$icontheme" ]; then
-    icontheme=$(cat $user_home/.kde4/share/config/kdeglobals | grep -A 1 "\[Icons\]" | tail -n1 | sed -n 's/^Theme=//p')
+    icontheme=$(cat $user_home/.kde4/share/config/kdeglobals 2>/dev/null| grep -A 1 "\[Icons\]" | tail -n1 | sed -n 's/^Theme=//p')
   fi
   if [ -z "$icontheme" ] && [ $(type xfconf-query >/dev/null 2>&1) ]; then
     icontheme=$(xfconf-query -c xsettings -p /Net/ThemeName)
@@ -99,7 +99,7 @@ else
   else
     iconpath="/usr/share/icons/$icontheme"
   fi
-  indexfile=$(find "$iconpath/" -name "index.theme")
+  indexfile=$(find "$iconpath/" -name "index.theme" 2>/dev/null)
   if [ -z "$indexfile" ]; then
     echo "Could not find index.theme in $iconpath for theme $icontheme"
     exit 1
@@ -230,7 +230,7 @@ else
     IFS=$'\n'
 
     # Iterate over files in localappfolder and add them to the array
-    files=$(find "$localappfolder" -name "*.desktop")
+    files=$(find "$localappfolder" -name "*.desktop" 2>/dev/null)
     for desktopfile in $files
     do
       bname=$(basename "$desktopfile")
@@ -241,7 +241,7 @@ else
     done
 
     # Iterate over files in globalappfolder and add them to the array if they don't already exists
-    files=$(find "$globalappfolder" -name "*.desktop")
+    files=$(find "$globalappfolder" -name "*.desktop" 2>/dev/null)
     for desktopfile in $files
     do
       bname=$(basename "$desktopfile")
