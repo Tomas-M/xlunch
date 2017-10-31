@@ -1026,7 +1026,7 @@ void init(int argc, char **argv)
             {"clearmemory",           no_argument,       0, 'M'},
             {"upsidedown",            no_argument,       0, 'u'},
             {"paddingswap",           no_argument,       0, 'X'},
-            {"leastmargin",           no_argument,       0, 'l'},
+            {"leastmargin",           required_argument,       0, 'l'},
             {0, 0, 0, 0}
         };
 
