@@ -1587,6 +1587,7 @@ int main(int argc, char **argv){
                             node_t * current = entries;
                             node_t * selected = NULL;
                             node_t * selected_one = NULL;
+                            node_t * first = NULL;
                             int nb=0;
                             while (current != NULL)
                             {
@@ -1594,6 +1595,7 @@ int main(int argc, char **argv){
                                 {
                                     nb++;
                                     selected_one=current;
+                                    if (first == NULL) first = current;
                                 }
                                 if (!current->hidden && current->hovered) selected=current;
                                 current=current->next;
@@ -1603,6 +1605,8 @@ int main(int argc, char **argv){
                             else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
                             // else run the command entered by commandline, if the command prompt is used
                             else if (!no_prompt && !select_only) run_command(commandline);
+                            // or if --selectonly is specified, run first program regardless of selected state
+                            else if (select_only && first!=NULL) run_command(first->cmd);
                         }
 
                         if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
