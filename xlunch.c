@@ -659,9 +659,9 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
     if (cell->hidden) return 0;
 
     if (   mouse_x >= cell->x
-        && mouse_x <= cell->x+cell_width
+        && mouse_x < cell->x+cell_width
         && mouse_y >= cell->y
-        && mouse_y <= cell->y+cell_height) return 1;
+        && mouse_y < cell->y+cell_height) return 1;
     else return 0;
 }
 
