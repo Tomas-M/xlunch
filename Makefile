@@ -16,7 +16,7 @@ install: xlunch
 	cp xlunch $(DESTDIR)/usr/bin/
 	cp extra/genentries $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop $(DESTDIR)/usr/share/applications/
-	sh extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
+	bash extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
 	cp -r svgicons/ $(DESTDIR)/usr/share/xlunch/ 2>/dev/null || :
 
 remove:
@@ -35,7 +35,7 @@ xlunch: xlunch.c
 	$(CC) xlunch.c -o xlunch $(LDFLAGS) $(CFLAGS)
 
 entries.dsv:
-	sh extra/genentries > entries.dsv
+	bash extra/genentries > entries.dsv
 
 clean:
 	rm -f xlunch
