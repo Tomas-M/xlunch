@@ -1409,7 +1409,7 @@ int main(int argc, char **argv){
     update_background_images();
 
     /* tell X what events we are interested in */
-    XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
+    XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | EnterWindowMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
     GC gc = XCreateGC(disp, win, 0, 0);
     /* set our name */
     XClassHint* classHint;
@@ -1716,6 +1716,7 @@ int main(int argc, char **argv){
                     case KeyRelease:
                         break;
 
+                    case EnterNotify:
                     case MotionNotify:
                     {
                         node_t * current = entries;
