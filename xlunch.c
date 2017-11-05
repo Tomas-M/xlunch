@@ -100,6 +100,7 @@ char commandlinetext[10024];
 int prompt_x;
 int prompt_y;
 char * background_file = "";
+char * highlight_file = "";
 char * input_file = "";
 FILE * input_source = NULL;
 char * prompt = "";
@@ -144,6 +145,8 @@ int lock;
 Imlib_Updates updates, current_update;
 /* our background image, rendered only once */
 Imlib_Image background = NULL;
+/* highlighting image (placed under icon on hover) */
+Imlib_Image highlight = NULL;
 /* image variable */
 Imlib_Image image = NULL;
 
@@ -920,14 +923,27 @@ Imlib_Font load_prompt_font()
 }
 
 
-void update_background_image()
+// set background image for desktop, optionally copy it from root window,
+// and set background for highlighting items
+//
+void update_background_images()
 {
-    /* reset image if exists */
+    /* reset images if exist */
     if (background)
     {
         imlib_context_set_image(background);
         imlib_free_image();
     }
+
+    if (highlight)
+    {
+        imlib_context_set_image(highlight);
+        imlib_free_image();
+    }
+
+    // load highlighting image from a file
+    if (strlen(highlight_file)>0)
+       highlight=imlib_load_image(highlight_file);
 
     /* fill the window background */
     background = imlib_create_image(screen_width, screen_height);
@@ -991,6 +1007,7 @@ void init(int argc, char **argv)
             {"rootwindowbackground",  no_argument,       0, 'G'},
             {"noprompt",              no_argument,       0, 'n'},
             {"background",            required_argument, 0, 'g'},
+            {"highlight",             required_argument, 0, 'L'},
             {"iconpadding",           required_argument, 0, 'I'},
             {"textpadding",           required_argument, 0, 'T'},
             {"columns",               required_argument, 0, 'c'},
@@ -1034,7 +1051,7 @@ void init(int argc, char **argv)
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXel:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXel:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1066,6 +1083,10 @@ void init(int argc, char **argv)
                     background_color.b = 0;
                     background_color.a = 100;
                 }
+                break;
+
+            case 'L':
+                highlight_file = optarg;
                 break;
 
             case 'I':
@@ -1253,6 +1274,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
                 fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
                 fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
+                fprintf (stderr,"        -L, --highlightcolor [file]       Image set as highlighting under selected icon (jpg/png)\n");
                 fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
                 fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
                 fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
@@ -1384,7 +1406,7 @@ int main(int argc, char **argv){
     imlib_context_set_colormap(attr.colormap);
     imlib_context_set_drawable(win);
 
-    update_background_image();
+    update_background_images();
 
     /* tell X what events we are interested in */
     XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
@@ -1521,7 +1543,7 @@ int main(int argc, char **argv){
                         {
                             screen_width=ev.xconfigure.width;
                             screen_height=ev.xconfigure.height;
-                            if (!use_root_img) update_background_image();
+                            if (!use_root_img) update_background_images();
                             recalc_cells();
                             arrange_positions();
                             updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
@@ -1755,10 +1777,22 @@ int main(int argc, char **argv){
                     {
                         if (current->hovered)
                         {
-                            imlib_context_set_image(buffer);
                             c = XCreateFontCursor(disp,XC_hand1);
-                            imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
-                            imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
+
+                            if (highlight)
+                            {
+                                imlib_context_set_image(highlight);
+                                w = imlib_image_get_width();
+                                h = imlib_image_get_height();
+                                imlib_context_set_image(buffer);
+                                imlib_blend_image_onto_image(highlight, 1, 0, 0, w, h, current->x-up_x, current->y-up_y, cell_width, cell_height);
+                            }
+                            else
+                            {
+                               imlib_context_set_image(buffer);
+                               imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
+                               imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
+                            }
                         }
                         if (strlen(current->icon) != 0) {
                             image=imlib_load_image(current->icon);
