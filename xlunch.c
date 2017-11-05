@@ -1274,7 +1274,7 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
                 fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
                 fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
-                fprintf (stderr,"        -L, --highlightcolor [file]       Image set as highlighting under selected icon (jpg/png)\n");
+                fprintf (stderr,"        -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)\n");
                 fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
                 fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
                 fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
