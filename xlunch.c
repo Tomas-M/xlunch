@@ -129,6 +129,7 @@ int upside_down = 0;
 int padding_swap = 0;
 int least_margin = 0;
 int hide_missing = 0;
+int center_icons = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -196,12 +197,23 @@ void recalc_cells()
         columns = usable_width/margined_cell_width;
     } else{
         columns = ucolumns;
+        if (center_icons)
+        {
+           side_border = (screen_width - margined_cell_width*columns - least_margin)/2;
+           usable_width = screen_width - side_border*2;
+        }
     }
     if (urows == 0){
         rows = usable_height/margined_cell_height;
     } else{
         rows = urows;
+        if (center_icons)
+        {
+           border = (screen_height - margined_cell_height*rows - least_margin)/2;
+           usable_height = screen_height - border*2;
+        }
     }
+
     // If we don't have space for a single column or row, force it.
     if (columns == 0) {
         columns = 1;
@@ -1046,12 +1058,13 @@ void init(int argc, char **argv)
             {"upsidedown",            no_argument,       0, 'u'},
             {"paddingswap",           no_argument,       0, 'X'},
             {"leastmargin",           required_argument, 0, 'l'},
+            {"center",                no_argument,       0, 'C'},
             {"hidemissing",           no_argument,       0, 'e'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXel:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1226,6 +1239,10 @@ void init(int argc, char **argv)
                 least_margin = atoi(optarg);
                 break;
 
+            case 'C':
+                center_icons = 1;
+                break;
+
             case 'e':
                 hide_missing = 1;
                 break;
@@ -1281,6 +1298,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
                 fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
+                fprintf (stderr,"        -C, --center                      Center icons. Has effect only in combination with --rows or --columns (or both).\n");
+                fprintf (stderr,"                                          When used, border is ignored. You can adjust the space between icons with --leastmargin\n");
                 fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
                 fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
                 fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");

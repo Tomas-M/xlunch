@@ -49,6 +49,8 @@ usage: xlunch [options]
         -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)
         -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)
         -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom
+        -C, --center                      Center icons. Has effect only in combination with --rows or --columns (or both).
+                                          When used, border is ignored. You can adjust the space between icons with --leastmargin
         -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
         -s, --iconsize [i]                Size of the icons (default: 48)
         -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option
