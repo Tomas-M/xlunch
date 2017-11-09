@@ -197,7 +197,7 @@ void recalc_cells()
         columns = usable_width/margined_cell_width;
     } else{
         columns = ucolumns;
-        if (center_icons)
+        if (center_icons && !text_after_margin)
         {
            side_border = (screen_width - margined_cell_width*columns - least_margin)/2;
            usable_width = screen_width - side_border*2;
@@ -207,7 +207,7 @@ void recalc_cells()
         rows = usable_height/margined_cell_height;
     } else{
         rows = urows;
-        if (center_icons)
+        if (center_icons && !text_after_margin)
         {
            border = (screen_height - margined_cell_height*rows - least_margin)/2;
            usable_height = screen_height - border*2;
