@@ -985,7 +985,29 @@ void update_background_images()
                     imlib_context_set_image(background);
                     imlib_context_set_color(background_color.r, background_color.g, background_color.b, background_color.a);
                     imlib_context_set_blend(1);
-                    imlib_blend_image_onto_image(image, 1, 0, 0, w, h,  0,0, screen_width, screen_height);
+
+                    // Those are our source coordinates if we use just scale
+                    // this would give the same result as feh --bg-scale
+                    int imx=0, imy=0, imw=w, imh=h;
+
+                    // But we do not want to use scale, rather we use fill to keep aspect ratio
+                    // It gives the same result as feh --bg-fill
+                    if ( (double) (w/h) < (double) (screen_width/screen_height) )
+                    {
+                       imw = (int) w;
+                       imh = (int) (screen_height * w / screen_width);
+                       imx = 0;
+                       imy = (int) ((h - imh) / 2);
+                    }
+                    else
+                    {
+                       imw = (int) (screen_width * h / screen_height);
+                       imh = (int) h;
+                       imx = (int) ((w - imw) / 2);
+                       imy = 0;
+                    }
+
+                    imlib_blend_image_onto_image(image, 1, imx, imy, imw, imh,  0, 0, screen_width, screen_height);
                     imlib_image_fill_rectangle(0,0, screen_width, screen_height);
                     imlib_context_set_blend(0);
                     imlib_context_set_image(image);
