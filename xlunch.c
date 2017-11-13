@@ -66,6 +66,12 @@ typedef struct node
     struct node * next;
 } node_t;
 
+typedef struct shortcut
+{
+  char *key;
+  node_t *entry;
+  struct shortcut *next;
+} shortcut_t;
 
 typedef struct keynode {
     char key[255];
@@ -78,6 +84,7 @@ typedef struct color {
 
 int entries_count = 0;
 node_t * entries = NULL;
+shortcut_t * shortcuts = NULL;
 keynode_t * cmdline = NULL;
 
 int icon_size = 48;
@@ -492,6 +499,15 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     new_entry->hidden=0;
     new_entry->hovered=0;
     new_entry->clicked=0;
+
+    shortcut_t *shortcut = shortcuts;
+    while (shortcut != NULL) {
+        if (shortcut->entry == NULL) {
+            shortcut->entry = new_entry;
+            break;
+        }
+        shortcut = shortcut->next;
+    }
 
     // empty list, add first directly
     if (current==NULL)
@@ -1103,11 +1119,12 @@ void init(int argc, char **argv)
             {"leastvmargin",          required_argument, 0, 'V'},
             {"center",                no_argument,       0, 'C'},
             {"hidemissing",           no_argument,       0, 'e'},
+            {"shortcuts",             required_argument, 0, 'U'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:V:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:V:U:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1302,6 +1319,44 @@ void init(int argc, char **argv)
                 hide_missing = 1;
                 break;
 
+            case 'U': ;
+                unsigned char lb = optarg[0];
+                int i = 0;
+                shortcut_t *current_shortcut = NULL;
+                while (lb != '\0') {
+                    if ( current_shortcut == NULL ) {
+                        current_shortcut = malloc(sizeof(shortcut_t));
+                    } else {
+                        current_shortcut->next = malloc(sizeof(shortcut_t));
+                        current_shortcut = current_shortcut->next;
+                    }
+                    if ( shortcuts == NULL)
+                        shortcuts = current_shortcut;
+                    current_shortcut->entry = NULL;
+                    current_shortcut->next = NULL;
+                    if (( lb & 0x80 ) == 0 ) {          // lead bit is zero, must be a single ascii
+                        current_shortcut->key = malloc(sizeof(char));
+                        memcpy(current_shortcut->key, &optarg[i], sizeof(char));
+                        i+=1;
+                    } else if (( lb & 0xE0 ) == 0xC0 ) {  // 110x xxxx
+                        current_shortcut->key = malloc(sizeof(char)*2);
+                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*2);
+                        i+=2;
+                    } else if (( lb & 0xF0 ) == 0xE0 ) { // 1110 xxxx
+                        current_shortcut->key = malloc(sizeof(char)*3);
+                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*3);
+                        i+=3;
+                    } else if (( lb & 0xF8 ) == 0xF0 ) { // 1111 0xxx
+                        current_shortcut->key = malloc(sizeof(char)*4);
+                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*4);
+                        i+=4;
+                    } else {
+                       printf( "Unrecognized lead byte in shortcut (%02x)\n", lb );
+                    }
+                    lb = optarg[i];
+                }
+                break;
+
             case '?':
             case 'H':
                 fprintf (stderr,"usage: xlunch [options]\n");
@@ -1331,7 +1386,9 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
                 fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
                 fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
-                fprintf (stderr,"                                          information through xlunch.\n\n");
+                fprintf (stderr,"                                          information through xlunch.\n");
+                fprintf (stderr,"        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use\n");
+                fprintf (stderr,"                                          sequentially for the entries provided.\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
@@ -1768,8 +1825,20 @@ int main(int argc, char **argv){
 
                         if (keycode==XK_Delete || keycode==XK_BackSpace)
                             pop_key();
-                        else if (count>1 || (count==1 && kbdbuf[0]>=32)) // ignore unprintable characterrs
+                        else if (count>1 || (count==1 && kbdbuf[0]>=32)){ // ignore unprintable characterrs
                             if (!no_prompt) push_key(kbdbuf);
+                            shortcut_t *shortcut = shortcuts;
+                            while(shortcut != NULL) {
+                                for(int i = 0; i < count; i++){
+                                    if (kbdbuf[i] != shortcut->key[i]) {
+                                        break;
+                                    } else if (i == count-1) {
+                                        run_command(shortcut->entry->cmd);
+                                    }
+                                }
+                                shortcut = shortcut->next;
+                            }
+                        }
 
                         joincmdline();
                         joincmdlinetext();

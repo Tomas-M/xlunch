@@ -98,6 +98,9 @@ Functional options (these changes what xlunch does, or how it does it):
 -W, --windowed                    Start in windowed mode
 -M, --clearmemory                 Set the memory of each entry to null before exiting.
                                   Used for passing sensitive information through xlunch.
+-U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string
+                                  of UTF-8 characters to use sequentially for the entries
+                                  provided.
 </code></pre>
 
 Style options (these changes how xlunch looks):
@@ -173,6 +176,13 @@ require a compositor).
 <p>In previous version desktop mode would by default fork of processes instead of terminating. This
 is now a separate option (<code>--dontquit</code>) so you can keep xlunch running no matter the
 mode.</p>
+
+<p>When using xlunch to create menus of a set of options it might be practical to have shortcuts for
+the options. With the <code>--shortcuts</code> option this is achievable. Since this captures
+keypresses it might not be very useful without <code>--noprompt</code> but it is all the same
+possible (perhaps using the number keys to hotkey the first 10 entries while being able to search
+for the rest). As an example usage passing <code>--shortcuts "atf"</code> will apply 'a' as a shortcut
+to the first entry, 't' as a shortcut to the second, and 'f' as a shortcut to the third.</p>
 
 <p>If you want to use xlunch to for example choose a password you can use the <code>--clearmemory</code>
 mode. This will set all the data for the entries to NULL when they are destroyed (ie. xlunch closes
