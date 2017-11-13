@@ -48,7 +48,10 @@ usage: xlunch [options]
         -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)
         -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)
         -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)
+                                          This can also be set to 'auto' in order to automatically calculate a border taking
+                                          into account the margin settings and the configured columns and rows
         -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom
+                                          Similarily this can be set to 'auto' but then only side borders are calculated
         -C, --center                      Center entries when there are fewer entries on a row than the maximum
         -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
         -s, --iconsize [i]                Size of the icons (default: 48)
@@ -58,6 +61,7 @@ usage: xlunch [options]
         -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.
         -X, --paddingswap                 Icon padding and text padding swaps order around text.
         -l, --leastmargin [i]             Adds a margin to the calculation of application sizes, no effect when specified rows and columns.
+        -V, --leastvmargin [i]            Adds a vertical margin to the calculation of application sizes
         -e, --hidemissing                 Hide entries with missing or broken icon images
         --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)
         --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    

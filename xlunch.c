@@ -90,7 +90,7 @@ int row_margin = 0;
 int icon_padding = 10;
 int text_padding = 10;
 int border;
-int side_border;
+int side_border = 0;
 int cell_width;
 int cell_height;
 int font_height;
@@ -129,6 +129,7 @@ int clear_memory = 0;
 int upside_down = 0;
 int padding_swap = 0;
 int least_margin = 0;
+int least_v_margin = -1;
 int hide_missing = 0;
 int center_icons = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
@@ -156,23 +157,40 @@ Imlib_Image image = NULL;
 void recalc_cells()
 {
     int margined_cell_width, margined_cell_height;
-    border=screen_width/10;
-    if (uborder>0) border = uborder;
-    side_border = border;
-    if (uside_border>0) side_border = uside_border;
 
+    if (least_v_margin == -1) least_v_margin = least_margin;
     if (text_after){
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2;
         margined_cell_width=icon_size+icon_padding*2+least_margin;
-        margined_cell_height=icon_size+icon_padding*2+least_margin;
+        margined_cell_height=icon_size+icon_padding*2+least_v_margin;
         if(ucolumns == 0)
             ucolumns = 1;
     } else {
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2+font_height+text_padding;
         margined_cell_width=icon_size+icon_padding*2+least_margin;
-        margined_cell_height=icon_size+icon_padding*2+font_height+text_padding+least_margin;
+        margined_cell_height=icon_size+icon_padding*2+font_height+text_padding+least_v_margin;
+    }
+
+    border=screen_width/10;
+    if (uborder>0) border = uborder;
+    if (uborder == -1){
+        if (ucolumns == 0){
+            border = 0;
+        } else {
+            side_border = (screen_width - (ucolumns * cell_width + (ucolumns - 1) * least_margin))/2;
+            border = (screen_height - (urows * cell_height + (urows - 1) * least_v_margin))/2;
+        }
+    }
+    if (side_border == 0) side_border = border;
+    if (uside_border>0) side_border = uside_border;
+    if (uside_border == -1){
+        if (ucolumns == 0){
+            side_border = 0;
+        } else {
+            side_border = (screen_width - (ucolumns * cell_width + (ucolumns - 1) * least_margin))/2;
+        }
     }
 
     int usable_width;
@@ -1082,13 +1100,14 @@ void init(int argc, char **argv)
             {"upsidedown",            no_argument,       0, 'u'},
             {"paddingswap",           no_argument,       0, 'X'},
             {"leastmargin",           required_argument, 0, 'l'},
+            {"leastvmargin",          required_argument, 0, 'V'},
             {"center",                no_argument,       0, 'C'},
             {"hidemissing",           no_argument,       0, 'e'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:V:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1143,11 +1162,19 @@ void init(int argc, char **argv)
                 break;
 
             case 'b':
-                uborder = atoi(optarg);
+                if(strcmp(optarg, "auto") == 0){
+                    uborder = -1;
+                } else {
+                    uborder = atoi(optarg);
+                }
                 break;
 
             case 'B':
-                uside_border = atoi(optarg);
+                if(strcmp(optarg, "auto") == 0){
+                    uside_border = -1;
+                } else {
+                    uside_border = atoi(optarg);
+                }
                 break;
 
             case 'P':
@@ -1263,6 +1290,10 @@ void init(int argc, char **argv)
                 least_margin = atoi(optarg);
                 break;
 
+            case 'V':
+                least_v_margin = atoi(optarg);
+                break;
+
             case 'C':
                 center_icons = 1;
                 break;
@@ -1321,7 +1352,10 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
+                fprintf (stderr,"                                          This can also be set to 'auto' in order to automatically calculate a border taking\n");
+                fprintf (stderr,"                                          into account the margin settings and the configured columns and rows\n");
                 fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
+                fprintf (stderr,"                                          Similarily this can be set to 'auto' but then only side borders are calculated\n"); 
                 fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
                 fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
                 fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
@@ -1330,7 +1364,8 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
-                fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes, no effect when specified rows and columns.\n");
+                fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes.\n");
+                fprintf (stderr,"        -V, --leastvmargin [i]            Adds a vertical margin to the calculation of application sizes.\n");
                 fprintf (stderr,"        -e, --hidemissing                 Hide entries with missing or broken icon images\n");
                 fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
                 fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
