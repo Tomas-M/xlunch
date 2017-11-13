@@ -109,8 +109,7 @@ Style options (these changes how xlunch looks):
 -g, --background [file]           Image to set as background (jpg/png)
 -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)
 -I, --iconpadding [i]             Padding around icons (default: 10)
--T, --textpadding [i]             Padding around entry titles (default: 10). When
-                                  --textafter is set this is the space between columns.
+-T, --textpadding [i]             Padding around entry titles (default: 10).
 -c, --columns [i]                 Number of columns to show (without this the max amount
                                   possible is used)
 -r, --rows [i]                    Numbers of rows to show (without this the max amount
@@ -119,9 +118,8 @@ Style options (these changes how xlunch looks):
                                   (default: 1/10th of screen width)
 -B, --sideborder [i]              Size of the border on the sides, if this is used
                                   --border will be only top and bottom
--C, --center                      Center icons. Has effect only in combination with
-                                  --rows or --columns (or both). When used, border is ignored
-                                  You can adjust the space between icons with --leastmargin
+-C, --center                      Center entries when there are fewer entries on a row than
+                                  the maximum
 -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
 -s, --iconsize [i]                Size of the icons (default: 48)
 -a, --textafter                   Draw the title to the right of the icon instead of

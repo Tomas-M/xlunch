@@ -76,6 +76,7 @@ typedef struct color {
     int r, g, b, a;
 } color_t;
 
+int entries_count = 0;
 node_t * entries = NULL;
 keynode_t * cmdline = NULL;
 
@@ -122,7 +123,7 @@ int dont_quit = 0;
 int reverse = 0;
 int output_only = 0;
 int select_only = 0;
-int text_after_margin = 0;
+int text_after = 0;
 int text_other_side = 0;
 int clear_memory = 0;
 int upside_down = 0;
@@ -160,7 +161,7 @@ void recalc_cells()
     side_border = border;
     if (uside_border>0) side_border = uside_border;
 
-    if (text_after_margin){
+    if (text_after){
         cell_width=icon_size+icon_padding*2;
         cell_height=icon_size+icon_padding*2;
         margined_cell_width=icon_size+icon_padding*2+least_margin;
@@ -197,21 +198,11 @@ void recalc_cells()
         columns = usable_width/margined_cell_width;
     } else{
         columns = ucolumns;
-        if (center_icons && !text_after_margin)
-        {
-           side_border = (screen_width - margined_cell_width*columns - least_margin)/2;
-           usable_width = screen_width - side_border*2;
-        }
     }
     if (urows == 0){
         rows = usable_height/margined_cell_height;
     } else{
         rows = urows;
-        if (center_icons && !text_after_margin)
-        {
-           border = (screen_height - margined_cell_height*rows - least_margin)/2;
-           usable_height = screen_height - border*2;
-        }
     }
 
     // If we don't have space for a single column or row, force it.
@@ -222,8 +213,8 @@ void recalc_cells()
         rows = 1;
     }
 
-    if (text_after_margin){
-        cell_width = (usable_width - text_after_margin*(columns - 1))/columns;
+    if (text_after){
+        cell_width = (usable_width - least_margin*(columns - 1))/columns;
     }
 
     // The space between the icon tiles to fill all the space
@@ -292,7 +283,15 @@ void arrange_positions()
         }
         else
         {
-            current->x = side_border + i * (cell_width+column_margin);
+            int entries_last_line = entries_count - j * columns;
+            if (center_icons && entries_last_line < columns) {
+                int width = entries_last_line * cell_width + (entries_last_line - 1) * column_margin;
+                int usable_width = screen_width - side_border * 2;
+                int margin = usable_width - width;
+                current->x = side_border + margin / 2 + i * (cell_width + column_margin);
+            } else {
+                current->x = side_border + i * (cell_width+column_margin);
+            }
             if (no_prompt) {
                 current->y = border + j * (cell_height+row_margin);
             } else {
@@ -503,11 +502,14 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
 void filter_entries()
 {
     node_t * current = entries;
+    entries_count = 0;
 
     while (current != NULL)
     {
-        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL) current->hidden=0;
-        else {
+        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL){
+            current->hidden=0;
+            entries_count ++;
+        } else {
             current->hidden=1;
             current->hovered=0;
             current->clicked=0;
@@ -1071,7 +1073,7 @@ void init(int argc, char **argv)
             {"pc",                    required_argument, 0, 1010},
             {"bc",                    required_argument, 0, 1011},
             {"hc",                    required_argument, 0, 1012},
-            {"textafter",             required_argument, 0, 'a'},
+            {"textafter",             no_argument,       0, 'a'},
             {"name",                  required_argument, 0, 1013},
             {"dontquit",              no_argument,       0, 'q'},
             {"reverse",               no_argument,       0, 'R'},
@@ -1226,7 +1228,7 @@ void init(int argc, char **argv)
                 break;
 
             case 'a':
-                text_after_margin = atoi(optarg);
+                text_after = 1;
                 break;
 
             case 1013:
@@ -1320,13 +1322,11 @@ void init(int argc, char **argv)
                 fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
                 fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
                 fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
-                fprintf (stderr,"        -C, --center                      Center icons. Has effect only in combination with --rows or --columns (or both).\n");
-                fprintf (stderr,"                                          When used, border is ignored. You can adjust the space between icons with --leastmargin\n");
+                fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
                 fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
                 fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
-                fprintf (stderr,"        -a, --textafter [i]               Draw the title to the right of the icon instead of below, this option\n");
-                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden. The argument is\n");
-                fprintf (stderr,"                                          the margin to apply between columns (default: n/a).\n");
+                fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
+                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
                 fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
                 fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
                 fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
@@ -1848,8 +1848,8 @@ int main(int argc, char **argv){
                                 if (current->clicked) d=2;
                                 else d=0;
                                 x = current->x - up_x +
-                                            (text_other_side && text_after_margin ? cell_width - icon_padding - icon_size : icon_padding)+d;
-                                y = current->y - up_y +(text_other_side && !text_after_margin ? cell_height - icon_padding - icon_size : icon_padding)+d;
+                                            (text_other_side && text_after ? cell_width - icon_padding - icon_size : icon_padding)+d;
+                                y = current->y - up_y +(text_other_side && !text_after ? cell_height - icon_padding - icon_size : icon_padding)+d;
 
                                 imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
 
@@ -1875,13 +1875,13 @@ int main(int argc, char **argv){
                                     strcat(title,"..");
                                 imlib_get_text_size(title, &text_w, &text_h);
                                 sz--;
-                            } while(text_w > cell_width-(text_after_margin ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+                            } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
 
                             int d;
                             if (current->clicked==1) d=4;
                             else d=0;
 
-                            if (text_after_margin) {
+                            if (text_after) {
                                 draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
                             } else {
                                 draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_padding + text_padding : icon_padding*2) + icon_size), title, text_color);
