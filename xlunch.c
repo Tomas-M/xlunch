@@ -180,7 +180,7 @@ void recalc_cells()
             border = 0;
         } else {
             side_border = (screen_width - (ucolumns * cell_width + (ucolumns - 1) * least_margin))/2;
-            border = (screen_height - (urows * cell_height + (urows - 1) * least_v_margin))/2;
+            border = (screen_height - (no_prompt ? 0 : prompt_font_height - prompt_spacing) - (urows * cell_height + (urows - 1) * least_v_margin))/2;
         }
     }
     if (side_border == 0) side_border = border;
