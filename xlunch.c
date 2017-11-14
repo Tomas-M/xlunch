@@ -66,6 +66,19 @@ typedef struct node
     struct node * next;
 } node_t;
 
+typedef struct button
+{
+    char icon_normal[256];
+    char icon_highlight[256];
+    char cmd[512];
+    int hovered;
+    int clicked;
+    int x;
+    int y;
+    int w;
+    int h;
+    struct button * next;
+} button_t;
 
 typedef struct keynode {
     char key[255];
@@ -78,6 +91,7 @@ typedef struct color {
 
 int entries_count = 0;
 node_t * entries = NULL;
+button_t * buttons = NULL;
 keynode_t * cmdline = NULL;
 
 int icon_size = 48;
@@ -690,6 +704,60 @@ int parse_entries()
     return changed;
 }
 
+void parse_button(char *button_spec) {
+    int parsing = 0; // section currently being read
+    int position = 0; // position in the current entry
+    int i = 0;
+    button_t *new_button = malloc(sizeof(button_t));
+    printf("%s\n", button_spec);
+    char b = button_spec[0];
+    char x[256];
+    char y[256];
+    while (b != '\0') {
+        if ((b == ';' && parsing != 4) || (parsing == 2 && b == ',') ) {
+            b = '\0';
+        } 
+        switch(parsing){
+            case 0:
+                new_button->icon_normal[position] = b;
+                break;
+            case 1:
+                new_button->icon_highlight[position] = b;
+                break;
+            case 2:
+                x[position] = b;
+                break;
+            case 3:
+                y[position] = b;
+                break;
+            case 4:
+                new_button->cmd[position] = b;
+                break;
+        }
+        position ++;
+        if(b == '\0') {
+            position = 0;
+            parsing++;
+        }
+        int maxlen = (parsing == 4 ? 511 : 255);
+        if(position == maxlen){
+            fprintf(stderr, "Entry too long, maximum length is %d characters!\n", maxlen);
+            break;
+        }
+        i++;
+        b = button_spec[i];
+    }
+    new_button->x = atoi(x);
+    new_button->y = atoi(y);
+    imlib_context_set_image(imlib_load_image(new_button->icon_normal));
+    new_button->w = imlib_image_get_width();
+    new_button->h = imlib_image_get_height();
+    imlib_free_image();
+    printf("Parsed button as; normal icon: %s, highlight icon: %s, command: %s, x: %s, y: %s\n", new_button->icon_normal, new_button->icon_highlight, new_button->cmd, x, y);
+    new_button->next = buttons;
+    buttons = new_button;
+}
+
 
 int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
@@ -699,6 +767,15 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
         && mouse_x < cell->x+cell_width
         && mouse_y >= cell->y
         && mouse_y < cell->y+cell_height) return 1;
+    else return 0;
+}
+
+int mouse_over_button(button_t * button, int mouse_x, int mouse_y)
+{
+    if (   mouse_x >= button->x
+        && mouse_x < button->x+button->w
+        && mouse_y >= button->y
+        && mouse_y < button->y+button->h) return 1;
     else return 0;
 }
 
@@ -1103,11 +1180,12 @@ void init(int argc, char **argv)
             {"leastvmargin",          required_argument, 0, 'V'},
             {"center",                no_argument,       0, 'C'},
             {"hidemissing",           no_argument,       0, 'e'},
+            {"button",                required_argument, 0, 'A'},
             {0, 0, 0, 0}
         };
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:V:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oa:tGHI:T:P:WF:SqROMuXeCl:V:A:", long_options, &option_index)) != -1) {
         switch (c) {
             case 'v':
                 fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -1300,6 +1378,10 @@ void init(int argc, char **argv)
 
             case 'e':
                 hide_missing = 1;
+                break;
+
+            case 'A':
+                parse_button(optarg);
                 break;
 
             case '?':
@@ -1650,6 +1732,18 @@ int main(int argc, char **argv){
                             cleanup();
                             exit(0);
                         }
+
+                        button_t * button = buttons;
+                        while (button != NULL) {
+                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+                                if (button->clicked != 1) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                button->clicked = 1;
+                            } else {
+                                if (button->clicked != 0) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                button->clicked = 0;
+                            }
+                            button = button->next;
+                        }
                         break;
                     }
 
@@ -1662,6 +1756,15 @@ int main(int argc, char **argv){
                             if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
                             set_clicked(current, 0); // button release means all cells are not clicked
                             current = current->next;
+                        }
+
+                        button_t * button = buttons;
+                        
+                        while (button != NULL)
+                        {
+                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y) && button->clicked == 1) run_command(button->cmd);
+                            button->clicked = 0;
+                            button = button->next;
                         }
 
                         break;
@@ -1809,6 +1912,19 @@ int main(int argc, char **argv){
                             }
                             current = current->next;
                         }
+                        
+                        button_t * button = buttons;
+                        while (button != NULL) {
+                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+                                if (button->hovered != 1) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                button->hovered = 1;
+                            } else {
+                                if (button->hovered != 0) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                button->hovered = 0;
+                                button->clicked = 0;
+                            }
+                            button = button->next;
+                        }
                         break;
                     }
 
@@ -1930,6 +2046,24 @@ int main(int argc, char **argv){
                     if (drawn == columns*rows)
                         break;
                     current = current->next;
+                }
+
+                button_t *button = buttons;
+                while (button != NULL) {
+                    image = imlib_load_image(button->hovered ? (button->icon_highlight[0] == '\0' ? button->icon_normal : button->icon_highlight) : button->icon_normal);
+                    if (image)
+                    {
+                        imlib_context_set_image(buffer);
+                        int d;
+                        if (button->clicked) d=2;
+                        else d=0;
+                        imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, button->x - up_x + d, button->y - up_y + d, button->w-d*2, button->h-d*2);
+
+                        imlib_context_set_image(image);
+                        imlib_free_image();
+                    }
+
+                    button = button->next;
                 }
 
                 XDefineCursor(disp,win,c);
