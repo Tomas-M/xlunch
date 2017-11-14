@@ -226,12 +226,12 @@ void recalc_cells()
         }
 
         // If the usable_width is too small, take some space away from the border
-        if (usable_width < margined_cell_width) {
-            side_border = (screen_width - margined_cell_width - 1)/2;
-        } else if (usable_height < margined_cell_height) {
-            border = (screen_height - margined_cell_height - prompt_spacing - prompt_font_height - 1)/2;
+        if (usable_width < cell_width) {
+            side_border = (screen_width - cell_width - 1)/2;
+        } else if (usable_height < cell_height) {
+            border = (screen_height - cell_height - prompt_spacing - prompt_font_height - 1)/2;
         }
-    } while ((usable_width < margined_cell_width && screen_width > margined_cell_width) || (usable_height < margined_cell_height && screen_height > margined_cell_height));
+    } while ((usable_width < cell_width && screen_width > cell_width) || (usable_height < cell_height && screen_height > cell_height));
     // If columns were not manually overriden, calculate the most it can possibly contain
     if (ucolumns == 0){
         columns = usable_width/margined_cell_width;
