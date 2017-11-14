@@ -426,6 +426,20 @@ void cleanup()
         fclose(input_source);
     }
     clear_entries();
+    button_t * button = buttons;
+    buttons = NULL;
+    while (button != NULL) {
+      button_t *last = button;
+      button = button->next;
+      free(last);
+    }
+    shortcut_t * shortcut = shortcuts;
+    shortcuts = NULL;
+    while (shortcut != NULL) {
+      shortcut_t *last = shortcut;
+      shortcut = shortcut->next;
+      free(last);
+    }
 }
 
 
@@ -763,8 +777,16 @@ void parse_button(char *button_spec) {
         i++;
         b = button_spec[i];
     }
-    new_button->x = atoi(x);
-    new_button->y = atoi(y);
+    if (x[0] == '-') {
+        new_button->x = atoi(x)-1;
+    } else {
+        new_button->x = atoi(x);
+    }
+    if (y[0] == '-') {
+        new_button->y = atoi(y)-1;
+    } else {
+        new_button->y = atoi(y);
+    }
     imlib_context_set_image(imlib_load_image(new_button->icon_normal));
     new_button->w = imlib_image_get_width();
     new_button->h = imlib_image_get_height();
@@ -788,8 +810,8 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 
 int mouse_over_button(button_t * button, int mouse_x, int mouse_y)
 {
-    int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
-    int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+    int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+    int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
     if (   mouse_x >= x
         && mouse_x < x+button->w
         && mouse_y >= y
@@ -1797,8 +1819,8 @@ int main(int argc, char **argv){
 
                         button_t * button = buttons;
                         while (button != NULL) {
-                            int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
-                            int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
                             if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
                                 if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->clicked = 1;
@@ -1991,8 +2013,8 @@ int main(int argc, char **argv){
                         
                         button_t * button = buttons;
                         while (button != NULL) {
-                            int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
-                            int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
                             if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
                                 if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->hovered = 1;
@@ -2135,8 +2157,8 @@ int main(int argc, char **argv){
                         int d;
                         if (button->clicked) d=2;
                         else d=0;
-                        int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
-                        int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+                        int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                        int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
                         imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, x - up_x + d, y - up_y + d, button->w-d*2, button->h-d*2);
 
                         imlib_context_set_image(image);
