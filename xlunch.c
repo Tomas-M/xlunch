@@ -101,6 +101,61 @@ button_t * buttons = NULL;
 shortcut_t * shortcuts = NULL;
 keynode_t * cmdline = NULL;
 
+static struct option long_options[] =
+    {
+        {"version",               no_argument,       0, 'v'},
+        {"help",                  no_argument,       0, 'H'},
+        {"desktop",               no_argument,       0, 'd'},
+        {"rootwindowbackground",  no_argument,       0, 'G'},
+        {"noprompt",              no_argument,       0, 'n'},
+        {"background",            required_argument, 0, 'g'},
+        {"highlight",             required_argument, 0, 'L'},
+        {"iconpadding",           required_argument, 0, 'I'},
+        {"textpadding",           required_argument, 0, 'T'},
+        {"columns",               required_argument, 0, 'c'},
+        {"rows",                  required_argument, 0, 'r'},
+        {"border",                required_argument, 0, 'b'},
+        {"sideborder",            required_argument, 0, 'B'},
+        {"promptspacing",         required_argument, 0, 'P'},
+        {"iconsize",              required_argument, 0, 's'},
+        {"input",                 required_argument, 0, 'i'},
+        {"windowed",              no_argument,       0, 'W'},
+        {"prompt",                required_argument, 0, 'p'},
+        {"font",                  required_argument, 0, 'f'},
+        {"promptfont",            required_argument, 0, 'F'},
+        {"multiple",              no_argument,       0, 'm'},
+        {"voidclickterminate",    no_argument,       0, 't'},
+        {"xposition",             required_argument, 0, 'x'},
+        {"yposition",             required_argument, 0, 'y'},
+        {"width",                 required_argument, 0, 'w'},
+        {"height",                required_argument, 0, 'h'},
+        {"outputonly",            no_argument,       0, 'o'},
+        {"selectonly",            no_argument,       0, 'S'},
+        {"textcolor",             required_argument, 0, 1009},
+        {"promptcolor",           required_argument, 0, 1010},
+        {"backgroundcolor",       required_argument, 0, 1011},
+        {"highlightcolor",        required_argument, 0, 1012},
+        {"tc",                    required_argument, 0, 1009},
+        {"pc",                    required_argument, 0, 1010},
+        {"bc",                    required_argument, 0, 1011},
+        {"hc",                    required_argument, 0, 1012},
+        {"textafter",             no_argument,       0, 'a'},
+        {"name",                  required_argument, 0, 1013},
+        {"dontquit",              no_argument,       0, 'q'},
+        {"reverse",               no_argument,       0, 'R'},
+        {"textotherside",         no_argument,       0, 'O'},
+        {"clearmemory",           no_argument,       0, 'M'},
+        {"upsidedown",            no_argument,       0, 'u'},
+        {"paddingswap",           no_argument,       0, 'X'},
+        {"leastmargin",           required_argument, 0, 'l'},
+        {"leastvmargin",          required_argument, 0, 'V'},
+        {"center",                no_argument,       0, 'C'},
+        {"hidemissing",           no_argument,       0, 'e'},
+        {"button",                required_argument, 0, 'A'},
+        {"shortcuts",             required_argument, 0, 'U'},
+        {"config",                required_argument, 0, 1014},
+        {0, 0, 0, 0}
+    };
 int icon_size = 48;
 int ucolumns = 0;
 int columns;
@@ -610,46 +665,51 @@ char* concat(const char *s1, const char *s2)
 
 FILE * determine_input_source(){
     FILE * fp;
-    char * homeconf = NULL;
+    if(input_source == NULL) {
+        char * homeconf = NULL;
 
-    char * home = getenv("HOME");
-    if (home!=NULL)
-    {
-        homeconf = concat(home,"/.config/xlunch/entries.dsv");
-    }
-
-    if (strlen(input_file)==0){
-        fp = stdin;
-        int flags;
-        int fd = fileno(fp);
-        flags = fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        fcntl(fd, F_SETFL, flags);
-        struct pollfd fds;
-        fds.fd = 0; /* this is STDIN */
-        fds.events = POLLIN;
-        // Give poll a little timeout to make give the piping program some time
-        if (poll(&fds, 1, 10) == 0){
-            fp = fopen(homeconf, "rb");
+        char * home = getenv("HOME");
+        if (home!=NULL)
+        {
+            homeconf = concat(home,"/.config/xlunch/entries.dsv");
         }
-    } else {
-        fp = fopen(input_file, "rb");
-    }
-    if (fp == NULL)
-    {
-        fprintf(stderr, "Error opening config file from %s.\nReverting back to system conf.\n", input_file);
-        input_file = "/etc/xlunch/entries.dsv";
-        fp = fopen(input_file, "rb");
 
+        if (strlen(input_file)==0){
+            fp = stdin;
+            int flags;
+            int fd = fileno(fp);
+            flags = fcntl(fd, F_GETFL, 0);
+            flags |= O_NONBLOCK;
+            fcntl(fd, F_SETFL, flags);
+            struct pollfd fds;
+            fds.fd = 0; /* this is STDIN */
+            fds.events = POLLIN;
+            // Give poll a little timeout to make give the piping program some time
+            if (poll(&fds, 1, 10) == 0){
+                fp = fopen(homeconf, "rb");
+            }
+        } else {
+            fp = fopen(input_file, "rb");
+        }
         if (fp == NULL)
         {
-            fprintf(stderr, "Error opening config file %s\n", input_file);
-            fprintf(stderr, "You may need to create it. Icon file format is following:\n");
-            fprintf(stderr, "title;icon_path;command\n");
-            fprintf(stderr, "title;icon_path;command\n");
-            fprintf(stderr, "title;icon_path;command\n");
+            fprintf(stderr, "Error opening config file from %s.\nReverting back to system conf.\n", input_file);
+            input_file = "/etc/xlunch/entries.dsv";
+            fp = fopen(input_file, "rb");
+
+            if (fp == NULL)
+            {
+                fprintf(stderr, "Error opening config file %s\n", input_file);
+                fprintf(stderr, "You may need to create it. Icon file format is following:\n");
+                fprintf(stderr, "title;icon_path;command\n");
+                fprintf(stderr, "title;icon_path;command\n");
+                fprintf(stderr, "title;icon_path;command\n");
+            }
         }
+    } else {
+        fp = input_source;
     }
+
     return fp;
 }
 
@@ -659,6 +719,7 @@ int parse_entries()
     int changed = 0; // if the list of elements have changed or not
     int parsing = 0; // section currently being read
     int position = 0; // position in the current entry
+    int leading_space = 0;
     int line = 1; // line count for error messages
     int readstatus;
 
@@ -690,9 +751,12 @@ int parse_entries()
                 continue;
             }
         }
+        if(b == ' ') leading_space++;
+        if(b != ' ' && leading_space > 0) leading_space = -leading_space;
         switch(parsing){
             case 0:
-                current_entry->title[position] = b;
+                if (leading_space <= 0)
+                    current_entry->title[position+leading_space] = b;
                 break;
             case 1:
                 current_entry->icon[position] = b;
@@ -704,6 +768,7 @@ int parse_entries()
         position++;
         if(b == '\0') {
             position = 0;
+            leading_space = 1;
             if(parsing == 2) {
                 push_entry(current_entry);
                 changed = 1;
@@ -791,6 +856,7 @@ void parse_button(char *button_spec) {
     new_button->w = imlib_image_get_width();
     new_button->h = imlib_image_get_height();
     imlib_free_image();
+    new_button->cmd[position] = '\0';
     printf("Parsed button as; normal icon: %s, highlight icon: %s, command: %s, x: %s, y: %s\n", new_button->icon_normal, new_button->icon_highlight, new_button->cmd, x, y);
     new_button->next = buttons;
     buttons = new_button;
@@ -1168,384 +1234,427 @@ void draw_text_with_shadow(int posx, int posy, char * text, color_t color) {
     imlib_text_draw(posx, posy, text);
 }
 
+void handle_option(int c, char *optarg);
+
+void parse_config(FILE *input) {
+    int readstatus;
+    int position = 0;
+    int size = 0;
+    int eol = 0;
+    int fileline = 1;
+    char *optarg = NULL;
+    char matching[(sizeof(long_options)/32) - 1];
+    char *entries_word = "entries";
+    int matching_entries = 1;
+    int matched = '?';
+    memset(matching, 1, sizeof(long_options)/32 - 1);
+
+    struct pollfd fds;
+    fds.fd = fileno(input);
+    fds.events = POLLIN;
+    node_t * current_entry;
+    while(poll(&fds, 1, 0)) {
+        char b;
+        readstatus = read(fds.fd, &b, 1);
+        if(readstatus <= 0){
+            break;
+        }
+        if(b == ':' || b == '\n') {
+            if (b == '\n') eol = 1;
+            b = '\0';
+        }
+        if(b == ' ' && optarg != NULL && size == 0) continue;
+        if(optarg == NULL) {
+            for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+                if (long_options[i].name[position] != b){
+                    matching[i] = 0;
+                }
+            }
+            if (entries_word[position] != b && eol != 1) {
+                matching_entries = 0;
+            }
+            if(b == '\0') {
+                for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+                    if (matching[i] == 1) {
+                        optarg = malloc(1);
+                        position = -1;
+                        matched = long_options[i].val;
+                    }
+                }
+            }
+        } else {
+            optarg = realloc(optarg, ++size);
+            optarg[position] = b;
+        }
+        position++;
+        if(eol == 1) {
+            if(position != 1) {
+                if(matching_entries){
+                    input_source = input;
+                    break;
+                } else {
+                    if(matched == '?') {
+                        fprintf(stderr, "Got unknown option in config file on line %d\n", fileline);
+                    }
+                    handle_option(matched, optarg);
+                }
+            }
+            position = 0;
+            size = 0;
+            eol = 0;
+            matching_entries = 1;
+            memset(matching, 1, sizeof(long_options)/32 - 1);
+            if(optarg != NULL){
+                //free(optarg);
+                optarg = NULL;
+            }
+            matched = '?';
+            fileline++;
+        }
+    }
+    if(input_source != input)
+        close(fds.fd);
+}
+
+void handle_option(int c, char *optarg) {
+    switch (c) {
+        case 'v':
+            fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+            exit(0);
+
+        case 'd':
+            desktop_mode = 1;
+            break;
+
+        case 'G':
+            use_root_img = 1;
+            if(background_color_set == 0){
+                background_color.r = 0;
+                background_color.g = 0;
+                background_color.b = 0;
+                background_color.a = 100;
+            }
+            break;
+
+        case 'n':
+            no_prompt = 1;
+            break;
+
+        case 'g':
+            background_file = optarg;
+            if(background_color_set == 0){
+                background_color.r = 0;
+                background_color.g = 0;
+                background_color.b = 0;
+                background_color.a = 100;
+            }
+            break;
+
+        case 'L':
+            highlight_file = optarg;
+            break;
+
+        case 'I':
+            icon_padding = atoi(optarg);
+            break;
+
+        case 'T':
+            text_padding = atoi(optarg);
+            break;
+
+        case 'c':
+            ucolumns = atoi(optarg);
+            break;
+
+        case 'r':
+            urows = atoi(optarg);
+            break;
+
+        case 'b':
+            if(strcmp(optarg, "auto") == 0){
+                uborder = -1;
+            } else {
+                uborder = atoi(optarg);
+            }
+            break;
+
+        case 'B':
+            if(strcmp(optarg, "auto") == 0){
+                uside_border = -1;
+            } else {
+                uside_border = atoi(optarg);
+            }
+            break;
+
+        case 'P':
+            prompt_spacing = atoi(optarg);
+            break;
+
+        case 's':
+            icon_size = atoi(optarg);
+            break;
+
+        case 'i':
+            input_file = optarg;
+            break;
+
+        case 'W':
+            windowed = 1;
+            break;
+
+        case 'p':
+            prompt = optarg;
+            break;
+
+        case 'f':
+            font_name = optarg;
+            break;
+
+        case 'F':
+            prompt_font_name = optarg;
+            break;
+
+        case 'm':
+            multiple_instances = 1;
+            break;
+
+        case 't':
+            void_click_terminate = 1;
+            break;
+
+        case 'x':
+            uposx = atoi(optarg);
+            break;
+
+        case 'y':
+            uposy = atoi(optarg);
+            break;
+
+        case 'w':
+            uwidth = atoi(optarg);
+            break;
+
+        case 'h':
+            uheight = atoi(optarg);
+            break;
+
+        case 'o':
+            output_only = 1;
+            break;
+
+        case 'S':
+            select_only = 1;
+            break;
+
+        case 1009:
+            sscanf(optarg, "%02x%02x%02x%02x", &text_color.r, &text_color.g, &text_color.b, &text_color.a);
+            break;
+
+        case 1010:
+            sscanf(optarg, "%02x%02x%02x%02x", &prompt_color.r, &prompt_color.g, &prompt_color.b, &prompt_color.a);
+            break;
+
+        case 1011:
+            sscanf(optarg, "%02x%02x%02x%02x", &background_color.r, &background_color.g, &background_color.b, &background_color.a);
+            background_color_set = 1;
+            break;
+
+        case 1012:
+            sscanf(optarg, "%02x%02x%02x%02x", &highlight_color.r, &highlight_color.g, &highlight_color.b, &highlight_color.a);
+            break;
+
+        case 'a':
+            text_after = 1;
+            break;
+
+        case 1013:
+            program_name = optarg;
+            break;
+
+        case 'q':
+            dont_quit = 1;
+            break;
+
+        case 'R':
+            reverse = 1;
+            break;
+
+        case 'O':
+            text_other_side = 1;
+            break;
+
+        case 'M':
+            clear_memory = 1;
+            break;
+
+        case 'u':
+            upside_down = 1;
+            break;
+
+        case 'X':
+            padding_swap = 1;
+            break;
+
+        case 'l':
+            least_margin = atoi(optarg);
+            break;
+
+        case 'V':
+            least_v_margin = atoi(optarg);
+            break;
+
+        case 'C':
+            center_icons = 1;
+            break;
+
+        case 'e':
+            hide_missing = 1;
+            break;
+
+        case 'A':
+            parse_button(optarg);
+            break;
+
+        case 'U': ;
+            unsigned char lb = optarg[0];
+            int i = 0;
+            shortcut_t *current_shortcut = NULL;
+            while (lb != '\0') {
+                if ( current_shortcut == NULL ) {
+                    current_shortcut = malloc(sizeof(shortcut_t));
+                } else {
+                    current_shortcut->next = malloc(sizeof(shortcut_t));
+                    current_shortcut = current_shortcut->next;
+                }
+                if ( shortcuts == NULL)
+                    shortcuts = current_shortcut;
+                current_shortcut->entry = NULL;
+                current_shortcut->next = NULL;
+                if (( lb & 0x80 ) == 0 ) {          // lead bit is zero, must be a single ascii
+                    current_shortcut->key = malloc(sizeof(char));
+                    memcpy(current_shortcut->key, &optarg[i], sizeof(char));
+                    i+=1;
+                } else if (( lb & 0xE0 ) == 0xC0 ) {  // 110x xxxx
+                    current_shortcut->key = malloc(sizeof(char)*2);
+                    memcpy(current_shortcut->key, &optarg[i], sizeof(char)*2);
+                    i+=2;
+                } else if (( lb & 0xF0 ) == 0xE0 ) { // 1110 xxxx
+                    current_shortcut->key = malloc(sizeof(char)*3);
+                    memcpy(current_shortcut->key, &optarg[i], sizeof(char)*3);
+                    i+=3;
+                } else if (( lb & 0xF8 ) == 0xF0 ) { // 1111 0xxx
+                    current_shortcut->key = malloc(sizeof(char)*4);
+                    memcpy(current_shortcut->key, &optarg[i], sizeof(char)*4);
+                    i+=4;
+                } else {
+                   printf( "Unrecognized lead byte in shortcut (%02x)\n", lb );
+                }
+                lb = optarg[i];
+            }
+            break;
+
+        case 1014:
+            parse_config(fopen(optarg, "rb"));
+            break;
+
+        case '?':
+        case 'H':
+            fprintf (stderr,"usage: xlunch [options]\n");
+            fprintf (stderr,"    xlunch is a program launcher/option selector similar to dmenu or rofi.\n");
+            fprintf (stderr,"    By default it launches in full-screen mode and terminates after a selection is made,\n");
+            fprintf (stderr,"    it is also possible to close xlunch by pressing Esc or the right mouse button.\n");
+            fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
+            fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background\n");
+            fprintf (stderr,"                                          (behind other windows), and ignore ESC and right mouse click.\n");
+            fprintf (stderr,"                                          Combined with --dontquit xlunch never exits (behaviour of --desktop\n");
+            fprintf (stderr,"                                          from previous versions).\n");
+            fprintf (stderr,"    Functional options:\n");
+            fprintf (stderr,"        --config [file]                   Reads configuration options from a file. The options are the same as the long options\n");
+            fprintf (stderr,"                                          specified here. Options that take a value must have a colon (':') before it's option.\n");
+            fprintf (stderr,"                                          It is also possible to pass the entries along with the configuration file by using\n");
+            fprintf (stderr,"                                          \"entries:\" followed by a newline and the regular contents of an input file\n");
+            fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
+            fprintf (stderr,"        -H, --help                        Shows this help message\n");
+            fprintf (stderr,"        --name                            POSIX-esque way to specify the first part of WM_CLASS\n");
+            fprintf (stderr,"                                          (default: environment variable RESOURCE_NAME or argv[0])\n");
+            fprintf (stderr,"        -n, --noprompt                    Hides the prompt, only allowing selection by icon\n");
+            fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
+            fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
+            fprintf (stderr,"        -i, --input [file]                File to read entries from, defaults to stdin if data is available\n");
+            fprintf (stderr,"                                          otherwise it reads from $HOME/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
+            fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
+            fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
+            fprintf (stderr,"                                          practical for touch screens.\n");
+            fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
+            fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n");
+            fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
+            fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
+            fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
+            fprintf (stderr,"                                          information through xlunch.\n");
+            fprintf (stderr,"        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use\n");
+            fprintf (stderr,"                                          sequentially for the entries provided.\n");
+            fprintf (stderr,"        -A, --button [button]             Adds a button to the window. The argument \"button\" is a semicolon-separated list on the\n");
+            fprintf (stderr,"                                          form \"<icon>;<highlight icon (optional)>;<x>,<y>;<command>\". If x or y is negative\n");
+            fprintf (stderr,"                                          positioning is relative to the other side of the screen.\n\n");
+            fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
+            fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
+            fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
+            fprintf (stderr,"    effectively positions xlunch on the desired monitor. Use the following options:\n");
+            fprintf (stderr,"        -x, --xposition [i]               The x coordinate of the launcher window\n");
+            fprintf (stderr,"        -y, --yposition [i]               The y coordinate of the launcher window\n");
+            fprintf (stderr,"        -w, --width [i]                   The width of the launcher window\n");
+            fprintf (stderr,"        -h, --height [i]                  The height of the launcher window\n\n");
+            fprintf (stderr,"    Style options:\n");
+            fprintf (stderr,"        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")\n");
+            fprintf (stderr,"        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n");
+            fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
+            fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
+            fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
+            fprintf (stderr,"        -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)\n");
+            fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
+            fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
+            fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
+            fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
+            fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
+            fprintf (stderr,"                                          This can also be set to 'auto' in order to automatically calculate a border taking\n");
+            fprintf (stderr,"                                          into account the margin settings and the configured columns and rows\n");
+            fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
+            fprintf (stderr,"                                          Similarily this can be set to 'auto' but then only side borders are calculated\n"); 
+            fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
+            fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
+            fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
+            fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
+            fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
+            fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
+            fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
+            fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
+            fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes.\n");
+            fprintf (stderr,"        -V, --leastvmargin [i]            Adds a vertical margin to the calculation of application sizes.\n");
+            fprintf (stderr,"        -e, --hidemissing                 Hide entries with missing or broken icon images\n");
+            fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
+            fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
+            fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
+            fprintf (stderr,"                                          (NOTE: transparent background color requires a compositor)\n");
+            fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
+            // Check if we came from the error block above or if this was a call with --help
+            if(c == '?'){
+                exit(1);
+            } else {
+                exit(0);
+            }
+            break;
+    }
+}
+
 void init(int argc, char **argv)
 {
-    static struct option long_options[] =
-        {
-            {"version",               no_argument,       0, 'v'},
-            {"help",                  no_argument,       0, 'H'},
-            {"desktop",               no_argument,       0, 'd'},
-            {"rootwindowbackground",  no_argument,       0, 'G'},
-            {"noprompt",              no_argument,       0, 'n'},
-            {"background",            required_argument, 0, 'g'},
-            {"highlight",             required_argument, 0, 'L'},
-            {"iconpadding",           required_argument, 0, 'I'},
-            {"textpadding",           required_argument, 0, 'T'},
-            {"columns",               required_argument, 0, 'c'},
-            {"rows",                  required_argument, 0, 'r'},
-            {"border",                required_argument, 0, 'b'},
-            {"sideborder",            required_argument, 0, 'B'},
-            {"promptspacing",         required_argument, 0, 'P'},
-            {"iconsize",              required_argument, 0, 's'},
-            {"input",                 required_argument, 0, 'i'},
-            {"windowed",              no_argument,       0, 'W'},
-            {"prompt",                required_argument, 0, 'p'},
-            {"font",                  required_argument, 0, 'f'},
-            {"promptfont",            required_argument, 0, 'F'},
-            {"multiple",              no_argument,       0, 'm'},
-            {"voidclickterminate",    no_argument,       0, 't'},
-            {"xposition",             required_argument, 0, 'x'},
-            {"yposition",             required_argument, 0, 'y'},
-            {"width",                 required_argument, 0, 'w'},
-            {"height",                required_argument, 0, 'h'},
-            {"outputonly",            no_argument,       0, 'o'},
-            {"selectonly",            no_argument,       0, 'S'},
-            {"textcolor",             required_argument, 0, 1009},
-            {"promptcolor",           required_argument, 0, 1010},
-            {"backgroundcolor",       required_argument, 0, 1011},
-            {"highlightcolor",        required_argument, 0, 1012},
-            {"tc",                    required_argument, 0, 1009},
-            {"pc",                    required_argument, 0, 1010},
-            {"bc",                    required_argument, 0, 1011},
-            {"hc",                    required_argument, 0, 1012},
-            {"textafter",             no_argument,       0, 'a'},
-            {"name",                  required_argument, 0, 1013},
-            {"dontquit",              no_argument,       0, 'q'},
-            {"reverse",               no_argument,       0, 'R'},
-            {"textotherside",         no_argument,       0, 'O'},
-            {"clearmemory",           no_argument,       0, 'M'},
-            {"upsidedown",            no_argument,       0, 'u'},
-            {"paddingswap",           no_argument,       0, 'X'},
-            {"leastmargin",           required_argument, 0, 'l'},
-            {"leastvmargin",          required_argument, 0, 'V'},
-            {"center",                no_argument,       0, 'C'},
-            {"hidemissing",           no_argument,       0, 'e'},
-            {"button",                required_argument, 0, 'A'},
-            {"shortcuts",             required_argument, 0, 'U'},
-            {0, 0, 0, 0}
-        };
 
     int c, option_index;
     while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
-        switch (c) {
-            case 'v':
-                fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
-                exit(0);
-
-            case 'd':
-                desktop_mode = 1;
-                break;
-
-            case 'G':
-                use_root_img = 1;
-                if(background_color_set == 0){
-                    background_color.r = 0;
-                    background_color.g = 0;
-                    background_color.b = 0;
-                    background_color.a = 100;
-                }
-                break;
-
-            case 'n':
-                no_prompt = 1;
-                break;
-
-            case 'g':
-                background_file = optarg;
-                if(background_color_set == 0){
-                    background_color.r = 0;
-                    background_color.g = 0;
-                    background_color.b = 0;
-                    background_color.a = 100;
-                }
-                break;
-
-            case 'L':
-                highlight_file = optarg;
-                break;
-
-            case 'I':
-                icon_padding = atoi(optarg);
-                break;
-
-            case 'T':
-                text_padding = atoi(optarg);
-                break;
-
-            case 'c':
-                ucolumns = atoi(optarg);
-                break;
-
-            case 'r':
-                urows = atoi(optarg);
-                break;
-
-            case 'b':
-                if(strcmp(optarg, "auto") == 0){
-                    uborder = -1;
-                } else {
-                    uborder = atoi(optarg);
-                }
-                break;
-
-            case 'B':
-                if(strcmp(optarg, "auto") == 0){
-                    uside_border = -1;
-                } else {
-                    uside_border = atoi(optarg);
-                }
-                break;
-
-            case 'P':
-                prompt_spacing = atoi(optarg);
-                break;
-
-            case 's':
-                icon_size = atoi(optarg);
-                break;
-
-            case 'i':
-                input_file = optarg;
-                break;
-
-            case 'W':
-                windowed = 1;
-                break;
-
-            case 'p':
-                prompt = optarg;
-                break;
-
-            case 'f':
-                font_name = optarg;
-                break;
-
-            case 'F':
-                prompt_font_name = optarg;
-                break;
-
-            case 'm':
-                multiple_instances = 1;
-                break;
-
-            case 't':
-                void_click_terminate = 1;
-                break;
-
-            case 'x':
-                uposx = atoi(optarg);
-                break;
-
-            case 'y':
-                uposy = atoi(optarg);
-                break;
-
-            case 'w':
-                uwidth = atoi(optarg);
-                break;
-
-            case 'h':
-                uheight = atoi(optarg);
-                break;
-
-            case 'o':
-                output_only = 1;
-                break;
-
-            case 'S':
-                select_only = 1;
-                break;
-
-            case 1009:
-                sscanf(optarg, "%02x%02x%02x%02x", &text_color.r, &text_color.g, &text_color.b, &text_color.a);
-                break;
-
-            case 1010:
-                sscanf(optarg, "%02x%02x%02x%02x", &prompt_color.r, &prompt_color.g, &prompt_color.b, &prompt_color.a);
-                break;
-
-            case 1011:
-                sscanf(optarg, "%02x%02x%02x%02x", &background_color.r, &background_color.g, &background_color.b, &background_color.a);
-                background_color_set = 1;
-                break;
-
-            case 1012:
-                sscanf(optarg, "%02x%02x%02x%02x", &highlight_color.r, &highlight_color.g, &highlight_color.b, &highlight_color.a);
-                break;
-
-            case 'a':
-                text_after = 1;
-                break;
-
-            case 1013:
-                program_name = optarg;
-                break;
-
-            case 'q':
-                dont_quit = 1;
-                break;
-
-            case 'R':
-                reverse = 1;
-                break;
-
-            case 'O':
-                text_other_side = 1;
-                break;
-
-            case 'M':
-                clear_memory = 1;
-                break;
-
-            case 'u':
-                upside_down = 1;
-                break;
-
-            case 'X':
-                padding_swap = 1;
-                break;
-
-            case 'l':
-                least_margin = atoi(optarg);
-                break;
-
-            case 'V':
-                least_v_margin = atoi(optarg);
-                break;
-
-            case 'C':
-                center_icons = 1;
-                break;
-
-            case 'e':
-                hide_missing = 1;
-                break;
-
-            case 'A':
-                parse_button(optarg);
-                break;
-
-            case 'U': ;
-                unsigned char lb = optarg[0];
-                int i = 0;
-                shortcut_t *current_shortcut = NULL;
-                while (lb != '\0') {
-                    if ( current_shortcut == NULL ) {
-                        current_shortcut = malloc(sizeof(shortcut_t));
-                    } else {
-                        current_shortcut->next = malloc(sizeof(shortcut_t));
-                        current_shortcut = current_shortcut->next;
-                    }
-                    if ( shortcuts == NULL)
-                        shortcuts = current_shortcut;
-                    current_shortcut->entry = NULL;
-                    current_shortcut->next = NULL;
-                    if (( lb & 0x80 ) == 0 ) {          // lead bit is zero, must be a single ascii
-                        current_shortcut->key = malloc(sizeof(char));
-                        memcpy(current_shortcut->key, &optarg[i], sizeof(char));
-                        i+=1;
-                    } else if (( lb & 0xE0 ) == 0xC0 ) {  // 110x xxxx
-                        current_shortcut->key = malloc(sizeof(char)*2);
-                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*2);
-                        i+=2;
-                    } else if (( lb & 0xF0 ) == 0xE0 ) { // 1110 xxxx
-                        current_shortcut->key = malloc(sizeof(char)*3);
-                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*3);
-                        i+=3;
-                    } else if (( lb & 0xF8 ) == 0xF0 ) { // 1111 0xxx
-                        current_shortcut->key = malloc(sizeof(char)*4);
-                        memcpy(current_shortcut->key, &optarg[i], sizeof(char)*4);
-                        i+=4;
-                    } else {
-                       printf( "Unrecognized lead byte in shortcut (%02x)\n", lb );
-                    }
-                    lb = optarg[i];
-                }
-                break;
-
-            case '?':
-            case 'H':
-                fprintf (stderr,"usage: xlunch [options]\n");
-                fprintf (stderr,"    xlunch is a program launcher/option selector similar to dmenu or rofi.\n");
-                fprintf (stderr,"    By default it launches in full-screen mode and terminates after a selection is made,\n");
-                fprintf (stderr,"    it is also possible to close xlunch by pressing Esc or the right mouse button.\n");
-                fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
-                fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background\n");
-                fprintf (stderr,"                                          (behind other windows), and ignore ESC and right mouse click.\n");
-                fprintf (stderr,"                                          Combined with --dontquit xlunch never exits (behaviour of --desktop\n");
-                fprintf (stderr,"                                          from previous versions).\n");
-                fprintf (stderr,"    Functinal options:\n");
-                fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
-                fprintf (stderr,"        -H, --help                        Shows this help message\n");
-                fprintf (stderr,"        --name                            POSIX-esque way to specify the first part of WM_CLASS\n");
-                fprintf (stderr,"                                          (default: environment variable RESOURCE_NAME or argv[0])\n");
-                fprintf (stderr,"        -n, --noprompt                    Hides the prompt, only allowing selection by icon\n");
-                fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
-                fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
-                fprintf (stderr,"        -i, --input [file]                File to read entries from, defaults to stdin if data is available\n");
-                fprintf (stderr,"                                          otherwise it reads from $HOME/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
-                fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
-                fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
-                fprintf (stderr,"                                          practical for touch screens.\n");
-                fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
-                fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n");
-                fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
-                fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
-                fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
-                fprintf (stderr,"                                          information through xlunch.\n");
-                fprintf (stderr,"        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use\n");
-                fprintf (stderr,"                                          sequentially for the entries provided.\n");
-                fprintf (stderr,"        -A, --button [button]             Adds a button to the window. The argument \"button\" is a semicolon-separated list on the\n");
-                fprintf (stderr,"                                          form \"<icon>;<highlight icon (optional)>;<x>,<y>;<command>\". If x or y is negative\n");
-                fprintf (stderr,"                                          positioning is relative to the other side of the screen.\n\n");
-                fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
-                fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
-                fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
-                fprintf (stderr,"    effectively positions xlunch on the desired monitor. Use the following options:\n");
-                fprintf (stderr,"        -x, --xposition [i]               The x coordinate of the launcher window\n");
-                fprintf (stderr,"        -y, --yposition [i]               The y coordinate of the launcher window\n");
-                fprintf (stderr,"        -w, --width [i]                   The width of the launcher window\n");
-                fprintf (stderr,"        -h, --height [i]                  The height of the launcher window\n\n");
-                fprintf (stderr,"    Style options:\n");
-                fprintf (stderr,"        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")\n");
-                fprintf (stderr,"        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n");
-                fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
-                fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
-                fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
-                fprintf (stderr,"        -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)\n");
-                fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
-                fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
-                fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
-                fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
-                fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
-                fprintf (stderr,"                                          This can also be set to 'auto' in order to automatically calculate a border taking\n");
-                fprintf (stderr,"                                          into account the margin settings and the configured columns and rows\n");
-                fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
-                fprintf (stderr,"                                          Similarily this can be set to 'auto' but then only side borders are calculated\n"); 
-                fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
-                fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
-                fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
-                fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
-                fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
-                fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
-                fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
-                fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
-                fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes.\n");
-                fprintf (stderr,"        -V, --leastvmargin [i]            Adds a vertical margin to the calculation of application sizes.\n");
-                fprintf (stderr,"        -e, --hidemissing                 Hide entries with missing or broken icon images\n");
-                fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
-                fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
-                fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
-                fprintf (stderr,"                                          (NOTE: transparent background color requires a compositor)\n");
-                fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
-                // Check if we came from the error block above or if this was a call with --help
-                if(c == '?'){
-                    exit(1);
-                } else {
-                    exit(0);
-                }
-        }
+        handle_option(c, optarg);
     }
+    //parse_config(fopen("/home/peter/.xlunchrc", "rb"));
+
     /* connect to X */
     disp = XOpenDisplay(NULL);
     if (!disp)

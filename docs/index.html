@@ -77,7 +77,13 @@ Functional options (these changes what xlunch does, or how it does it):
 <pre><code>-d, --desktop                     Desktop mode, always keep the launcher at background
                                   (behind other windows), and ignore ESC and right mouse
                                   click. Combined with --dontquit xlunch never exits
-                                  (behaviour of --desktop from previous versions.
+                                  (behaviour of --desktop from previous versions).
+--config [file]                   Reads configuration options from a file. The options are
+                                  the same as the long options specified here. Options
+                                  that take a value must have a colon (':') before it's
+                                  option. It is also possible to pass the entries along
+                                  with the configuration file by using "entries:" followed
+                                  by a newline and the regular contents of an input file
 -v, --version                     Returns the version of xlunch
 -H, --help                        Shows this help message
 --name                            POSIX-esque way to specify the first part of WM_CLASS
@@ -123,15 +129,16 @@ Style options (these changes how xlunch looks):
 -r, --rows [i]                    Numbers of rows to show (without this the max amount
                                   possible is used)
 -b, --border [i]                  Size of the border around the icons and prompt
-                                  (default: 1/10th of screen width) This can also be set to
-                                  'auto' in order to automatically calculate a border taking
-                                  into account the margin settings and the configured
-                                  columns and rows
+                                  (default: 1/10th of screen width). This can also be set
+                                  to 'auto' in order to automatically calculate a border
+                                  taking into account the margin settings and the
+                                  configured columns and rows
 -B, --sideborder [i]              Size of the border on the sides, if this is used
-                                  --border will be only top and bottom. Similarily this can
-                                  be set to 'auto' but then only side borders are calculated
--C, --center                      Center entries when there are fewer entries on a row than
-                                  the maximum
+                                  --border will be only top and bottom. Similarily this
+                                  can be set to 'auto' but then only side borders are
+                                  calculated
+-C, --center                      Center entries when there are fewer entries on a row
+                                  than the maximum
 -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)
 -s, --iconsize [i]                Size of the icons (default: 48)
 -a, --textafter                   Draw the title to the right of the icon instead of
@@ -153,6 +160,31 @@ Style options (these changes how xlunch looks):
                                   NOTE: transparent background color requires a compositor
 --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)
 </code></pre>
+
+<p>This list of options might seem a bit daunting at first. But you don't have to pass them
+all on the command-line. If you specify a configuration file with <code>--config</code>
+xlunch will read these options from a configuration file instead. The options have the same
+name as their long versions do, but when passed through a configuration file options with
+an argument must be split by a colon. If you only have a few entries to pass to xlunch (in
+case of a menu for example) they can be passed through the configuration file as well. An
+example showing configuration file usage with entries can be seen here:
+<code><pre>textafter
+columns: 3
+rows: 5
+iconsize: 64
+outputonly
+entries:
+  Pidgin;extra/pidgin.png;pidgin
+  Xterm;extra/terminal.png;xterm
+  Firefox;extra/firefox.png;firefox</pre></code>
+In this example there are three entries passed to xlunch, note that the whitespace
+following each entry is not required, nor is the space between the colon and the arguments
+above. Anything after "entries:" will be parsed as an entry, so you can't have more options
+below the entries option. Note also that this can be used in conjuction with regular
+options. If the options precede the <code>--config</code> option the ones in the file will
+override them, and conversely any option following the <code>--config</code> option will
+override those in the file. Where the above file to be used like so <code>xlunch --rows 10
+  --config file.cfg --columns 2</code> it would lead to xlunch using 5 rows and 2 columns.</p>
 
 <p>If you want to completely hide icons (to eg. use xlunch to only select between text entries like
 dmenu) you should set <code>--iconsize</code> to 0 and turn on <code>--textafter</code> mode.
