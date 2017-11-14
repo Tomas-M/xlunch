@@ -26,6 +26,8 @@ usage: xlunch [options]
         -W, --windowed                    Start in windowed mode
         -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive
                                           information through xlunch.
+        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use
+                                          sequentially for the entries provided.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and
