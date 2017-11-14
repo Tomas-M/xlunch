@@ -28,6 +28,9 @@ usage: xlunch [options]
                                           information through xlunch.
         -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use
                                           sequentially for the entries provided.
+        -A, --button [button]             Adds a button to the window. The argument "button" is a semicolon-separated list on the
+                                          form "<icon>;<highlight icon (optional)>;<x>,<y>;<command>". If x or y is negative
+                                          positioning is relative to the other side of the screen.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and

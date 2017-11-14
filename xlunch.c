@@ -788,10 +788,12 @@ int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 
 int mouse_over_button(button_t * button, int mouse_x, int mouse_y)
 {
-    if (   mouse_x >= button->x
-        && mouse_x < button->x+button->w
-        && mouse_y >= button->y
-        && mouse_y < button->y+button->h) return 1;
+    int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
+    int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+    if (   mouse_x >= x
+        && mouse_x < x+button->w
+        && mouse_y >= y
+        && mouse_y < y+button->h) return 1;
     else return 0;
 }
 
@@ -1471,6 +1473,9 @@ void init(int argc, char **argv)
                 fprintf (stderr,"                                          information through xlunch.\n");
                 fprintf (stderr,"        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use\n");
                 fprintf (stderr,"                                          sequentially for the entries provided.\n");
+                fprintf (stderr,"        -A, --button [button]             Adds a button to the window. The argument \"button\" is a semicolon-separated list on the\n");
+                fprintf (stderr,"                                          form \"<icon>;<highlight icon (optional)>;<x>,<y>;<command>\". If x or y is negative\n");
+                fprintf (stderr,"                                          positioning is relative to the other side of the screen.\n\n");
                 fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
                 fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
                 fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
@@ -1792,11 +1797,13 @@ int main(int argc, char **argv){
 
                         button_t * button = buttons;
                         while (button != NULL) {
+                            int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
+                            int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
                             if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
-                                if (button->clicked != 1) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->clicked = 1;
                             } else {
-                                if (button->clicked != 0) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->clicked = 0;
                             }
                             button = button->next;
@@ -1984,11 +1991,13 @@ int main(int argc, char **argv){
                         
                         button_t * button = buttons;
                         while (button != NULL) {
+                            int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
+                            int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
                             if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
-                                if (button->hovered != 1) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->hovered = 1;
                             } else {
-                                if (button->hovered != 0) updates = imlib_update_append_rect(updates, button->x, button->y, cell_width, cell_height);
+                                if (button->hovered != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                                 button->hovered = 0;
                                 button->clicked = 0;
                             }
@@ -2126,7 +2135,9 @@ int main(int argc, char **argv){
                         int d;
                         if (button->clicked) d=2;
                         else d=0;
-                        imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, button->x - up_x + d, button->y - up_y + d, button->w-d*2, button->h-d*2);
+                        int x = (button->x < 0 ? screen_width + button->x - button->w : button->x);
+                        int y = (button->y < 0 ? screen_height + button->y - button->h : button->y);
+                        imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, x - up_x + d, y - up_y + d, button->w-d*2, button->h-d*2);
 
                         imlib_context_set_image(image);
                         imlib_free_image();

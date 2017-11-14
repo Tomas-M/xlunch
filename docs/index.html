@@ -101,6 +101,11 @@ Functional options (these changes what xlunch does, or how it does it):
 -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string
                                   of UTF-8 characters to use sequentially for the entries
                                   provided.
+-A, --button [button]             Adds a button to the window. The argument "button" is a
+                                  semicolon-separated list on the form
+                                  "<icon>;<highlight icon (optional)>;<x>,<y>;<command>".
+                                  If x or y is negative positioning is relative to the
+                                  other side of the screen.
 </code></pre>
 
 Style options (these changes how xlunch looks):
@@ -183,6 +188,18 @@ keypresses it might not be very useful without <code>--noprompt</code> but it is
 possible (perhaps using the number keys to hotkey the first 10 entries while being able to search
 for the rest). As an example usage passing <code>--shortcuts "atf"</code> will apply 'a' as a shortcut
 to the first entry, 't' as a shortcut to the second, and 'f' as a shortcut to the third.</p>
+
+<p>To extend the possibilities of xlunch you can also add buttons anywhere in the window with the
+<code>--button</code> option. It takes an argument that's a semicolon-separated list on the form:
+<code>icon;highlight icon (optional);x,y;command</code>. Note that the highlight icon is optional
+and will be used instead of the main icon when you hover over it. If no highlight icon is specified it
+will just show the regular icon on hover. So for example the command
+<code>--button "./extra/firefox.png;;100,100;firefox"</code> would put the Firefox icon from the extras
+folder at the position 100,100 without a highlight icon and run "firefox" when it's pressed (note that
+these buttons also adheres to switches like <code>--outputonly</code>). If you use a negative x or y
+value the icon will be placed relative to the other side of the screen. So the command
+<code>--button "./extra/firefox.png;;-100,-100;firefox"</code> will put the same icon in the bottom
+right corner.</p>
 
 <p>If you want to use xlunch to for example choose a password you can use the <code>--clearmemory</code>
 mode. This will set all the data for the entries to NULL when they are destroyed (ie. xlunch closes
