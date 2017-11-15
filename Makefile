@@ -40,3 +40,6 @@ entries.dsv:
 clean:
 	rm -f xlunch
 	rm -f entries.dsv
+
+release:
+	bash extra/makerelease
