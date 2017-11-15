@@ -493,6 +493,7 @@ void cleanup()
     while (shortcut != NULL) {
       shortcut_t *last = shortcut;
       shortcut = shortcut->next;
+      free(last->key);
       free(last);
     }
 }
@@ -706,10 +707,10 @@ FILE * determine_input_source(){
                 fprintf(stderr, "title;icon_path;command\n");
             }
         }
+        free(homeconf);
     } else {
         fp = input_source;
     }
-
     return fp;
 }
 
@@ -1247,6 +1248,7 @@ void parse_config(FILE *input) {
     char *entries_word = "entries";
     int matching_entries = 1;
     int matched = '?';
+    int comment = 0;
     memset(matching, 1, sizeof(long_options)/32 - 1);
 
     struct pollfd fds;
@@ -1263,7 +1265,9 @@ void parse_config(FILE *input) {
             if (b == '\n') eol = 1;
             b = '\0';
         }
-        if(b == ' ' && optarg != NULL && size == 0) continue;
+        if(b == '#' && optarg == NULL && position == 0) comment = 1;
+        if(comment == 1 && eol != 1) continue;
+        if(b == ' ' && position == 0) continue;
         if(optarg == NULL) {
             for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
                 if (long_options[i].name[position] != b){
@@ -1302,6 +1306,7 @@ void parse_config(FILE *input) {
             position = 0;
             size = 0;
             eol = 0;
+            comment = 0;
             matching_entries = 1;
             memset(matching, 1, sizeof(long_options)/32 - 1);
             if(optarg != NULL){
