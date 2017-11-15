@@ -184,7 +184,12 @@ below the entries option. Note also that this can be used in conjuction with reg
 options. If the options precede the <code>--config</code> option the ones in the file will
 override them, and conversely any option following the <code>--config</code> option will
 override those in the file. Where the above file to be used like so <code>xlunch --rows 10
-  --config file.cfg --columns 2</code> it would lead to xlunch using 5 rows and 2 columns.</p>
+  --config file.cfg --columns 2</code> it would lead to xlunch using 5 rows and 2 columns.
+Since all the options are the same you can also use the config option in a configuration
+file. This means that you can have one config file with your system style of colors and
+fonts, and multiple other files loading that file before setting other options like buttons
+and entries. Just make sure not to load the same configuration file within that file as it
+would lead to an infinite loop.</p>
 
 <p>If you want to completely hide icons (to eg. use xlunch to only select between text entries like
 dmenu) you should set <code>--iconsize</code> to 0 and turn on <code>--textafter</code> mode.
