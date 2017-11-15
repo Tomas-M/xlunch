@@ -23,7 +23,7 @@ sed -r -i "s/(int VERSION_PATCH *= *)[0-9]+/\\1$PATCH/" xlunch.c
 
 sed -r -i "s:v[0-9]+.[0-9]+.[0-9]+:v$MAJOR.$MINOR.$PATCH:g" docs/index.html
 
-git commit -a -m "version update"
+git commit -a -m "version update v$MAJOR.$MINOR.$PATCH"
 git tag v$MAJOR.$MINOR.$PATCH
 git push
 git push --tags
