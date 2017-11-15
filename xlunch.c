@@ -256,7 +256,7 @@ void recalc_cells()
             border = 0;
         } else {
             side_border = (screen_width - (ucolumns * cell_width + (ucolumns - 1) * least_margin))/2;
-            border = (screen_height - (no_prompt ? 0 : prompt_font_height - prompt_spacing) - (urows * cell_height + (urows - 1) * least_v_margin))/2;
+            border = (screen_height - (no_prompt ? 0 : prompt_font_height + prompt_spacing) - (urows * cell_height + (urows - 1) * least_v_margin))/2;
         }
     }
     if (side_border == 0) side_border = border;
@@ -458,7 +458,6 @@ void clear_entries(){
     entries = NULL;
     while (current != NULL) {
         node_t * last = current;
-        current = current->next;
         if (clear_memory) {
             memset(last->title, 0, 256);
             memset(last->icon, 0, 256);
@@ -466,6 +465,7 @@ void clear_entries(){
             memset(last, 0, sizeof(node_t));
         }
         free(last);
+        current = current->next;
     }
 }
 
@@ -768,7 +768,7 @@ int parse_entries()
         position++;
         if(b == '\0') {
             position = 0;
-            leading_space = 1;
+            leading_space = 0;
             if(parsing == 2) {
                 push_entry(current_entry);
                 changed = 1;
