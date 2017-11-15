@@ -1607,89 +1607,132 @@ void handle_option(int c, char *optarg) {
 
         case '?':
         case 'H':
-            fprintf (stderr,"usage: xlunch [options]\n");
-            fprintf (stderr,"    xlunch is a program launcher/option selector similar to dmenu or rofi.\n");
-            fprintf (stderr,"    By default it launches in full-screen mode and terminates after a selection is made,\n");
-            fprintf (stderr,"    it is also possible to close xlunch by pressing Esc or the right mouse button.\n");
-            fprintf (stderr,"    Some options changes this behaviour, the most notable being the desktop mode switch:\n");
-            fprintf (stderr,"        -d, --desktop                     Desktop mode, always keep the launcher at background\n");
-            fprintf (stderr,"                                          (behind other windows), and ignore ESC and right mouse click.\n");
-            fprintf (stderr,"                                          Combined with --dontquit xlunch never exits (behaviour of --desktop\n");
-            fprintf (stderr,"                                          from previous versions).\n");
-            fprintf (stderr,"    Functional options:\n");
-            fprintf (stderr,"        --config [file]                   Reads configuration options from a file. The options are the same as the long options\n");
-            fprintf (stderr,"                                          specified here. Options that take a value must have a colon (':') before it's option.\n");
-            fprintf (stderr,"                                          It is also possible to pass the entries along with the configuration file by using\n");
-            fprintf (stderr,"                                          \"entries:\" followed by a newline and the regular contents of an input file\n");
-            fprintf (stderr,"        -v, --version                     Returns the version of xlunch\n");
-            fprintf (stderr,"        -H, --help                        Shows this help message\n");
-            fprintf (stderr,"        --name                            POSIX-esque way to specify the first part of WM_CLASS\n");
-            fprintf (stderr,"                                          (default: environment variable RESOURCE_NAME or argv[0])\n");
-            fprintf (stderr,"        -n, --noprompt                    Hides the prompt, only allowing selection by icon\n");
-            fprintf (stderr,"        -o, --outputonly                  Do not run the selected entry, only output it to stdout\n");
-            fprintf (stderr,"        -S, --selectonly                  Only allow an actual entry and not free-typed commands\n");
-            fprintf (stderr,"        -i, --input [file]                File to read entries from, defaults to stdin if data is available\n");
-            fprintf (stderr,"                                          otherwise it reads from $HOME/.config/xlunch/entries.dsv or /etc/xlunch/entries.dsv\n");
-            fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
-            fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
-            fprintf (stderr,"                                          practical for touch screens.\n");
-            fprintf (stderr,"        --focuslostterminate              When the window loses focus xlunch will quit, practical for menus\n");
-            fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
-            fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n");
-            fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
-            fprintf (stderr,"        -W, --windowed                    Start in windowed mode\n");
-            fprintf (stderr,"        -M, --clearmemory                 Set the memory of each entry to null before exiting. Used for passing sensitive\n");
-            fprintf (stderr,"                                          information through xlunch.\n");
-            fprintf (stderr,"        -U, --shortcuts [shortcuts]       Sets shortcuts for the entries, 'shortcuts' is a string of UTF-8 characters to use\n");
-            fprintf (stderr,"                                          sequentially for the entries provided.\n");
-            fprintf (stderr,"        -A, --button [button]             Adds a button to the window. The argument \"button\" is a semicolon-separated list on the\n");
-            fprintf (stderr,"                                          form \"<icon>;<highlight icon (optional)>;<x>,<y>;<command>\". If x or y is negative\n");
-            fprintf (stderr,"                                          positioning is relative to the other side of the screen.\n\n");
-            fprintf (stderr,"    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n");
-            fprintf (stderr,"    as a big single screen. You can customize this manually by setting windowed mode and\n");
-            fprintf (stderr,"    providing the top/left coordinates and width/height of your monitor screen which\n");
-            fprintf (stderr,"    effectively positions xlunch on the desired monitor. Use the following options:\n");
-            fprintf (stderr,"        -x, --xposition [i]               The x coordinate of the launcher window\n");
-            fprintf (stderr,"        -y, --yposition [i]               The y coordinate of the launcher window\n");
-            fprintf (stderr,"        -w, --width [i]                   The width of the launcher window\n");
-            fprintf (stderr,"        -h, --height [i]                  The height of the launcher window\n\n");
-            fprintf (stderr,"    Style options:\n");
-            fprintf (stderr,"        -p, --prompt [text]               The prompt asking for input (default: \"Run: \")\n");
-            fprintf (stderr,"        -f, --font [name]                 Font name including size after slash (default: \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n");
-            fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
-            fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
-            fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
-            fprintf (stderr,"        --bgfill                          Makes the background keep aspect ratio while stretching\n");
-            fprintf (stderr,"        -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)\n");
-            fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
-            fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
-            fprintf (stderr,"        -c, --columns [i]                 Number of columns to show (without this the max amount possible is used)\n");
-            fprintf (stderr,"        -r, --rows [i]                    Numbers of rows to show (without this the max amount possible is used)\n");
-            fprintf (stderr,"        -b, --border [i]                  Size of the border around the icons and prompt (default: 1/10th of screen width)\n");
-            fprintf (stderr,"                                          This can also be set to 'auto' in order to automatically calculate a border taking\n");
-            fprintf (stderr,"                                          into account the margin settings and the configured columns and rows\n");
-            fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
-            fprintf (stderr,"                                          Similarily this can be set to 'auto' but then only side borders are calculated\n"); 
-            fprintf (stderr,"        --borderratio [i]                 The ratio of the border to apply above the content. 0 is no top border,\n");
-            fprintf (stderr,"                                          only bottom. 100 is only top border, no bottom\n");
-            fprintf (stderr,"        --sideborderratio [i]             The ratio of the side border to apply to the left of the content.\n");
-            fprintf (stderr,"                                          0 is no left border, only right. 100 is only left border, no right\n");
-            fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
-            fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
-            fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
-            fprintf (stderr,"        -a, --textafter                   Draw the title to the right of the icon instead of below, this option\n");
-            fprintf (stderr,"                                          automatically sets --columns to 1 but this can be overridden.\n");
-            fprintf (stderr,"        -O, --textotherside               Draw the text on the other side of the icon from where it is normally drawn.\n");
-            fprintf (stderr,"        -u, --upsidedown                  Draw the prompt on the bottom and have icons sort from bottom to top.\n");
-            fprintf (stderr,"        -X, --paddingswap                 Icon padding and text padding swaps order around text.\n");
-            fprintf (stderr,"        -l, --leastmargin [i]             Adds a margin to the calculation of application sizes.\n");
-            fprintf (stderr,"        -V, --leastvmargin [i]            Adds a vertical margin to the calculation of application sizes.\n");
-            fprintf (stderr,"        -e, --hidemissing                 Hide entries with missing or broken icon images\n");
-            fprintf (stderr,"        --tc, --textcolor [color]         Color to use for the text on the format rrggbbaa (default: ffffffff)\n");
-            fprintf (stderr,"        --pc, --promptcolor [color]       Color to use for the prompt text (default: ffffffff)    \n");
-            fprintf (stderr,"        --bc, --backgroundcolor [color]   Color to use for the background (default: 2e3440ff)\n");
-            fprintf (stderr,"                                          (NOTE: transparent background color requires a compositor)\n");
-            fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
+            fprintf (stderr,"usage: xlunch [options]\n"
+                            "    xlunch is a program launcher/option selector similar to dmenu or rofi.\n"
+                            "    By default it launches in full-screen mode and terminates after a selection is made,\n"
+                            "    it is also possible to close xlunch by pressing Esc or the right mouse button.\n"
+                            "    Some options changes this behaviour, the most notable being the desktop mode switch:\n"
+                            "        -d, --desktop                      Desktop mode, always keep the launcher at\n"
+                            "                                           background(behind other windows), and ignore ESC\n"
+                            "                                           and right mouse click. Combined with --dontquit\n"
+                            "                                           xlunch never exits (behaviour of --desktop from\n"
+                            "                                           previous versions).\n"
+                            "    Functional options:\n"
+                            "        --config [file]                    Reads configuration options from a file. The\n"
+                            "                                           options are the same as the long options\n"
+                            "                                           specified here. Options that take a value must\n"
+                            "                                           have a colon (':') before it's option. It is\n"
+                            "                                           also possible to pass the entries along with the\n"
+                            "                                           configuration file by using \"entries:\"\n"
+                            "                                           followed by a newline and the regular contents\n"
+                            "                                           of an input file\n"
+                            "        -v, --version                      Returns the version of xlunch\n"
+                            "        -H, --help                         Shows this help message\n"
+                            "        --name                             POSIX-esque way to specify the first part of\n"
+                            "                                           WM_CLASS (default: environment variable \n"
+                            "                                           RESOURCE_NAME or argv[0])\n"
+                            "        -n, --noprompt                     Hides the prompt, only allowing selection\n"
+                            "                                           by icon\n"
+                            "        -o, --outputonly                   Do not run the selected entry, only output it\n"
+                            "                                           to stdout\n"
+                            "        -S, --selectonly                   Only allow an actual entry and not free-typed\n"
+                            "                                           commands. Nice for scripting.\n"
+                            "        -i, --input [file]                 File to read entries from, defaults to stdin\n"
+                            "                                           if data is available otherwise it reads from\n"
+                            "                                           $HOME/.config/xlunch/entries.dsv or\n"
+                            "                                           /etc/xlunch/entries.dsv\n"
+                            "        -m, --multiple                     Allow multiple instances running\n"
+                            "        -t, --voidclickterminate           Clicking anywhere that's not an entry terminates\n"
+                            "                                           xlunch, practical for touch screens.\n"
+                            "        --focuslostterminate               When the window loses focus xlunch will quit,\n"
+                            "                                           practical for menus\n"
+                            "        -q, --dontquit                     When an option is selected, don't close xlunch.\n"
+                            "                                           Combined with --desktop xlunch\n"
+                            "                                           never exits (behaviour of --desktop from\n"
+                            "                                           previous versions).\n"
+                            "        -R, --reverse                      All entries in xlunch as reversly ordered.\n"
+                            "        -W, --windowed                     Start in windowed mode\n"
+                            "        -M, --clearmemory                  Set the memory of each entry to null before\n"
+                            "                                           exiting. Used for passing sensitive information\n"
+                            "                                           through xlunch.\n"
+                            "        -U, --shortcuts [shortcuts]        Sets shortcuts for the entries, 'shortcuts' is a\n"
+                            "                                           string of UTF-8 characters to use sequentially\n"
+                            "                                           for the entries provided.\n"
+                            "        -A, --button [button]              Adds a button to the window. The argument\n"
+                            "                                            \"button\" is a semicolon-separated list on the\n"
+                            "                                           form \"<icon>;<highlight icon>;<x>,<y>;<command>\"\n"
+                            "                                           . If x or y is negative positioning is relative\n"
+                            "                                           to the other side of the screen.\n\n"
+                            "    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n"
+                            "    as a big single screen. You can customize this manually by setting windowed mode and\n"
+                            "    providing the top/left coordinates and width/height of your monitor screen which\n"
+                            "    effectively positions xlunch on the desired monitor. Use the following options:\n"
+                            "        -x, --xposition [i]                The x coordinate of the launcher window\n"
+                            "        -y, --yposition [i]                The y coordinate of the launcher window\n"
+                            "        -w, --width [i]                    The width of the launcher window\n"
+                            "        -h, --height [i]                   The height of the launcher window\n\n"
+                            "    Style options:\n"
+                            "        -p, --prompt [text]                The prompt asking for input (default: \"Run: \")\n"
+                            "        -f, --font [name]                  Font name including size after slash (default:\n"
+                            "                                           \"OpenSans-Regular/10\" and  \"DejaVuSans/10\")\n"
+                            "        -F, --promptfont [name]            Font to use for the prompt\n"
+                            "                                           (default: same as --font)\n"
+                            "        -G, --rootwindowbackground         Use root windows background image\n"
+                            "        -g, --background [file]            Image to set as background (jpg/png)\n"
+                            "        --bgfill                           Makes the background keep aspect ratio\n"
+                            "                                           while stretching\n"
+                            "        -L, --highlight [file]             Image set as highlighting under selected icon\n"
+                            "                                           (jpg/png)\n"
+                            "        -I, --iconpadding [i]              Padding around icons (default: 10)\n"
+                            "        -T, --textpadding [i]              Padding around entry titles (default: 10)\n"
+                            "        -c, --columns [i]                  Number of columns to show (without this the max\n"
+                            "                                           amount possible is used)\n"
+                            "        -r, --rows [i]                     Numbers of rows to show (without this the max\n"
+                            "                                           amount possible is used)\n"
+                            "        -b, --border [i]                   Size of the border around the icons and prompt\n"
+                            "                                           (default: 1/10th of screen width)\n"
+                            "                                           This can also be set to 'auto' in order to\n"
+                            "                                           automatically calculate a border taking into\n"
+                            "                                           account the margin settings and the\n"
+                            "                                           configured columns and rows\n"
+                            "        -B, --sideborder [i]               Size of the border on the sides, if this is used\n"
+                            "                                           --border will be only top and bottom. Similarily\n"
+                            "                                           this can be set to 'auto' but then only side\n"
+                            "                                           borders are calculated\n" 
+                            "        --borderratio [i]                  The ratio of the border to apply above the\n"
+                            "                                           content. 0 is no top border, only bottom. 100 is\n"
+                            "                                           only top border, no bottom\n"
+                            "        --sideborderratio [i]              The ratio of the side border to apply to the\n"
+                            "                                           left of the content. 0 is no left border, only\n"
+                            "                                           right. 100 is only left border, no right\n"
+                            "        -C, --center                       Center entries when there are fewer entries on a\n"
+                            "                                           row than the maximum\n"
+                            "        -P, --promptspacing [i]            Distance between the prompt and the icons\n"
+                            "                                           (default: 48)\n"
+                            "        -s, --iconsize [i]                 Size of the icons (default: 48)\n"
+                            "        -a, --textafter                    Draw the title to the right of the icon instead\n"
+                            "                                           of below, this option automatically sets\n"
+                            "                                           --columns to 1 but this can be overridden.\n"
+                            "        -O, --textotherside                Draw the text on the other side of the icon from\n"
+                            "                                           where it is normally drawn.\n"
+                            "        -u, --upsidedown                   Draw the prompt on the bottom and have icons\n"
+                            "                                           sort from bottom to top.\n"
+                            "        -X, --paddingswap                  Icon padding and text padding swaps order\n"
+                            "                                           around text.\n"
+                            "        -l, --leastmargin [i]              Adds a margin to the calculation of\n"
+                            "                                           application sizes.\n"
+                            "        -V, --leastvmargin [i]             Adds a vertical margin to the calculation of\n"
+                            "                                           application sizes.\n"
+                            "        -e, --hidemissing                  Hide entries with missing or broken icon images\n"
+                            "        --tc, --textcolor [color]          Color to use for the text on the format rrggbbaa\n"
+                            "                                           (default: ffffffff)\n"
+                            "        --pc, --promptcolor [color]        Color to use for the prompt text\n"
+                            "                                           (default: ffffffff)\n"
+                            "        --bc, --backgroundcolor [color]    Color to use for the background\n"
+                            "                                           (default: 2e3440ff) NOTE: transparent background\n"
+                            "                                           color requires a compositor\n"
+                            "        --hc, --highlightcolor [color]     Color to use for the highlight box\n"
+                            "                                           (default: ffffff32)\n\n");
             // Check if we came from the error block above or if this was a call with --help
             if(c == '?'){
                 exit(CONFIGERROR);
