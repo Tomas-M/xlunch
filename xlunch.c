@@ -154,6 +154,7 @@ static struct option long_options[] =
         {"button",                required_argument, 0, 'A'},
         {"shortcuts",             required_argument, 0, 'U'},
         {"config",                required_argument, 0, 1014},
+        {"bgfill",                no_argument,       0, 1015},
         {0, 0, 0, 0}
     };
 int icon_size = 48;
@@ -184,6 +185,7 @@ char * prompt = "";
 char * font_name = "";
 char * prompt_font_name = "";
 char * program_name;
+int bg_fill = 0;
 int no_prompt = 0;
 int prompt_spacing = 48;
 int windowed = 0;
@@ -1196,19 +1198,21 @@ void update_background_images()
 
                     // But we do not want to use scale, rather we use fill to keep aspect ratio
                     // It gives the same result as feh --bg-fill
-                    if ( (double) (w/h) < (double) (screen_width/screen_height) )
-                    {
-                       imw = (int) w;
-                       imh = (int) (screen_height * w / screen_width);
-                       imx = 0;
-                       imy = (int) ((h - imh) / 2);
-                    }
-                    else
-                    {
-                       imw = (int) (screen_width * h / screen_height);
-                       imh = (int) h;
-                       imx = (int) ((w - imw) / 2);
-                       imy = 0;
+                    if (bg_fill) {
+                        if ( (double) (w/h) < (double) (screen_width/screen_height) )
+                        {
+                           imw = (int) w;
+                           imh = (int) (screen_height * w / screen_width);
+                           imx = 0;
+                           imy = (int) ((h - imh) / 2);
+                        }
+                        else
+                        {
+                           imw = (int) (screen_width * h / screen_height);
+                           imh = (int) h;
+                           imx = (int) ((w - imw) / 2);
+                           imy = 0;
+                        }
                     }
 
                     imlib_blend_image_onto_image(image, 1, imx, imy, imw, imh,  0, 0, screen_width, screen_height);
@@ -1560,6 +1564,10 @@ void handle_option(int c, char *optarg) {
 
         case 1014:
             parse_config(fopen(optarg, "rb"));
+            break;
+        
+        case 1015:
+            bg_fill = 1;
             break;
 
         case '?':
