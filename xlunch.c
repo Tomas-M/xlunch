@@ -2264,6 +2264,7 @@ int main(int argc, char **argv){
 
                 button_t *button = buttons;
                 while (button != NULL) {
+                    if(button->hovered) c = XCreateFontCursor(disp,XC_hand1);
                     image = imlib_load_image(button->hovered ? (button->icon_highlight[0] == '\0' ? button->icon_normal : button->icon_highlight) : button->icon_normal);
                     if (image)
                     {
