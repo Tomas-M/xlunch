@@ -101,6 +101,23 @@ button_t * buttons = NULL;
 shortcut_t * shortcuts = NULL;
 keynode_t * cmdline = NULL;
 
+enum exit_code {
+    OKAY,
+    ESCAPE = 0x20,
+    RIGHTCLICK,
+    VOIDCLICK,
+    FOCUSLOST,
+    LOCKERROR = 0x40,
+    ALLOCERROR,
+    FONTERROR,
+    CONFIGERROR,
+    WINERROR,
+    LOCALEERROR,
+    INPUTMERROR,
+    INPUTCERROR,
+    POLLERROR
+};
+
 static struct option long_options[] =
     {
         {"version",               no_argument,       0, 'v'},
@@ -115,7 +132,9 @@ static struct option long_options[] =
         {"columns",               required_argument, 0, 'c'},
         {"rows",                  required_argument, 0, 'r'},
         {"border",                required_argument, 0, 'b'},
+        {"borderratio",           required_argument, 0, 1017},
         {"sideborder",            required_argument, 0, 'B'},
+        {"sideborderratio",       required_argument, 0, 1018},
         {"promptspacing",         required_argument, 0, 'P'},
         {"iconsize",              required_argument, 0, 's'},
         {"input",                 required_argument, 0, 'i'},
@@ -169,6 +188,8 @@ int icon_padding = 10;
 int text_padding = 10;
 int border;
 int side_border = 0;
+int border_ratio = 50;
+int side_border_ratio = 50;
 int cell_width;
 int cell_height;
 int font_height;
@@ -328,8 +349,8 @@ void recalc_cells()
     }
 
     // These are kept in case manual positioning is reintroduced
-    prompt_x = side_border;
-    prompt_y = border;
+    prompt_x = side_border * (side_border_ratio / 50);
+    prompt_y = border * (border_ratio / 50);
     /*
     if(uside_border == 0){
         side_border = border;
@@ -386,14 +407,14 @@ void arrange_positions()
                 int width = entries_last_line * cell_width + (entries_last_line - 1) * column_margin;
                 int usable_width = screen_width - side_border * 2;
                 int margin = usable_width - width;
-                current->x = side_border + margin / 2 + i * (cell_width + column_margin);
+                current->x = (side_border * (side_border_ratio / 50)) + margin / 2 + i * (cell_width + column_margin);
             } else {
-                current->x = side_border + i * (cell_width+column_margin);
+                current->x = (side_border * (side_border_ratio / 50)) + i * (cell_width+column_margin);
             }
             if (no_prompt) {
-                current->y = border + j * (cell_height+row_margin);
+                current->y = (border * (border_ratio / 50)) + j * (cell_height+row_margin);
             } else {
-                current->y = border + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
+                current->y = (border * (border_ratio / 50)) + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
             }
             if (upside_down) {
                 current->y=screen_height - cell_height - current->y;
@@ -664,7 +685,7 @@ char* concat(const char *s1, const char *s2)
         strcat(result, s2);
         return result;
     }
-    exit(1);
+    exit(ALLOCERROR);
 }
 
 
@@ -1001,7 +1022,7 @@ void run_command(char * cmd_orig)
         fprintf(stdout, "%s\n", cmd_orig);
         if(!dont_quit){
             cleanup();
-            exit(0);
+            exit(OKAY);
         } else {
             return;
         }
@@ -1046,7 +1067,7 @@ void run_command(char * cmd_orig)
             int err;
             err = execvp(array[0],array);
             fprintf(stderr,"Error forking %s : %d\n",cmd,err);
-            exit(0);
+            exit(OKAY);
         }
         else if (pid<0) // error forking
         {
@@ -1068,7 +1089,7 @@ void run_command(char * cmd_orig)
         int err;
         err = execvp(array[0],array);
         fprintf(stderr,"Error running %s : %d\n",cmd, err);
-        exit(0);
+        exit(OKAY);
     }
 }
 
@@ -1116,7 +1137,7 @@ Imlib_Font load_font()
     }
     if (font == NULL) {
         fprintf(stderr, "Font %s could not be loaded! Please specify one with -f parameter\n", font_name);
-        exit(1);
+        exit(FONTERROR);
     }
     font_height = get_font_height(font);
     return font;
@@ -1136,7 +1157,7 @@ Imlib_Font load_prompt_font()
     }
     if (font == NULL) {
         fprintf(stderr, "Prompt font %s could not be loaded! Please specify one with -F parameter\n", prompt_font_name);
-        exit(1);
+        exit(FONTERROR);
     }
     prompt_font_height = get_font_height(font);
     return font;
@@ -1331,7 +1352,7 @@ void handle_option(int c, char *optarg) {
     switch (c) {
         case 'v':
             fprintf(stderr, "xlunch graphical program launcher, version %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
-            exit(0);
+            exit(OKAY);
 
         case 'd':
             desktop_mode = 1;
@@ -1575,6 +1596,14 @@ void handle_option(int c, char *optarg) {
         case 1016:
             focus_lost_terminate = 1;
             break;
+        
+        case 1017:
+            border_ratio = atoi(optarg);
+            break;
+
+        case 1018:
+            side_border_ratio = atoi(optarg);
+            break;
 
         case '?':
         case 'H':
@@ -1641,6 +1670,10 @@ void handle_option(int c, char *optarg) {
             fprintf (stderr,"                                          into account the margin settings and the configured columns and rows\n");
             fprintf (stderr,"        -B, --sideborder [i]              Size of the border on the sides, if this is used --border will be only top and bottom\n");
             fprintf (stderr,"                                          Similarily this can be set to 'auto' but then only side borders are calculated\n"); 
+            fprintf (stderr,"        --borderratio [i]                 The ratio of the border to apply above the content. 0 is no top border,\n");
+            fprintf (stderr,"                                          only bottom. 100 is only top border, no bottom\n");
+            fprintf (stderr,"        --sideborderratio [i]             The ratio of the side border to apply to the left of the content.\n");
+            fprintf (stderr,"                                          0 is no left border, only right. 100 is only left border, no right\n");
             fprintf (stderr,"        -C, --center                      Center entries when there are fewer entries on a row than the maximum\n");
             fprintf (stderr,"        -P, --promptspacing [i]           Distance between the prompt and the icons (default: 48)\n");
             fprintf (stderr,"        -s, --iconsize [i]                Size of the icons (default: 48)\n");
@@ -1659,9 +1692,9 @@ void handle_option(int c, char *optarg) {
             fprintf (stderr,"        --hc, --highlightcolor [color]    Color to use for the highlight box (default: ffffff32)\n\n");
             // Check if we came from the error block above or if this was a call with --help
             if(c == '?'){
-                exit(1);
+                exit(CONFIGERROR);
             } else {
-                exit(0);
+                exit(OKAY);
             }
             break;
     }
@@ -1681,7 +1714,7 @@ void init(int argc, char **argv)
     if (!disp)
     {
         fprintf(stderr,"Cannot connect to DISPLAY\n");
-        exit(2);
+        exit(WINERROR);
     }
 
     XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo);
@@ -1733,7 +1766,7 @@ int main(int argc, char **argv){
         int rc = flock(lock, LOCK_EX | LOCK_NB);
         if (rc) {
             if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may want to consider --multiple\nIf this is an error, you may remove /tmp/xlunch.lock\n");
-            exit(3);
+            exit(LOCKERROR);
         }
     }
 
@@ -1801,17 +1834,22 @@ int main(int argc, char **argv){
     XMapRaised(disp, win);
 
     // prepare for keyboard UTF8 input
-    if (XSetLocaleModifiers("@im=none") == NULL) return 11;
+    if (XSetLocaleModifiers("@im=none") == NULL) {
+        cleanup();
+        exit(LOCALEERROR);
+    }
     im = XOpenIM(disp, NULL, NULL, NULL);
     if (im == NULL) {
         fputs("Could not open input method\n", stdout);
-        return 2;
+        cleanup();
+        exit(INPUTMERROR);
     }
 
     ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
     if (ic == NULL) {
         fprintf(stderr,"Could not open input context, without it we can't properly handle UTF8\n");
-        return 4;
+        cleanup();
+        exit(INPUTCERROR);
     }
     XSetICFocus(ic);
 
@@ -1874,7 +1912,7 @@ int main(int argc, char **argv){
         if(poll_result < 0){
             // An error occured, abort
             cleanup();
-            exit(1);
+            exit(POLLERROR);
         } else {
             if(input_source == stdin && eventfds[1].revents != 0){
                 int changed = parse_entries(input_source);
@@ -1908,7 +1946,7 @@ int main(int argc, char **argv){
                         restack();
                         if (focus_lost_terminate) {
                             cleanup();
-                            exit(100);
+                            exit(FOCUSLOST);
                         }
                         break;
 
@@ -1931,7 +1969,7 @@ int main(int argc, char **argv){
                     {
                         if (ev.xbutton.button==3 && !desktop_mode) {
                             cleanup();
-                            exit(0);
+                            exit(RIGHTCLICK);
                         }
                         if (ev.xbutton.button!=1) break;
                         node_t * current = entries;
@@ -1948,7 +1986,7 @@ int main(int argc, char **argv){
 
                         if (voidclicked && void_click_terminate) {
                             cleanup();
-                            exit(0);
+                            exit(VOIDCLICK);
                         }
 
                         button_t * button = buttons;
@@ -2007,7 +2045,7 @@ int main(int argc, char **argv){
                         if (keycode==XK_Escape && !desktop_mode)
                         {
                             cleanup();
-                            exit(0);
+                            exit(ESCAPE);
                         }
 
                         if (keycode==XK_Return || keycode==XK_KP_Enter)
