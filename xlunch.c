@@ -125,6 +125,7 @@ static struct option long_options[] =
         {"promptfont",            required_argument, 0, 'F'},
         {"multiple",              no_argument,       0, 'm'},
         {"voidclickterminate",    no_argument,       0, 't'},
+        {"focuslostterminate",    no_argument,       0, 1016},
         {"xposition",             required_argument, 0, 'x'},
         {"yposition",             required_argument, 0, 'y'},
         {"width",                 required_argument, 0, 'w'},
@@ -197,6 +198,7 @@ int uheight = 0;
 int uborder = 0;
 int uside_border = 0;
 int void_click_terminate = 0;
+int focus_lost_terminate = 0;
 int dont_quit = 0;
 int reverse = 0;
 int output_only = 0;
@@ -1569,6 +1571,10 @@ void handle_option(int c, char *optarg) {
         case 1015:
             bg_fill = 1;
             break;
+        
+        case 1016:
+            focus_lost_terminate = 1;
+            break;
 
         case '?':
         case 'H':
@@ -1598,6 +1604,7 @@ void handle_option(int c, char *optarg) {
             fprintf (stderr,"        -m, --multiple                    Allow multiple instances running\n");
             fprintf (stderr,"        -t, --voidclickterminate          Clicking anywhere that's not an entry terminates xlunch,\n");
             fprintf (stderr,"                                          practical for touch screens.\n");
+            fprintf (stderr,"        --focuslostterminate              When the window loses focus xlunch will quit, practical for menus\n");
             fprintf (stderr,"        -q, --dontquit                    When an option is selected, don't close xlunch. Combined with --desktop xlunch\n");
             fprintf (stderr,"                                          never exits (behaviour of --desktop from previous versions).\n");
             fprintf (stderr,"        -R, --reverse                     All entries in xlunch as reversly ordered.\n");
@@ -1623,6 +1630,7 @@ void handle_option(int c, char *optarg) {
             fprintf (stderr,"        -F, --promptfont [name]           Font to use for the prompt (default: same as --font)\n");
             fprintf (stderr,"        -G, --rootwindowbackground        Use root windows background image\n");
             fprintf (stderr,"        -g, --background [file]           Image to set as background (jpg/png)\n");
+            fprintf (stderr,"        --bgfill                          Makes the background keep aspect ratio while stretching\n");
             fprintf (stderr,"        -L, --highlight [file]            Image set as highlighting under selected icon (jpg/png)\n");
             fprintf (stderr,"        -I, --iconpadding [i]             Padding around icons (default: 10)\n");
             fprintf (stderr,"        -T, --textpadding [i]             Padding around entry titles (default: 10)\n");
@@ -1898,6 +1906,10 @@ int main(int argc, char **argv){
 
                     case FocusOut:
                         restack();
+                        if (focus_lost_terminate) {
+                            cleanup();
+                            exit(100);
+                        }
                         break;
 
 
