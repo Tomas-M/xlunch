@@ -777,7 +777,7 @@ int parse_entries()
                 continue;
             }
         }
-        if(b == ' ') leading_space++;
+        if(b == ' ' && position <= leading_space) leading_space++;
         if(b != ' ' && leading_space > 0) leading_space = -leading_space;
         switch(parsing){
             case 0:
