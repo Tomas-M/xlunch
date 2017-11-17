@@ -830,7 +830,6 @@ void parse_button(char *button_spec) {
     int position = 0; // position in the current entry
     int i = 0;
     button_t *new_button = malloc(sizeof(button_t));
-    printf("%s\n", button_spec);
     char b = button_spec[0];
     char x[256];
     char y[256];
@@ -883,7 +882,6 @@ void parse_button(char *button_spec) {
     new_button->h = imlib_image_get_height();
     imlib_free_image();
     new_button->cmd[position] = '\0';
-    printf("Parsed button as; normal icon: %s, highlight icon: %s, command: %s, x: %s, y: %s\n", new_button->icon_normal, new_button->icon_highlight, new_button->cmd, x, y);
     new_button->next = buttons;
     buttons = new_button;
 }
