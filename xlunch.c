@@ -502,9 +502,15 @@ void cleanup()
     XDestroyWindow(disp,win);
     XFlush(disp);
     XCloseDisplay(disp);
+    /*
     if(input_source == stdin){
+        int fd = fileno(stdin);
+        int flags = fcntl(fd, F_GETFL, 0);
+        flags &= ~O_NONBLOCK;
+        fcntl(fd, F_SETFL, flags);
         fclose(input_source);
     }
+    */
     clear_entries();
     button_t * button = buttons;
     buttons = NULL;
