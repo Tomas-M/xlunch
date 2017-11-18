@@ -2015,6 +2015,7 @@ int main(int argc, char **argv){
                         if (ev.xbutton.button!=1) break;
                         node_t * current = entries;
                         int voidclicked = 1;
+                        int checked = 0;
                         while (current != NULL)
                         {
                             if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
@@ -2022,6 +2023,9 @@ int main(int argc, char **argv){
                                 voidclicked = 0;
                             }
                             else set_clicked(current,0);
+                            if (++checked == rows*columns) {
+                                break;
+                            }
                             current = current->next;
                         }
 
