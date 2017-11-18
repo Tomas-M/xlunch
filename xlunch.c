@@ -502,7 +502,7 @@ void cleanup()
     XDestroyWindow(disp,win);
     XFlush(disp);
     XCloseDisplay(disp);
-    /*
+    
     if(input_source == stdin){
         int fd = fileno(stdin);
         int flags = fcntl(fd, F_GETFL, 0);
@@ -510,7 +510,7 @@ void cleanup()
         fcntl(fd, F_SETFL, flags);
         fclose(input_source);
     }
-    */
+    
     clear_entries();
     button_t * button = buttons;
     buttons = NULL;
@@ -718,6 +718,10 @@ FILE * determine_input_source(){
             fds.events = POLLIN;
             // Give poll a little timeout to make give the piping program some time
             if (poll(&fds, 1, 10) == 0){
+                int flags = fcntl(fd, F_GETFL, 0);
+                flags &= ~O_NONBLOCK;
+                fcntl(fd, F_SETFL, flags);
+                fclose(stdin);
                 fp = fopen(homeconf, "rb");
             }
         } else {
