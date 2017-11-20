@@ -2070,6 +2070,7 @@ int main(int argc, char **argv){
                         {
                             if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
                             set_clicked(current, 0); // button release means all cells are not clicked
+                            updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
                             current = current->next;
                         }
 
@@ -2079,6 +2080,9 @@ int main(int argc, char **argv){
                         {
                             if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y) && button->clicked == 1) run_command(button->cmd);
                             button->clicked = 0;
+                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+                            updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                             button = button->next;
                         }
 
