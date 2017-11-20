@@ -1883,6 +1883,8 @@ int main(int argc, char **argv){
     XFree(classHint);
     /* show the window */
     XMapRaised(disp, win);
+    /* Force window reposition, can make effect only when windowed is enabled, depending on WM */
+    XMoveWindow(disp,win,uposx,uposy);
 
     // prepare for keyboard UTF8 input
     if (XSetLocaleModifiers("@im=none") == NULL) {
