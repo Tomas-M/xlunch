@@ -134,6 +134,7 @@ static struct option long_options[] =
         {"focuslostterminate",    no_argument,       0, 1016},
         {"borderratio",           required_argument, 0, 1017},
         {"sideborderratio",       required_argument, 0, 1018},
+        {"scroll",                no_argument,       0, 1019},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -233,6 +234,8 @@ int least_margin = 0;
 int least_v_margin = -1;
 int hide_missing = 0;
 int center_icons = 0;
+int scroll = 0;
+int scrolled_past= 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -412,9 +415,9 @@ void arrange_positions()
                 current->x = (side_border * (side_border_ratio / 50)) + i * (cell_width+column_margin);
             }
             if (no_prompt) {
-                current->y = (border * (border_ratio / 50)) + j * (cell_height+row_margin);
+                current->y = (border * (border_ratio / 50)) + (j - scrolled_past) * (cell_height+row_margin);
             } else {
-                current->y = (border * (border_ratio / 50)) + prompt_font_height + prompt_spacing + j * (cell_height+row_margin);
+                current->y = (border * (border_ratio / 50)) + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
             }
             if (upside_down) {
                 current->y=screen_height - cell_height - current->y;
@@ -1023,24 +1026,18 @@ int starts_with(const char *pre, const char *str)
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
 
+void run_internal_command(char * cmd_orig) {
+    fprintf(stderr, "Got internal command %s\n", cmd_orig);
+}
 
 void run_command(char * cmd_orig)
 {
-    if(output_only){
-        fprintf(stdout, "%s\n", cmd_orig);
-        if(!dont_quit){
-            cleanup();
-            exit(OKAY);
-        } else {
-            return;
-        }
-    }
 
     char cmd[512];
     char *array[100] = {0};
     strcpy(cmd,cmd_orig);
 
-    int isrecur = starts_with("recur ", cmd_orig) || (strcmp("recur", cmd_orig) == 0);
+    int isrecur = starts_with(":recur ", cmd_orig) || (strcmp(":recur", cmd_orig) == 0);
     if(isrecur) {
         // split arguments into pieces
         int i = 0;
@@ -1057,6 +1054,19 @@ void run_command(char * cmd_orig)
             if (i>=99) break;
         }
     } else {
+        if (cmd_orig[0] == ':') {
+            run_internal_command((char *)(cmd_orig + sizeof(char)));
+            return;
+        }
+        if(output_only){
+            fprintf(stdout, "%s\n", cmd_orig);
+            if(!dont_quit){
+                cleanup();
+                exit(OKAY);
+            } else {
+                return;
+            }
+        }
         array[0] = "/bin/bash";
         array[1] = "-c";
         array[2] = cmd_orig;
@@ -1613,6 +1623,10 @@ void handle_option(int c, char *optarg) {
             side_border_ratio = atoi(optarg);
             break;
 
+        case 1019:
+            scroll = 1;
+            break;
+
         case '?':
         case 'H':
             fprintf (stderr,"usage: xlunch [options]\n"
@@ -1670,7 +1684,9 @@ void handle_option(int c, char *optarg) {
                             "                                            \"button\" is a semicolon-separated list on the\n"
                             "                                           form \"<icon>;<highlight icon>;<x>,<y>;<command>\"\n"
                             "                                           . If x or y is negative positioning is relative\n"
-                            "                                           to the other side of the screen.\n\n"
+                            "                                           to the other side of the screen.\n"
+                            "        --scroll                           Enable to make xlunch scroll when reaching end of\n"
+                            "                                           entries or when using scrollwheel or pgup pgdn\n\n"
                             "    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n"
                             "    as a big single screen. You can customize this manually by setting windowed mode and\n"
                             "    providing the top/left coordinates and width/height of your monitor screen which\n"
@@ -2020,44 +2036,70 @@ int main(int argc, char **argv){
 
                     case ButtonPress:
                     {
-                        if (ev.xbutton.button==3 && !desktop_mode) {
-                            cleanup();
-                            exit(RIGHTCLICK);
-                        }
-                        if (ev.xbutton.button!=1) break;
-                        node_t * current = entries;
-                        int voidclicked = 1;
-                        int checked = 0;
-                        while (current != NULL)
-                        {
-                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                                set_clicked(current,1);
-                                voidclicked = 0;
-                            }
-                            else set_clicked(current,0);
-                            if (++checked == rows*columns) {
+                        switch (ev.xbutton.button) {
+                            case 3:
+                                if (!desktop_mode) {
+                                    cleanup();
+                                    exit(RIGHTCLICK);
+                                }
                                 break;
-                            }
-                            current = current->next;
-                        }
+                            case 4:
+                                if (scroll) {
+                                    if(--scrolled_past < 0) scrolled_past = 0;
+                                    arrange_positions();
+                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                                }
+                                break;
+                            case 5:;
+                                if (scroll) {
+                                    int max = 0;
+                                    node_t *cur = entries;
+                                    while(cur != NULL){
+                                        max += 1;
+                                        cur = cur->next;
+                                    }
+                                    scrolled_past ++;
+                                    if (scrolled_past > max/columns) scrolled_past = max/columns;
+                                    arrange_positions();
+                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                                }
+                                break;
+                            case 1:;
+                                node_t * current = entries;
+                                int voidclicked = 1;
+                                int checked = 0;
+                                while (current != NULL)
+                                {
+                                    if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+                                        set_clicked(current,1);
+                                        voidclicked = 0;
+                                    }
+                                    else set_clicked(current,0);
+                                    if (++checked == rows*columns) {
+                                        break;
+                                    }
+                                    current = current->next;
+                                }
 
-                        if (voidclicked && void_click_terminate) {
-                            cleanup();
-                            exit(VOIDCLICK);
-                        }
+                                if (voidclicked && void_click_terminate) {
+                                    cleanup();
+                                    exit(VOIDCLICK);
+                                }
 
-                        button_t * button = buttons;
-                        while (button != NULL) {
-                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
-                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
-                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
-                                if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                button->clicked = 1;
-                            } else {
-                                if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                button->clicked = 0;
-                            }
-                            button = button->next;
+                                button_t * button = buttons;
+                                while (button != NULL) {
+                                    int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                                    int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+                                    if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+                                        if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+                                        button->clicked = 1;
+                                    } else {
+                                        if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+                                        button->clicked = 0;
+                                    }
+                                    button = button->next;
+                                }
+                            break;
                         }
                         break;
                     }
@@ -2143,18 +2185,22 @@ int main(int argc, char **argv){
                         {
                             int i=0;
                             if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
-                            if (keycode==XK_Up || keycode==XK_KP_Up || keycode==XK_Page_Up) i=-columns;
-                            if (keycode==XK_Down || keycode==XK_KP_Down || keycode==XK_Page_Down) i=columns;
+                            if (keycode==XK_Up || keycode==XK_KP_Up) i=-columns;
+                            if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
                             if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
+                            if (keycode==XK_Page_Up) i=-columns*rows;
+                            if (keycode==XK_Page_Down) i=columns*rows; 
 
-                            int j=0,n=0;
+                            int j=0,n=0,m=0;
+                            n = columns * rows;
                             node_t * current = entries;
                             node_t * selected = NULL;
                             while (current != NULL)
                             {
                                 if (!current->hidden)
                                 {
-                                    if (current->y+cell_height<=screen_height-border) n++;
+                                    //if (current->y+cell_height<=screen_height-border) n++;
+                                    m++;
                                     if (selected==NULL) j++;
                                     if (current->hovered) selected=current;
                                     set_hover(current,0);
@@ -2170,8 +2216,30 @@ int main(int argc, char **argv){
                             current=entries;
 
                             int k=i+j;
-                            if (k>n || keycode==XK_End) k=n;
-                            if (k<1 || keycode==XK_Home) k=1;
+                            if (k<=0) k=1;
+                            if (i > 0) {
+                                int r = i;
+                                while (selected!=NULL && r!=0){
+                                    r--;
+                                    selected = selected->next;
+                                }
+                                k-=r;
+                            }
+                            if (scroll) {
+                                if (k>n+scrolled_past*columns || k<=scrolled_past*columns) { 
+                                    int dr = (j>scrolled_past*columns ? (j<scrolled_past*columns +n ? (j-scrolled_past*columns-1)/columns : rows-1) : 0);
+                                    int tr = (k-1)/columns;
+                                    scrolled_past = tr - dr;
+                                    if (scrolled_past < 0) {
+                                        scrolled_past = 0;
+                                    }
+                                    arrange_positions();
+                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                                }
+                            }
+                            if (k>(scroll ? m : n)) k = (scroll ? m : n);
+                            if (keycode==XK_End) k = (scroll ? scrolled_past*columns+n : n);
+                            if (keycode==XK_Home) k = (scroll ? scrolled_past*columns+1 : 1);
                             while (current != NULL)
                             {
                                 if (!current->hidden)
@@ -2295,10 +2363,15 @@ int main(int argc, char **argv){
 
                 node_t * current = entries;
                 int drawn = 0;
+                int seen = 0;
                 Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
 
                 while (current != NULL)
                 {
+                    if (seen++ < scrolled_past * columns) {
+                        current = current->next;
+                        continue;
+                    }
                     if (!current->hidden)
                     {
                         if (current->hovered)
