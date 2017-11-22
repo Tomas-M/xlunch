@@ -2052,7 +2052,7 @@ int main(int argc, char **argv){
                                 break;
                             case 5:;
                                 if (scroll) {
-                                    int max = 0;
+                                    int max = -1;
                                     node_t *cur = entries;
                                     while(cur != NULL){
                                         max += 1;
