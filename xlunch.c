@@ -2218,7 +2218,7 @@ int main(int argc, char **argv){
                             int k=i+j;
                             if (k<=0) k=1;
                             if (i > 0) {
-                                int r = i;
+                                int r = i+1;
                                 while (selected!=NULL && r!=0){
                                     r--;
                                     selected = selected->next;
