@@ -307,7 +307,7 @@ default mode, "xlunch-desktop" for the desktop mode, and "xlunch-windowed" for i
 This makes it easy to tell your window manager to treat each of the different kinds properly.
 Alternatively you can use the <code>--name</code> option or the environment variable
 <code>RESOURCE_NAME</code> to set the first part of <code>WM_CLASS</code>, note however that this
-value is also the program called by recur.</p>
+value is also the program called by :recur.</p>
 
 <p><strong>Compile:</strong></p>
 
@@ -337,12 +337,34 @@ can simply leave the icon field empty (ie. <code>title;;cmd</code>). If you want
 within xlunch, for example to create a menu hierarchy, you should use a special syntax. This syntax
 allows xlunch to replace its old process with the new one so you only have a single instance of
 xlunch running and don't get any overhead from running it through bash. In order to do this simply
-put <code>recur [options]</code> as the <code>cmd</code> field. This will reuse the program name
-you originally used to call xlunch with but replace the options with anything you add after recur.
-If you want to run a program by the name recur, simply add a space in front of it. NOTE: recur
-relies on splitting the list of arguments, this is currently only done on spaces, even those inside
-quotes, so it's not possible to pass arguments with spaces in them when using recur (this is how
-previous versions of xlunch did all launching).
+use the internal recur command by putting <code>:recur [options]</code> as the <code>cmd</code>
+field. This will reuse the program name you originally used to call xlunch with but replace the
+options with anything you add after recur. If you want to run a program by the name recur, simply
+add a space in front of it. NOTE: recur relies on splitting the list of arguments, this is currently
+only done on spaces, even those inside quotes, so it's not possible to pass arguments with spaces in
+them when using recur (this is how previous versions of xlunch did all launching).
+</p>
+
+<p>
+The <code>:recur</code> command shown above is a special class of commands called an "internal
+command". All exec fields, both in entries, buttons, and otherwise that starts with a colon is
+treated as an internal command (if you wish to avoid this simply add a space in front of the colon).
+Apart from <code>:recur</code> the internal commands are:
+<pre><code>
+:scroll <pos>         Scroll to the given position. pos can be "top", "bottom", the row number,
+                      or a number starting with + or - which is parsed as a relative scroll.
+:exec <command>       Runs the given command, even when outputonly is enabled
+:print <string>       Prints a string to stdout
+:quit                 Quits out of xlunch
+</code></pre>
+Internal commands can be chained, so one can do <code>:scroll +3 :print "Scrolled!"</code>. For <code>
+print</code> and <code>exec</code> the argument needs to be enclosed in double-quotes if you want to
+chain them, otherwise they will exec/print everything that follows. Because of this <code>quit</code>
+can be put in front of a statement and wont quit until after all commands are run. So
+<code>:quit :exec myProgram --help</code> will run myProgram with it's help flag, then quit. The same
+can also be achieved with double quotes <code>:exec "myProgram --help" :quit</code>.
+NOTE: Scroll is not completely implemented yet, <code>bottom</code> doesn't do anything and you are
+able to scroll past the top and bottom of the list. This will not be possible in the future.
 </p>
 
 <p>If a completely empty line is encountered (ie. two sequential newlines), then all entries read

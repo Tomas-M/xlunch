@@ -107,6 +107,7 @@ enum exit_code {
     RIGHTCLICK,
     VOIDCLICK,
     FOCUSLOST,
+    INTERNALCMD,
     LOCKERROR = 0x40,
     ALLOCERROR,
     FONTERROR,
@@ -1026,8 +1027,50 @@ int starts_with(const char *pre, const char *str)
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
 
+void run_command(char * cmd_orig);
 void run_internal_command(char * cmd_orig) {
-    fprintf(stderr, "Got internal command %s\n", cmd_orig);
+    int will_quit = 0;
+    char * cmd = malloc(strlen(cmd_orig)+1);
+    memcpy(cmd, cmd_orig, strlen(cmd_orig)+1); 
+    char *p = strtok( cmd, " ");
+    if (strcmp(p, "scroll") == 0) {
+        p = strtok( NULL, " ");
+        if (strcmp(p, "top") == 0){
+            scrolled_past = 0;
+        } else if (strcmp(p, "bottom") == 0){
+        } else {
+            if (p[0] == '+' || p[0] == '-')
+                scrolled_past += atoi(p);
+            else
+                scrolled_past = atoi(p);
+        }
+        arrange_positions();
+        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+    } else if (strcmp(p, "exec") == 0) {
+        int old_oo = output_only;
+        output_only = 0;
+        run_command(strtok(NULL, "\""));
+        output_only = old_oo;
+    } else if (strcmp(p, "print") == 0){
+        printf("%s\n", strtok(NULL, "\""));
+    } else if (strcmp(p, "quit") == 0) {
+        will_quit = 1;
+    }
+    if (p != NULL) {
+        p = strtok(NULL, " ");
+        if (p != NULL) {
+            if (p[0] == ':') {
+                run_internal_command(&p[1]);
+            } else {
+                fprintf(stderr, "Internal command \"%s\" supplied with extraneous parameters \"%s\"\n", cmd_orig, p);
+            }
+        }
+    }
+    free(cmd);
+    if (will_quit) {
+        cleanup();
+        exit(INTERNALCMD);
+    }
 }
 
 void run_command(char * cmd_orig)
