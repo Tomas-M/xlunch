@@ -96,6 +96,7 @@ typedef struct color {
 } color_t;
 
 int entries_count = 0;
+int max_scroll = 0;
 node_t * entries = NULL;
 button_t * buttons = NULL;
 shortcut_t * shortcuts = NULL;
@@ -1019,6 +1020,19 @@ void joincmdlinetext()
     strcat(commandlinetext,"_");
 }
 
+void set_scroll_level(int new_scroll) {
+    if (new_scroll != scrolled_past) {
+        scrolled_past = new_scroll;
+        if (scrolled_past < 0) {
+            scrolled_past = 0;
+        } else if (scrolled_past > (entries_count - 1)/columns) {
+            scrolled_past = (entries_count - 1)/columns;
+        }
+        arrange_positions();
+        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+    }
+}
+
 
 int starts_with(const char *pre, const char *str)
 {
@@ -1036,16 +1050,15 @@ void run_internal_command(char * cmd_orig) {
     if (strcmp(p, "scroll") == 0) {
         p = strtok( NULL, " ");
         if (strcmp(p, "top") == 0){
-            scrolled_past = 0;
+            set_scroll_level(0);
         } else if (strcmp(p, "bottom") == 0){
+            set_scroll_level(entries_count);
         } else {
             if (p[0] == '+' || p[0] == '-')
-                scrolled_past += atoi(p);
+                set_scroll_level(scrolled_past + atoi(p));
             else
-                scrolled_past = atoi(p);
+                set_scroll_level(atoi(p));
         }
-        arrange_positions();
-        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
     } else if (strcmp(p, "exec") == 0) {
         int old_oo = output_only;
         output_only = 0;
@@ -2088,23 +2101,12 @@ int main(int argc, char **argv){
                                 break;
                             case 4:
                                 if (scroll) {
-                                    if(--scrolled_past < 0) scrolled_past = 0;
-                                    arrange_positions();
-                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                                    set_scroll_level(scrolled_past - 1);
                                 }
                                 break;
                             case 5:;
                                 if (scroll) {
-                                    int max = -1;
-                                    node_t *cur = entries;
-                                    while(cur != NULL){
-                                        max += 1;
-                                        cur = cur->next;
-                                    }
-                                    scrolled_past ++;
-                                    if (scrolled_past > max/columns) scrolled_past = max/columns;
-                                    arrange_positions();
-                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                                    set_scroll_level(scrolled_past + 1);
                                 }
                                 break;
                             case 1:;
