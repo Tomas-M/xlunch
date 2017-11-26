@@ -2074,7 +2074,13 @@ void handleKeyPress(XEvent ev) {
         if (keycode==XK_Page_Down) i=columns*rows; 
         if (keycode==XK_End) i = entries_count;//(scroll ? scrolled_past*columns+n : n);
         if (keycode==XK_Home) i = -entries_count;//(scroll ? scrolled_past*columns+1 : 1);
-        if (hovered_entry == 0) hovered_entry = 1;
+        if (hovered_entry == 0) {
+            if (keycode != XK_End && keycode != XK_Page_Down) {
+                hovered_entry = 1-i;
+            } else {
+                hovered_entry = 1;
+            }
+        }
         i = hovered_entry + i;
         hoverset=KEYBOARD;
         int to_row = (i+columns-1)/columns;
@@ -2122,7 +2128,7 @@ void handleKeyPress(XEvent ev) {
     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
 }
 
-void renderEntry(Imlib_Image buffer, Imlib_Font font, char *title, node_t * current, Cursor * c, int up_x, int up_y) {
+void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor * c, int up_x, int up_y) {
     int h = 0;
     int w = 0;
     if (current->hovered)
@@ -2166,6 +2172,7 @@ void renderEntry(Imlib_Image buffer, Imlib_Font font, char *title, node_t * curr
         }
     }
     /* draw text under icon */
+    Imlib_Font font = load_font();
     if (font)
     {
         imlib_context_set_image(buffer);
@@ -2205,8 +2212,6 @@ int main(int argc, char **argv){
     XEvent ev;
     /* our virtual framebuffer image we draw into */
     Imlib_Image buffer;
-    /* a font */
-    Imlib_Font font;
     char title[255];
 
     /* width and height values */
@@ -2499,7 +2504,7 @@ int main(int argc, char **argv){
                     }
                     if (!current->hidden)
                     {
-                        renderEntry(buffer, font, title, current, &c, up_x, up_y);
+                        renderEntry(buffer, title, current, &c, up_x, up_y);
                         drawn++;
                     }
                     if (drawn == columns*rows)
@@ -2535,7 +2540,7 @@ int main(int argc, char **argv){
 
                 /* draw prompt */
                 if (!no_prompt) {
-                    font = load_prompt_font();
+                    Imlib_Font font = load_prompt_font();
                     if (font)
                     {
                         imlib_context_set_font(font);
