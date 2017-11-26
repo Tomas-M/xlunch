@@ -353,6 +353,8 @@ Apart from <code>:recur</code> the internal commands are:
 <pre><code>
 :scroll <pos>         Scroll to the given position. pos can be "top", "bottom", the row number,
                       or a number starting with + or - which is parsed as a relative scroll.
+:hover <entry>        Set the entry as hovered and scroll to it. entry cas be "start", "end",
+                      the entry number (1 indexed, 0 for no entry), or +/- like scroll.
 :exec <command>       Runs the given command, even when outputonly is enabled
 :print <string>       Prints a string to stdout
 :quit                 Quits out of xlunch

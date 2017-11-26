@@ -96,7 +96,6 @@ typedef struct color {
 } color_t;
 
 int entries_count = 0;
-int max_scroll = 0;
 node_t * entries = NULL;
 button_t * buttons = NULL;
 shortcut_t * shortcuts = NULL;
@@ -238,6 +237,7 @@ int hide_missing = 0;
 int center_icons = 0;
 int scroll = 0;
 int scrolled_past= 0;
+int hovered_entry = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
@@ -650,6 +650,7 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
         new_entry->next = entries;
         entries = new_entry;
     }
+    entries_count++;
 }
 
 
@@ -754,154 +755,6 @@ FILE * determine_input_source(){
     return fp;
 }
 
-
-int parse_entries()
-{
-    int changed = 0; // if the list of elements have changed or not
-    int parsing = 0; // section currently being read
-    int position = 0; // position in the current entry
-    int leading_space = 0;
-    int line = 1; // line count for error messages
-    int readstatus;
-
-    struct pollfd fds;
-    fds.fd = fileno(input_source);
-    fds.events = POLLIN;
-    node_t * current_entry;
-    while(poll(&fds, 1, 0)) {
-        if(parsing == 0 && position == 0){
-            current_entry = malloc(sizeof(node_t));
-        }
-        char b;
-        readstatus = read(fds.fd, &b, 1);
-        if(readstatus <= 0){
-            break;
-        }
-        if(b == '\0') {
-            fprintf(stderr, "Null-byte encountered while reading entries at line %d. Aborting.\n", line);
-        }
-        // Check for semi-colons only for the first two elements to support bash commands with semi-colons in them
-        if(b == ';' && parsing != 2) {
-            b = '\0';
-        } else if (b == '\n') {
-            line++;
-            b = '\0';
-            if(parsing == 0){
-                clear_entries();
-                changed = 1;
-                continue;
-            }
-        }
-        if(b == ' ' && position <= leading_space) leading_space++;
-        if(b != ' ' && leading_space > 0) leading_space = -leading_space;
-        switch(parsing){
-            case 0:
-                if (leading_space <= 0)
-                    current_entry->title[position+leading_space] = b;
-                break;
-            case 1:
-                current_entry->icon[position] = b;
-                break;
-            case 2:
-                current_entry->cmd[position] = b;
-                break;
-        }
-        position++;
-        if(b == '\0') {
-            position = 0;
-            leading_space = 0;
-            if(parsing == 2) {
-                push_entry(current_entry);
-                changed = 1;
-                parsing = 0;
-            } else {
-                parsing++;
-            }
-        }
-        int maxlen = (parsing == 2 ? 511 : 255);
-        if(position == maxlen){
-            fprintf(stderr, "Entry too long on line %d, maximum length is %d characters!\n", line, maxlen);
-            break;
-        }
-    }
-    if(readstatus == 0){
-        if(parsing == 2){
-            current_entry->cmd[position]='\0';
-            push_entry(current_entry);
-            changed = 1;
-        }
-        close(fds.fd);
-        input_source = NULL;
-    }
-    if(changed) {
-        filter_entries();
-        arrange_positions();
-    }
-    return changed;
-}
-
-void parse_button(char *button_spec) {
-    int parsing = 0; // section currently being read
-    int position = 0; // position in the current entry
-    int i = 0;
-    button_t *new_button = malloc(sizeof(button_t));
-    char b = button_spec[0];
-    char x[256];
-    char y[256];
-    while (b != '\0') {
-        if ((b == ';' && parsing != 4) || (parsing == 2 && b == ',') ) {
-            b = '\0';
-        } 
-        switch(parsing){
-            case 0:
-                new_button->icon_normal[position] = b;
-                break;
-            case 1:
-                new_button->icon_highlight[position] = b;
-                break;
-            case 2:
-                x[position] = b;
-                break;
-            case 3:
-                y[position] = b;
-                break;
-            case 4:
-                new_button->cmd[position] = b;
-                break;
-        }
-        position ++;
-        if(b == '\0') {
-            position = 0;
-            parsing++;
-        }
-        int maxlen = (parsing == 4 ? 511 : 255);
-        if(position == maxlen){
-            fprintf(stderr, "Entry too long, maximum length is %d characters!\n", maxlen);
-            break;
-        }
-        i++;
-        b = button_spec[i];
-    }
-    if (x[0] == '-') {
-        new_button->x = atoi(x)-1;
-    } else {
-        new_button->x = atoi(x);
-    }
-    if (y[0] == '-') {
-        new_button->y = atoi(y)-1;
-    } else {
-        new_button->y = atoi(y);
-    }
-    imlib_context_set_image(imlib_load_image(new_button->icon_normal));
-    new_button->w = imlib_image_get_width();
-    new_button->h = imlib_image_get_height();
-    imlib_free_image();
-    new_button->cmd[position] = '\0';
-    new_button->next = buttons;
-    buttons = new_button;
-}
-
-
 int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
     if (cell->hidden) return 0;
@@ -923,7 +776,6 @@ int mouse_over_button(button_t * button, int mouse_x, int mouse_y)
         && mouse_y < y+button->h) return 1;
     else return 0;
 }
-
 
 Pixmap GetRootPixmap(Display* display, Window *root)
 {
@@ -948,7 +800,6 @@ Pixmap GetRootPixmap(Display* display, Window *root)
 
     return currentRootPixmap;
 }
-
 
 int get_root_image_to_imlib_data(DATA32 * direct)
 {
@@ -1021,18 +872,40 @@ void joincmdlinetext()
 }
 
 void set_scroll_level(int new_scroll) {
-    if (new_scroll != scrolled_past) {
-        scrolled_past = new_scroll;
-        if (scrolled_past < 0) {
-            scrolled_past = 0;
-        } else if (scrolled_past > (entries_count - 1)/columns) {
-            scrolled_past = (entries_count - 1)/columns;
+    if (scroll){
+        if (new_scroll != scrolled_past) {
+            scrolled_past = new_scroll;
+            if (scrolled_past < 0) {
+                scrolled_past = 0;
+            } else if (scrolled_past > (entries_count - 1)/columns - columns + 1) {
+                scrolled_past = (entries_count - 1)/columns - columns + 1;
+            }
+            arrange_positions();
+            updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
         }
-        arrange_positions();
-        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
     }
 }
 
+void set_hover(int hovered, node_t * cell, int hover)
+{
+    if (hover) hovered_entry = hovered;
+    if (cell==NULL) return;
+    if (cell->hidden) return;
+    if (cell->hovered!=hover) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
+    cell->hovered=hover;
+}
+
+void hover_entry(int entry){
+    int j = 1;
+    int i = (entry < scrolled_past*columns + 1 ? scrolled_past*columns + 1 : (entry > scrolled_past*columns + columns*rows ? scrolled_past*columns + columns*rows : entry));
+    node_t * current = entries;
+    while (current != NULL) {
+        if (j == i) set_hover(j, current, 1);
+        else        set_hover(j, current, 0);
+        j++;
+        current = current->next;
+    }
+}
 
 int starts_with(const char *pre, const char *str)
 {
@@ -1059,6 +932,27 @@ void run_internal_command(char * cmd_orig) {
             else
                 set_scroll_level(atoi(p));
         }
+    } else if (strcmp(p, "hover") == 0) {
+        if (hoverset != KEYBOARD) hovered_entry = 0;
+        p = strtok( NULL, " ");
+        int new_hover;
+        if (strcmp(p, "start") == 0){
+            new_hover = 1;
+        } else if (strcmp(p, "end") == 0){
+            new_hover = entries_count;
+        } else {
+            if (p[0] == '+' || p[0] == '-')
+                new_hover = hovered_entry + atoi(p);
+            else
+                new_hover = atoi(p);
+        }
+        hoverset=KEYBOARD;
+        int to_row = (new_hover+columns-1)/columns;
+        int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
+        if (new_hover>(columns*rows)+scrolled_past*columns || new_hover<=scrolled_past*columns) { 
+            set_scroll_level(to_row - display_row);
+        }
+        hover_entry(new_hover);
     } else if (strcmp(p, "exec") == 0) {
         int old_oo = output_only;
         output_only = 0;
@@ -1070,7 +964,7 @@ void run_internal_command(char * cmd_orig) {
         will_quit = 1;
     }
     if (p != NULL) {
-        p = strtok(NULL, " ");
+        p = strtok(NULL, "");
         if (p != NULL) {
             if (p[0] == ':') {
                 run_internal_command(&p[1]);
@@ -1167,15 +1061,166 @@ void run_command(char * cmd_orig)
     }
 }
 
-
-void set_hover(node_t * cell, int hover)
+int parse_entries()
 {
-    if (cell==NULL) return;
-    if (cell->hidden) return;
-    if (cell->hovered!=hover) updates = imlib_update_append_rect(updates, cell->x, cell->y, cell_width, cell_height);
-    cell->hovered=hover;
+    int changed = 0; // if the list of elements have changed or not
+    int parsing = 0; // section currently being read
+    int position = 0; // position in the current entry
+    int leading_space = 0;
+    int line = 1; // line count for error messages
+    int readstatus;
+
+    struct pollfd fds;
+    fds.fd = fileno(input_source);
+    fds.events = POLLIN;
+    node_t * current_entry = NULL;
+    char internal_command[128];
+    while(poll(&fds, 1, 0)) {
+        char b;
+        readstatus = read(fds.fd, &b, 1);
+        if(readstatus <= 0){
+            break;
+        }
+        if(parsing == 0 && position == 0){
+            if(b != ':') {
+                current_entry = malloc(sizeof(node_t));
+            } else {
+                current_entry = NULL;
+            }
+        }
+        if (current_entry == NULL) {
+            if (position != 0)
+                internal_command[position-1] = (b != '\n' ? b : '\0');
+        } else {
+            if(b == '\0') {
+                fprintf(stderr, "Null-byte encountered while reading entries at line %d. Aborting.\n", line);
+            }
+            // Check for semi-colons only for the first two elements to support bash commands with semi-colons in them
+            if(b == ';' && parsing != 2) {
+                b = '\0';
+            } else if (b == '\n') {
+                line++;
+                b = '\0';
+                if(parsing == 0){
+                    clear_entries();
+                    changed = 1;
+                    continue;
+                }
+            }
+            if(b == ' ' && position <= leading_space) leading_space++;
+            if(b != ' ' && leading_space > 0) leading_space = -leading_space;
+            switch(parsing){
+                case 0:
+                    if (leading_space <= 0)
+                        current_entry->title[position+leading_space] = b;
+                    break;
+                case 1:
+                    current_entry->icon[position] = b;
+                    break;
+                case 2:
+                    current_entry->cmd[position] = b;
+                    break;
+            }
+        }
+        position++;
+        if(current_entry == NULL && b == '\n') {
+            run_internal_command(internal_command);
+        }
+        if(current_entry != NULL) {
+            if(b == '\0') {
+                position = 0;
+                leading_space = 0;
+                if(parsing == 2) {
+                    push_entry(current_entry);
+                    changed = 1;
+                    parsing = 0;
+                } else {
+                    parsing++;
+                }
+            }
+            int maxlen = (parsing == 2 ? 511 : 255);
+            if(position == maxlen){
+                fprintf(stderr, "Entry too long on line %d, maximum length is %d characters!\n", line, maxlen);
+                break;
+            }
+        }
+    }
+    if(readstatus == 0){
+        if(parsing == 2){
+            current_entry->cmd[position]='\0';
+            push_entry(current_entry);
+            changed = 1;
+        }
+        close(fds.fd);
+        input_source = NULL;
+    }
+    if(changed) {
+        filter_entries();
+        arrange_positions();
+    }
+    return changed;
 }
 
+void parse_button(char *button_spec) {
+    int parsing = 0; // section currently being read
+    int position = 0; // position in the current entry
+    int i = 0;
+    button_t *new_button = malloc(sizeof(button_t));
+    char b = button_spec[0];
+    char x[256];
+    char y[256];
+    while (b != '\0') {
+        if ((b == ';' && parsing != 4) || (parsing == 2 && b == ',') ) {
+            b = '\0';
+        } 
+        switch(parsing){
+            case 0:
+                new_button->icon_normal[position] = b;
+                break;
+            case 1:
+                new_button->icon_highlight[position] = b;
+                break;
+            case 2:
+                x[position] = b;
+                break;
+            case 3:
+                y[position] = b;
+                break;
+            case 4:
+                new_button->cmd[position] = b;
+                break;
+        }
+        position ++;
+        if(b == '\0') {
+            position = 0;
+            parsing++;
+        }
+        int maxlen = (parsing == 4 ? 511 : 255);
+        if(position == maxlen){
+            fprintf(stderr, "Entry too long, maximum length is %d characters!\n", maxlen);
+            break;
+        }
+        i++;
+        b = button_spec[i];
+    }
+    if (x[0] == '-') {
+        new_button->x = atoi(x)-1;
+    } else {
+        new_button->x = atoi(x);
+    }
+    if (y[0] == '-') {
+        new_button->y = atoi(y)-1;
+    } else {
+        new_button->y = atoi(y);
+    }
+    imlib_context_set_image(imlib_load_image(new_button->icon_normal));
+    new_button->w = imlib_image_get_width();
+    new_button->h = imlib_image_get_height();
+    imlib_free_image();
+    new_button->cmd[position] = '\0';
+    new_button->next = buttons;
+    buttons = new_button;
+}
 
 void set_clicked(node_t * cell, int clicked)
 {
@@ -1860,18 +1905,20 @@ void init(int argc, char **argv)
 
 void recheckHover(XEvent ev) {
     node_t * current = entries;
+    int i = 1;
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-            set_hover(current,1);
+        if (!current->hidden && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+            set_hover(i, current, 1);
             hoverset=MOUSE;
         }
         else {
-            set_hover(current,0);
+            set_hover(i, current,0);
             set_clicked(current,0);
         }
         current = current->next;
+        i++;
     }
     
     button_t * button = buttons;
@@ -1899,15 +1946,11 @@ void handleButtonPress(XEvent ev) {
             }
             break;
         case 4:
-            if (scroll) {
-                set_scroll_level(scrolled_past - 1);
-            }
+            set_scroll_level(scrolled_past - 1);
             recheckHover(ev);
             break;
         case 5:;
-            if (scroll) {
-                set_scroll_level(scrolled_past + 1);
-            }
+            set_scroll_level(scrolled_past + 1);
             recheckHover(ev);
             break;
         case 1:;
@@ -2026,68 +2069,21 @@ void handleKeyPress(XEvent ev) {
         if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
         if (keycode==XK_Page_Up) i=-columns*rows;
         if (keycode==XK_Page_Down) i=columns*rows; 
-
-        int j=0,n=0,m=0;
-        n = columns * rows;
-        node_t * current = entries;
-        node_t * selected = NULL;
-        while (current != NULL)
-        {
-            if (!current->hidden)
-            {
-                //if (current->y+cell_height<=screen_height-border) n++;
-                m++;
-                if (selected==NULL) j++;
-                if (current->hovered) selected=current;
-                set_hover(current,0);
-            }
-            current=current->next;
+        if (keycode==XK_End) i = entries_count;//(scroll ? scrolled_past*columns+n : n);
+        if (keycode==XK_Home) i = -entries_count;//(scroll ? scrolled_past*columns+1 : 1);
+        if (hoverset == KEYBOARD) {
+            i = hovered_entry + i;
+        } else {
+            i = scrolled_past*columns+1;
         }
-
-        if (selected==NULL) {
-            selected=entries;
-            i=0;
-            j=0;
+        hoverset=KEYBOARD;
+        int to_row = (i+columns-1)/columns;
+        int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
+        if (i>(columns*rows)+scrolled_past*columns || i<=scrolled_past*columns) { 
+            set_scroll_level(to_row - display_row);
         }
-        current=entries;
-
-        int k=i+j;
-        if (k<=0) k=1;
-        if (i > 0) {
-            int r = i+1;
-            while (selected!=NULL && r!=0){
-                r--;
-                selected = selected->next;
-            }
-            k-=r;
-        }
-        if (scroll) {
-            if (k>n+scrolled_past*columns || k<=scrolled_past*columns) { 
-                int dr = (j>scrolled_past*columns ? (j<scrolled_past*columns +n ? (j-scrolled_past*columns-1)/columns : rows-1) : 0);
-                int tr = (k-1)/columns;
-                scrolled_past = tr - dr;
-                if (scrolled_past < 0) {
-                    scrolled_past = 0;
-                }
-                arrange_positions();
-                updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-            }
-        }
-        if (k>(scroll ? m : n)) k = (scroll ? m : n);
-        if (keycode==XK_End) k = (scroll ? scrolled_past*columns+n : n);
-        if (keycode==XK_Home) k = (scroll ? scrolled_past*columns+1 : 1);
-        while (current != NULL)
-        {
-            if (!current->hidden)
-            {
-                k--;
-                if (k==0) {
-                    set_hover(current,1);
-                    hoverset=KEYBOARD;
-                }
-            }
-            current=current->next;
-        }
+        hover_entry(i);
+        return;
     }
 
     if (keycode==XK_Delete || keycode==XK_BackSpace)
@@ -2114,14 +2110,93 @@ void handleKeyPress(XEvent ev) {
 
     // we used keyboard to type command. So unselect all icons.
     node_t * current = entries;
+    int i = 1;
     while (current != NULL)
     {
-        set_hover(current,0);
+        set_hover(i, current,0);
         set_clicked(current,0);
         current = current->next;
+        i++;
     }
 
     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+}
+
+void renderEntry(Imlib_Image buffer, Imlib_Font font, char *title, node_t * current, Cursor * c, int up_x, int up_y) {
+    int h = 0;
+    int w = 0;
+    if (current->hovered)
+    {
+        if (hoverset == MOUSE) *c = XCreateFontCursor(disp,XC_hand1);
+
+        if (highlight)
+        {
+            imlib_context_set_image(highlight);
+            w = imlib_image_get_width();
+            h = imlib_image_get_height();
+            imlib_context_set_image(buffer);
+            imlib_blend_image_onto_image(highlight, 1, 0, 0, w, h, current->x-up_x, current->y-up_y, cell_width, cell_height);
+        }
+        else
+        {
+           imlib_context_set_image(buffer);
+           imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
+           imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
+        }
+    }
+    if (strlen(current->icon) != 0) {
+        image=imlib_load_image(current->icon);
+        if (image)
+        {
+            imlib_context_set_image(image);
+            w = imlib_image_get_width();
+            h = imlib_image_get_height();
+            imlib_context_set_image(buffer);
+            int d;
+            if (current->clicked) d=2;
+            else d=0;
+            int x = current->x - up_x +
+                        (text_other_side && text_after ? cell_width - icon_padding - icon_size : icon_padding)+d;
+            int y = current->y - up_y +(text_other_side && !text_after ? cell_height - icon_padding - icon_size : icon_padding)+d;
+
+            imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
+
+            imlib_context_set_image(image);
+            imlib_free_image();
+        }
+    }
+    /* draw text under icon */
+    if (font)
+    {
+        imlib_context_set_image(buffer);
+        int text_w;
+        int text_h;
+
+        const size_t osz = strlen(current->title);
+        size_t sz = osz;
+        imlib_context_set_font(font);
+        do
+        {
+            strncpyutf8(title,current->title,sz);
+            if(sz != osz)
+                strcat(title,"..");
+            imlib_get_text_size(title, &text_w, &text_h);
+            sz--;
+        } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+
+        int d;
+        if (current->clicked==1) d=4;
+        else d=0;
+
+        if (text_after) {
+            draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+        } else {
+            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_padding + text_padding : icon_padding*2) + icon_size), title, text_color);
+        }
+
+        /* free the font */
+        imlib_free_font();
+    }
 }
 
 /* the program... */
@@ -2424,79 +2499,7 @@ int main(int argc, char **argv){
                     }
                     if (!current->hidden)
                     {
-                        if (current->hovered)
-                        {
-                            c = XCreateFontCursor(disp,XC_hand1);
-
-                            if (highlight)
-                            {
-                                imlib_context_set_image(highlight);
-                                w = imlib_image_get_width();
-                                h = imlib_image_get_height();
-                                imlib_context_set_image(buffer);
-                                imlib_blend_image_onto_image(highlight, 1, 0, 0, w, h, current->x-up_x, current->y-up_y, cell_width, cell_height);
-                            }
-                            else
-                            {
-                               imlib_context_set_image(buffer);
-                               imlib_context_set_color(highlight_color.r, highlight_color.g, highlight_color.b, highlight_color.a);
-                               imlib_image_fill_rectangle(current->x-up_x, current->y-up_y, cell_width, cell_height);
-                            }
-                        }
-                        if (strlen(current->icon) != 0) {
-                            image=imlib_load_image(current->icon);
-                            if (image)
-                            {
-                                imlib_context_set_image(image);
-                                w = imlib_image_get_width();
-                                h = imlib_image_get_height();
-                                imlib_context_set_image(buffer);
-                                int d;
-                                if (current->clicked) d=2;
-                                else d=0;
-                                x = current->x - up_x +
-                                            (text_other_side && text_after ? cell_width - icon_padding - icon_size : icon_padding)+d;
-                                y = current->y - up_y +(text_other_side && !text_after ? cell_height - icon_padding - icon_size : icon_padding)+d;
-
-                                imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
-
-                                imlib_context_set_image(image);
-                                imlib_free_image();
-                            }
-                        }
-                        /* draw text under icon */
-                        font = load_font();
-                        if (font)
-                        {
-                            imlib_context_set_image(buffer);
-                            int text_w;
-                            int text_h;
-
-                            const size_t osz = strlen(current->title);
-                            size_t sz = osz;
-                            imlib_context_set_font(font);
-                            do
-                            {
-                                strncpyutf8(title,current->title,sz);
-                                if(sz != osz)
-                                    strcat(title,"..");
-                                imlib_get_text_size(title, &text_w, &text_h);
-                                sz--;
-                            } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
-
-                            int d;
-                            if (current->clicked==1) d=4;
-                            else d=0;
-
-                            if (text_after) {
-                                draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
-                            } else {
-                                draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_padding + text_padding : icon_padding*2) + icon_size), title, text_color);
-                            }
-
-                            /* free the font */
-                            imlib_free_font();
-                        }
+                        renderEntry(buffer, font, title, current, &c, up_x, up_y);
                         drawn++;
                     }
                     if (drawn == columns*rows)
@@ -2530,7 +2533,7 @@ int main(int argc, char **argv){
                 /* set the buffer image as our current image */
                 imlib_context_set_image(buffer);
 
-                /* draw text */
+                /* draw prompt */
                 if (!no_prompt) {
                     font = load_prompt_font();
                     if (font)
