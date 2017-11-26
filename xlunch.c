@@ -1858,6 +1858,272 @@ void init(int argc, char **argv)
     else screen_height=uheight;
 }
 
+void recheckHover(XEvent ev) {
+    node_t * current = entries;
+
+    while (current != NULL)
+    {
+        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+            set_hover(current,1);
+            hoverset=MOUSE;
+        }
+        else {
+            set_hover(current,0);
+            set_clicked(current,0);
+        }
+        current = current->next;
+    }
+    
+    button_t * button = buttons;
+    while (button != NULL) {
+        int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+        int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+        if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+            if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+            button->hovered = 1;
+        } else {
+            if (button->hovered != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+            button->hovered = 0;
+            button->clicked = 0;
+        }
+        button = button->next;
+    }
+}
+
+void handleButtonPress(XEvent ev) {
+    switch (ev.xbutton.button) {
+        case 3:
+            if (!desktop_mode) {
+                cleanup();
+                exit(RIGHTCLICK);
+            }
+            break;
+        case 4:
+            if (scroll) {
+                set_scroll_level(scrolled_past - 1);
+            }
+            recheckHover(ev);
+            break;
+        case 5:;
+            if (scroll) {
+                set_scroll_level(scrolled_past + 1);
+            }
+            recheckHover(ev);
+            break;
+        case 1:;
+            node_t * current = entries;
+            int voidclicked = 1;
+            int checked = 0;
+            while (current != NULL)
+            {
+                if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+                    set_clicked(current,1);
+                    voidclicked = 0;
+                }
+                else set_clicked(current,0);
+                if (++checked == rows*columns) {
+                    break;
+                }
+                current = current->next;
+            }
+
+            if (voidclicked && void_click_terminate) {
+                cleanup();
+                exit(VOIDCLICK);
+            }
+
+            button_t * button = buttons;
+            while (button != NULL) {
+                int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+                int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+                if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+                    if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+                    button->clicked = 1;
+                } else {
+                    if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+                    button->clicked = 0;
+                }
+                button = button->next;
+            }
+            break;
+    }
+}
+
+void handleButtonRelease(XEvent ev) {
+    node_t * current = entries;
+
+    while (current != NULL)
+    {
+        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
+        set_clicked(current, 0); // button release means all cells are not clicked
+        updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
+        current = current->next;
+    }
+
+    button_t * button = buttons;
+    
+    while (button != NULL)
+    {
+        if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y) && button->clicked == 1) run_command(button->cmd);
+        button->clicked = 0;
+        int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
+        int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+        updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
+        button = button->next;
+    }
+}
+
+void handleKeyPress(XEvent ev) {
+    // keyboard events
+    int count = 0;
+    KeySym keycode = 0;
+    Status status = 0;
+    char kbdbuf[20]= {0};
+    count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
+
+    if (keycode==XK_Escape && !desktop_mode)
+    {
+        cleanup();
+        exit(ESCAPE);
+    }
+
+    if (keycode==XK_Return || keycode==XK_KP_Enter)
+    {
+        // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
+        node_t * current = entries;
+        node_t * selected = NULL;
+        node_t * selected_one = NULL;
+        node_t * first = NULL;
+        int nb=0;
+        while (current != NULL)
+        {
+            if (!current->hidden)
+            {
+                nb++;
+                selected_one=current;
+                if (first == NULL) first = current;
+            }
+            if (!current->hidden && current->hovered) selected=current;
+            current=current->next;
+        }
+        /* if only 1 app was filtered, consider it selected */
+        if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd);
+        else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
+        // else run the command entered by commandline, if the command prompt is used
+        else if (!no_prompt && !select_only) run_command(commandline);
+        // or if --selectonly is specified, run first program regardless of selected state
+        else if (select_only && first!=NULL) run_command(first->cmd);
+    }
+
+    if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
+            || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right
+            || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
+    {
+        int i=0;
+        if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
+        if (keycode==XK_Up || keycode==XK_KP_Up) i=-columns;
+        if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
+        if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
+        if (keycode==XK_Page_Up) i=-columns*rows;
+        if (keycode==XK_Page_Down) i=columns*rows; 
+
+        int j=0,n=0,m=0;
+        n = columns * rows;
+        node_t * current = entries;
+        node_t * selected = NULL;
+        while (current != NULL)
+        {
+            if (!current->hidden)
+            {
+                //if (current->y+cell_height<=screen_height-border) n++;
+                m++;
+                if (selected==NULL) j++;
+                if (current->hovered) selected=current;
+                set_hover(current,0);
+            }
+            current=current->next;
+        }
+
+        if (selected==NULL) {
+            selected=entries;
+            i=0;
+            j=0;
+        }
+        current=entries;
+
+        int k=i+j;
+        if (k<=0) k=1;
+        if (i > 0) {
+            int r = i+1;
+            while (selected!=NULL && r!=0){
+                r--;
+                selected = selected->next;
+            }
+            k-=r;
+        }
+        if (scroll) {
+            if (k>n+scrolled_past*columns || k<=scrolled_past*columns) { 
+                int dr = (j>scrolled_past*columns ? (j<scrolled_past*columns +n ? (j-scrolled_past*columns-1)/columns : rows-1) : 0);
+                int tr = (k-1)/columns;
+                scrolled_past = tr - dr;
+                if (scrolled_past < 0) {
+                    scrolled_past = 0;
+                }
+                arrange_positions();
+                updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+            }
+        }
+        if (k>(scroll ? m : n)) k = (scroll ? m : n);
+        if (keycode==XK_End) k = (scroll ? scrolled_past*columns+n : n);
+        if (keycode==XK_Home) k = (scroll ? scrolled_past*columns+1 : 1);
+        while (current != NULL)
+        {
+            if (!current->hidden)
+            {
+                k--;
+                if (k==0) {
+                    set_hover(current,1);
+                    hoverset=KEYBOARD;
+                }
+            }
+            current=current->next;
+        }
+    }
+
+    if (keycode==XK_Delete || keycode==XK_BackSpace)
+        pop_key();
+    else if (count>1 || (count==1 && kbdbuf[0]>=32)){ // ignore unprintable characterrs
+        if (!no_prompt) push_key(kbdbuf);
+        shortcut_t *shortcut = shortcuts;
+        while(shortcut != NULL) {
+            for(int i = 0; i < count; i++){
+                if (kbdbuf[i] != shortcut->key[i]) {
+                    break;
+                } else if (i == count-1) {
+                    run_command(shortcut->entry->cmd);
+                }
+            }
+            shortcut = shortcut->next;
+        }
+    }
+
+    joincmdline();
+    joincmdlinetext();
+    filter_entries();
+    arrange_positions();
+
+    // we used keyboard to type command. So unselect all icons.
+    node_t * current = entries;
+    while (current != NULL)
+    {
+        set_hover(current,0);
+        set_clicked(current,0);
+        current = current->next;
+    }
+
+    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+}
+
 /* the program... */
 int main(int argc, char **argv){
     /* events we get from X */
@@ -2077,7 +2343,6 @@ int main(int argc, char **argv){
 
 
                     case ConfigureNotify:
-                    {
                         if (screen_width!=ev.xconfigure.width || screen_height!=ev.xconfigure.height)
                         {
                             screen_width=ev.xconfigure.width;
@@ -2088,93 +2353,14 @@ int main(int argc, char **argv){
                             updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
                         }
                         break;
-                    }
 
                     case ButtonPress:
-                    {
-                        switch (ev.xbutton.button) {
-                            case 3:
-                                if (!desktop_mode) {
-                                    cleanup();
-                                    exit(RIGHTCLICK);
-                                }
-                                break;
-                            case 4:
-                                if (scroll) {
-                                    set_scroll_level(scrolled_past - 1);
-                                }
-                                break;
-                            case 5:;
-                                if (scroll) {
-                                    set_scroll_level(scrolled_past + 1);
-                                }
-                                break;
-                            case 1:;
-                                node_t * current = entries;
-                                int voidclicked = 1;
-                                int checked = 0;
-                                while (current != NULL)
-                                {
-                                    if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                                        set_clicked(current,1);
-                                        voidclicked = 0;
-                                    }
-                                    else set_clicked(current,0);
-                                    if (++checked == rows*columns) {
-                                        break;
-                                    }
-                                    current = current->next;
-                                }
-
-                                if (voidclicked && void_click_terminate) {
-                                    cleanup();
-                                    exit(VOIDCLICK);
-                                }
-
-                                button_t * button = buttons;
-                                while (button != NULL) {
-                                    int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
-                                    int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
-                                    if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
-                                        if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                        button->clicked = 1;
-                                    } else {
-                                        if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                        button->clicked = 0;
-                                    }
-                                    button = button->next;
-                                }
-                            break;
-                        }
+                        handleButtonPress(ev);
                         break;
-                    }
 
                     case ButtonRelease:
-                    {
-                        node_t * current = entries;
-
-                        while (current != NULL)
-                        {
-                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
-                            set_clicked(current, 0); // button release means all cells are not clicked
-                            updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
-                            current = current->next;
-                        }
-
-                        button_t * button = buttons;
-                        
-                        while (button != NULL)
-                        {
-                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y) && button->clicked == 1) run_command(button->cmd);
-                            button->clicked = 0;
-                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
-                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
-                            updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                            button = button->next;
-                        }
-
+                        handleButtonRelease(ev);
                         break;
-                    }
 
                     // refresh keyboard layout if changed
                     case KeymapNotify:
@@ -2182,197 +2368,16 @@ int main(int argc, char **argv){
                         break;
 
                     case KeyPress:
-                    {
-                        // keyboard events
-                        int count = 0;
-                        KeySym keycode = 0;
-                        Status status = 0;
-                        char kbdbuf[20]= {0};
-                        count = Xutf8LookupString(ic, (XKeyPressedEvent*)&ev, kbdbuf, 20, &keycode, &status);
-
-                        if (keycode==XK_Escape && !desktop_mode)
-                        {
-                            cleanup();
-                            exit(ESCAPE);
-                        }
-
-                        if (keycode==XK_Return || keycode==XK_KP_Enter)
-                        {
-                            // if we have an icon hovered, and the hover was caused by keyboard arrows, run the hovered icon
-                            node_t * current = entries;
-                            node_t * selected = NULL;
-                            node_t * selected_one = NULL;
-                            node_t * first = NULL;
-                            int nb=0;
-                            while (current != NULL)
-                            {
-                                if (!current->hidden)
-                                {
-                                    nb++;
-                                    selected_one=current;
-                                    if (first == NULL) first = current;
-                                }
-                                if (!current->hidden && current->hovered) selected=current;
-                                current=current->next;
-                            }
-                            /* if only 1 app was filtered, consider it selected */
-                            if (nb==1 && selected_one!=NULL) run_command(selected_one->cmd);
-                            else if (hoverset==KEYBOARD && selected!=NULL) run_command(selected->cmd);
-                            // else run the command entered by commandline, if the command prompt is used
-                            else if (!no_prompt && !select_only) run_command(commandline);
-                            // or if --selectonly is specified, run first program regardless of selected state
-                            else if (select_only && first!=NULL) run_command(first->cmd);
-                        }
-
-                        if (keycode==XK_Tab || keycode==XK_Up || keycode==XK_Down || keycode==XK_Left || keycode==XK_Right
-                                || keycode==XK_KP_Up || keycode==XK_KP_Down || keycode==XK_KP_Left || keycode==XK_KP_Right
-                                || keycode==XK_Page_Down || keycode==XK_Page_Up || keycode==XK_Home || keycode==XK_End)
-                        {
-                            int i=0;
-                            if (keycode==XK_KP_Left || keycode==XK_Left) i=-1;
-                            if (keycode==XK_Up || keycode==XK_KP_Up) i=-columns;
-                            if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
-                            if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
-                            if (keycode==XK_Page_Up) i=-columns*rows;
-                            if (keycode==XK_Page_Down) i=columns*rows; 
-
-                            int j=0,n=0,m=0;
-                            n = columns * rows;
-                            node_t * current = entries;
-                            node_t * selected = NULL;
-                            while (current != NULL)
-                            {
-                                if (!current->hidden)
-                                {
-                                    //if (current->y+cell_height<=screen_height-border) n++;
-                                    m++;
-                                    if (selected==NULL) j++;
-                                    if (current->hovered) selected=current;
-                                    set_hover(current,0);
-                                }
-                                current=current->next;
-                            }
-
-                            if (selected==NULL) {
-                                selected=entries;
-                                i=0;
-                                j=0;
-                            }
-                            current=entries;
-
-                            int k=i+j;
-                            if (k<=0) k=1;
-                            if (i > 0) {
-                                int r = i+1;
-                                while (selected!=NULL && r!=0){
-                                    r--;
-                                    selected = selected->next;
-                                }
-                                k-=r;
-                            }
-                            if (scroll) {
-                                if (k>n+scrolled_past*columns || k<=scrolled_past*columns) { 
-                                    int dr = (j>scrolled_past*columns ? (j<scrolled_past*columns +n ? (j-scrolled_past*columns-1)/columns : rows-1) : 0);
-                                    int tr = (k-1)/columns;
-                                    scrolled_past = tr - dr;
-                                    if (scrolled_past < 0) {
-                                        scrolled_past = 0;
-                                    }
-                                    arrange_positions();
-                                    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-                                }
-                            }
-                            if (k>(scroll ? m : n)) k = (scroll ? m : n);
-                            if (keycode==XK_End) k = (scroll ? scrolled_past*columns+n : n);
-                            if (keycode==XK_Home) k = (scroll ? scrolled_past*columns+1 : 1);
-                            while (current != NULL)
-                            {
-                                if (!current->hidden)
-                                {
-                                    k--;
-                                    if (k==0) {
-                                        set_hover(current,1);
-                                        hoverset=KEYBOARD;
-                                    }
-                                }
-                                current=current->next;
-                            }
-
-                            continue; // do not conitnue
-                        }
-
-                        if (keycode==XK_Delete || keycode==XK_BackSpace)
-                            pop_key();
-                        else if (count>1 || (count==1 && kbdbuf[0]>=32)){ // ignore unprintable characterrs
-                            if (!no_prompt) push_key(kbdbuf);
-                            shortcut_t *shortcut = shortcuts;
-                            while(shortcut != NULL) {
-                                for(int i = 0; i < count; i++){
-                                    if (kbdbuf[i] != shortcut->key[i]) {
-                                        break;
-                                    } else if (i == count-1) {
-                                        run_command(shortcut->entry->cmd);
-                                    }
-                                }
-                                shortcut = shortcut->next;
-                            }
-                        }
-
-                        joincmdline();
-                        joincmdlinetext();
-                        filter_entries();
-                        arrange_positions();
-
-                        // we used keyboard to type command. So unselect all icons.
-                        node_t * current = entries;
-                        while (current != NULL)
-                        {
-                            set_hover(current,0);
-                            set_clicked(current,0);
-                            current = current->next;
-                        }
-
-                        updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+                        handleKeyPress(ev);
                         break;
-                    }
 
                     case KeyRelease:
                         break;
 
                     case EnterNotify:
                     case MotionNotify:
-                    {
-                        node_t * current = entries;
-
-                        while (current != NULL)
-                        {
-                            if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                                set_hover(current,1);
-                                hoverset=MOUSE;
-                            }
-                            else {
-                                set_hover(current,0);
-                                set_clicked(current,0);
-                            }
-                            current = current->next;
-                        }
-                        
-                        button_t * button = buttons;
-                        while (button != NULL) {
-                            int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
-                            int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
-                            if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
-                                if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                button->hovered = 1;
-                            } else {
-                                if (button->hovered != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
-                                button->hovered = 0;
-                                button->clicked = 0;
-                            }
-                            button = button->next;
-                        }
+                        recheckHover(ev);
                         break;
-                    }
 
                     default:
                         /* any other events - do nothing */
