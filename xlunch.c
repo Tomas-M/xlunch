@@ -1906,11 +1906,13 @@ void init(int argc, char **argv)
 void recheckHover(XEvent ev) {
     node_t * current = entries;
     int i = 1;
+    int any_hovered = 0;
 
     while (current != NULL)
     {
         if (!current->hidden && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
+            any_hovered = 1;
             hoverset=MOUSE;
         }
         else {
@@ -1920,6 +1922,7 @@ void recheckHover(XEvent ev) {
         current = current->next;
         i++;
     }
+    if (any_hovered == 0) hovered_entry = 0;
     
     button_t * button = buttons;
     while (button != NULL) {
@@ -2071,11 +2074,8 @@ void handleKeyPress(XEvent ev) {
         if (keycode==XK_Page_Down) i=columns*rows; 
         if (keycode==XK_End) i = entries_count;//(scroll ? scrolled_past*columns+n : n);
         if (keycode==XK_Home) i = -entries_count;//(scroll ? scrolled_past*columns+1 : 1);
-        if (hoverset == KEYBOARD) {
-            i = hovered_entry + i;
-        } else {
-            i = scrolled_past*columns+1;
-        }
+        if (hovered_entry == 0) hovered_entry = 1;
+        i = hovered_entry + i;
         hoverset=KEYBOARD;
         int to_row = (i+columns-1)/columns;
         int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
