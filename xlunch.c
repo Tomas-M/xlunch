@@ -1916,7 +1916,7 @@ void recheckHover(XEvent ev) {
 
     while (current != NULL)
     {
-        if (current->hidden == 0 && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+        if (i > scrolled_past*columns && i < scrolled_past*columns + rows*columns +1  && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
