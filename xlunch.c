@@ -877,8 +877,8 @@ void set_scroll_level(int new_scroll) {
             scrolled_past = new_scroll;
             if (scrolled_past < 0) {
                 scrolled_past = 0;
-            } else if (scrolled_past > (entries_count - 1)/columns - columns + 1) {
-                scrolled_past = (entries_count - 1)/columns - columns + 1;
+            } else if (scrolled_past > (entries_count - 1)/columns - rows + 1) {
+                scrolled_past = (entries_count - 1)/columns - rows + 1;
             }
             arrange_positions();
             updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
