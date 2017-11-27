@@ -654,26 +654,6 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
 }
 
 
-void filter_entries()
-{
-    node_t * current = entries;
-    entries_count = 0;
-
-    while (current != NULL)
-    {
-        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL){
-            current->hidden=0;
-            entries_count ++;
-        } else {
-            current->hidden=1;
-            current->hovered=0;
-            current->clicked=0;
-        }
-        current=current->next;
-    }
-}
-
-
 char *strtok_new(char * string, char const * delimiter){
    static char *source = NULL;
    char *p, *riturn = 0;
@@ -875,10 +855,11 @@ void set_scroll_level(int new_scroll) {
     if (scroll){
         if (new_scroll != scrolled_past) {
             scrolled_past = new_scroll;
+            if (scrolled_past > (entries_count - 1)/columns - rows + 1) {
+                scrolled_past = (entries_count - 1)/columns - rows + 1;
+            }
             if (scrolled_past < 0) {
                 scrolled_past = 0;
-            } else if (scrolled_past > (entries_count - 1)/columns - rows + 1) {
-                scrolled_past = (entries_count - 1)/columns - rows + 1;
             }
             arrange_positions();
             updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
@@ -906,12 +887,33 @@ void hover_entry(int entry){
                 : entry));
     node_t * current = entries;
     while (current != NULL) {
-        if (j == i) set_hover(j, current, 1);
-        else        set_hover(j, current, 0);
-        j++;
+        if (j == i) set_hover(i, current, 1);
+        else        set_hover(i, current, 0);
+        if (!current->hidden) j++;
         current = current->next;
     }
 }
+
+void filter_entries()
+{
+    node_t * current = entries;
+    entries_count = 0;
+
+    while (current != NULL)
+    {
+        if (strlen(commandline)==0 || strcasestr(current->title,commandline)!=NULL || strcasestr(current->cmd,commandline)!=NULL){
+            current->hidden=0;
+            entries_count ++;
+        } else {
+            current->hidden=1;
+            current->clicked=0;
+            set_hover(0, current, 1);
+        }
+        current=current->next;
+    }
+    //set_scroll_level(0);
+}
+
 
 int starts_with(const char *pre, const char *str)
 {
