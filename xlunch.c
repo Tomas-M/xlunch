@@ -897,7 +897,13 @@ void set_hover(int hovered, node_t * cell, int hover)
 
 void hover_entry(int entry){
     int j = 1;
-    int i = (entry < scrolled_past*columns + 1 ? scrolled_past*columns + 1 : (entry > scrolled_past*columns + columns*rows ? scrolled_past*columns + columns*rows : entry));
+    int max = scrolled_past*columns + columns*rows;
+    max = (max > entries_count ? entries_count : max);
+    int i = (entry < scrolled_past*columns + 1
+            ? scrolled_past*columns + 1
+            : (entry > max
+                ? max
+                : entry));
     node_t * current = entries;
     while (current != NULL) {
         if (j == i) set_hover(j, current, 1);
