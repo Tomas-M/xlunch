@@ -877,6 +877,11 @@ void set_hover(int hovered, node_t * cell, int hover)
 }
 
 void hover_entry(int entry){
+    int to_row = (entry+columns-1)/columns;
+    int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
+    if (entry>(columns*rows)+scrolled_past*columns || entry<=scrolled_past*columns) {
+        set_scroll_level(to_row - display_row);
+    }
     int j = 1;
     int max = scrolled_past*columns + columns*rows;
     max = (max > entries_count ? entries_count : max);
@@ -911,7 +916,7 @@ void filter_entries()
         }
         current=current->next;
     }
-    //set_scroll_level(0);
+    set_scroll_level(0);
 }
 
 
@@ -953,12 +958,6 @@ void run_internal_command(char * cmd_orig) {
                 new_hover = hovered_entry + atoi(p);
             else
                 new_hover = atoi(p);
-        }
-        hoverset=KEYBOARD;
-        int to_row = (new_hover+columns-1)/columns;
-        int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
-        if (new_hover>(columns*rows)+scrolled_past*columns || new_hover<=scrolled_past*columns) {
-            set_scroll_level(to_row - display_row);
         }
         hover_entry(new_hover);
     } else if (strcmp(p, "exec") == 0) {
@@ -2090,12 +2089,6 @@ void handleKeyPress(XEvent ev) {
             }
         }
         i = hovered_entry + i;
-        hoverset=KEYBOARD;
-        int to_row = (i+columns-1)/columns;
-        int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
-        if (i>(columns*rows)+scrolled_past*columns || i<=scrolled_past*columns) {
-            set_scroll_level(to_row - display_row);
-        }
         hover_entry(i);
         return;
     }
@@ -2507,17 +2500,16 @@ int main(int argc, char **argv){
 
                 while (current != NULL)
                 {
-                    if (seen++ < scrolled_past * columns) {
-                        current = current->next;
-                        continue;
-                    }
                     if (!current->hidden)
                     {
+                        if (seen++ < scrolled_past * columns) {
+                            current = current->next;
+                            continue;
+                        }
                         renderEntry(buffer, title, current, &c, up_x, up_y);
-                        drawn++;
+                        if (++drawn == columns*rows)
+                            break;
                     }
-                    if (drawn == columns*rows)
-                        break;
                     current = current->next;
                 }
 
