@@ -924,7 +924,7 @@ void run_command(char * cmd_orig);
 void run_internal_command(char * cmd_orig) {
     int will_quit = 0;
     char * cmd = malloc(strlen(cmd_orig)+1);
-    memcpy(cmd, cmd_orig, strlen(cmd_orig)+1); 
+    memcpy(cmd, cmd_orig, strlen(cmd_orig)+1);
     char *p = strtok( cmd, " ");
     if (strcmp(p, "scroll") == 0) {
         p = strtok( NULL, " ");
@@ -955,7 +955,7 @@ void run_internal_command(char * cmd_orig) {
         hoverset=KEYBOARD;
         int to_row = (new_hover+columns-1)/columns;
         int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
-        if (new_hover>(columns*rows)+scrolled_past*columns || new_hover<=scrolled_past*columns) { 
+        if (new_hover>(columns*rows)+scrolled_past*columns || new_hover<=scrolled_past*columns) {
             set_scroll_level(to_row - display_row);
         }
         hover_entry(new_hover);
@@ -1713,15 +1713,15 @@ void handle_option(int c, char *optarg) {
         case 1014:
             parse_config(fopen(optarg, "rb"));
             break;
-        
+
         case 1015:
             bg_fill = 1;
             break;
-        
+
         case 1016:
             focus_lost_terminate = 1;
             break;
-        
+
         case 1017:
             border_ratio = atoi(optarg);
             break;
@@ -1829,7 +1829,7 @@ void handle_option(int c, char *optarg) {
                             "        -B, --sideborder [i]               Size of the border on the sides, if this is used\n"
                             "                                           --border will be only top and bottom. Similarily\n"
                             "                                           this can be set to 'auto' but then only side\n"
-                            "                                           borders are calculated\n" 
+                            "                                           borders are calculated\n"
                             "        --borderratio [i]                  The ratio of the border to apply above the\n"
                             "                                           content. 0 is no top border, only bottom. 100 is\n"
                             "                                           only top border, no bottom\n"
@@ -1916,7 +1916,7 @@ void recheckHover(XEvent ev) {
 
     while (current != NULL)
     {
-        if (!current->hidden && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+        if (current->hidden == 0 && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
@@ -1929,7 +1929,7 @@ void recheckHover(XEvent ev) {
         i++;
     }
     if (any_hovered == 0) hovered_entry = 0;
-    
+
     button_t * button = buttons;
     while (button != NULL) {
         int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
@@ -2013,7 +2013,7 @@ void handleButtonRelease(XEvent ev) {
     }
 
     button_t * button = buttons;
-    
+
     while (button != NULL)
     {
         if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y) && button->clicked == 1) run_command(button->cmd);
@@ -2077,7 +2077,7 @@ void handleKeyPress(XEvent ev) {
         if (keycode==XK_Down || keycode==XK_KP_Down) i=columns;
         if (keycode==XK_Tab || keycode==XK_Right || keycode==XK_KP_Right) i=1;
         if (keycode==XK_Page_Up) i=-columns*rows;
-        if (keycode==XK_Page_Down) i=columns*rows; 
+        if (keycode==XK_Page_Down) i=columns*rows;
         if (keycode==XK_End) i = entries_count;//(scroll ? scrolled_past*columns+n : n);
         if (keycode==XK_Home) i = -entries_count;//(scroll ? scrolled_past*columns+1 : 1);
         if (hovered_entry == 0) {
@@ -2091,7 +2091,7 @@ void handleKeyPress(XEvent ev) {
         hoverset=KEYBOARD;
         int to_row = (i+columns-1)/columns;
         int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
-        if (i>(columns*rows)+scrolled_past*columns || i<=scrolled_past*columns) { 
+        if (i>(columns*rows)+scrolled_past*columns || i<=scrolled_past*columns) {
             set_scroll_level(to_row - display_row);
         }
         hover_entry(i);
