@@ -214,8 +214,8 @@ int no_prompt = 0;
 int prompt_spacing = 48;
 int windowed = 0;
 int multiple_instances = 0;
-int uposx = 0;
-int uposy = 0;
+int uposx = -1;
+int uposy = -1;
 int uwidth = 0;
 int uheight = 0;
 int uborder = 0;
@@ -2240,7 +2240,7 @@ int main(int argc, char **argv){
     }
 
     //win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
-    win = XCreateWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
+    win = XCreateWindow(disp, DefaultRootWindow(disp), (uposx == -1 ? 0 : uposx), (uposy == -1 ? 0 : uposy), screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
 
     // absolute fullscreen mode by overide redirect
     if (!windowed && desktop_mode)
@@ -2302,7 +2302,8 @@ int main(int argc, char **argv){
     /* show the window */
     XMapRaised(disp, win);
     /* Force window reposition, can make effect only when windowed is enabled, depending on WM */
-    XMoveWindow(disp,win,uposx,uposy);
+    if (uposx != -1 || uposy != -1)
+        XMoveWindow(disp,win,uposx,uposy);
 
     // prepare for keyboard UTF8 input
     if (XSetLocaleModifiers("@im=none") == NULL) {
