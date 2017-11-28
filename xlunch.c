@@ -1180,7 +1180,7 @@ void parse_button(char *button_spec) {
     while (b != '\0') {
         if ((b == ';' && parsing != 4) || (parsing == 2 && b == ',') ) {
             b = '\0';
-        } 
+        }
         switch(parsing){
             case 0:
                 new_button->icon_normal[position] = b;
@@ -1469,6 +1469,16 @@ void parse_config(FILE *input) {
             }
             matched = '?';
             fileline++;
+        }
+    }
+    if(position > 1) {
+        if(matching_entries){
+            input_source = input;
+        } else {
+            if(matched == '?') {
+                fprintf(stderr, "Got unknown option in config file on line %d\n", fileline);
+            }
+            handle_option(matched, optarg);
         }
     }
     if(input_source != input)
