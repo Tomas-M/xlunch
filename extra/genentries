@@ -99,7 +99,7 @@ else
   else
     iconpath="/usr/share/icons/$icontheme"
   fi
-  indexfile=$(find "$iconpath/" -name "index.theme" 2>/dev/null)
+  indexfile=$(find -L "$iconpath/" -name "index.theme" 2>/dev/null)
   if [ -z "$indexfile" ]; then
     echo "Could not find index.theme in $iconpath for theme $icontheme"
     exit 1
@@ -169,34 +169,34 @@ function readdesktopfile {
             if [ ! -d "$themepath" ] && [ ! -L "$themepath" ]; then
               continue
             fi
-            sizes=$(find "$themepath/" -type d | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" | sort -u | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
+            sizes=$(find -L "$themepath/" -type d | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" | sort -u | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
             sizes=$(echo -e "$(echo "$sizes" | grep "^e.*")\n$(echo "$sizes" | grep "^g.*" | sort -k 2.1n)\nscalable\n$(echo "$sizes" | grep "^l.*" | sort -k 2.1nr)")
             sizes=$(echo "$sizes" | sed "s|^. ||")
             for size in $sizes; do
               while read path; do
                 if ! [ -z "$path" ]; then
-                  icon=$(find "$path" -type f "${findargs[@]}" -false | head -n 1 )
+                  icon=$(find -L "$path" -type f "${findargs[@]}" -false | head -n 1 )
                   if ! [ -z "$icon" ]; then
                     break 4
                   fi
                 fi
-              done <<< $(find "$themepath/" -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$") 
+              done <<< $(find -L "$themepath/" -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$") 
             done
           done
         done
 
         # If we can't find anything that matches the theme, just search anywhere
         if [ -z "$icon" ]; then
-          icon="$(find "$pixmaps" -type f \( "${findargs[@]}" -false \) | head -n 1)"
+          icon="$(find -L "$pixmaps" -type f \( "${findargs[@]}" -false \) | head -n 1)"
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.local/share/icons" ]; then
-          icon=$(find "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.icons" ]; then
-          icon=$(find "$user_home/.icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "$user_home/.icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
         fi
         if [ -z "$icon" ] && [ -d "/usr/share/icons" ]; then
-          icon=$(find "/usr/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "/usr/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
         fi
       fi
 
@@ -230,7 +230,7 @@ else
     IFS=$'\n'
 
     # Iterate over files in localappfolder and add them to the array
-    files=$(find "$localappfolder" -name "*.desktop" 2>/dev/null)
+    files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
     for desktopfile in $files
     do
       bname=$(basename "$desktopfile")
@@ -241,7 +241,7 @@ else
     done
 
     # Iterate over files in globalappfolder and add them to the array if they don't already exists
-    files=$(find "$globalappfolder" -name "*.desktop" 2>/dev/null)
+    files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
     for desktopfile in $files
     do
       bname=$(basename "$desktopfile")
