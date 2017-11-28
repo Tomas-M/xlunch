@@ -1475,6 +1475,14 @@ void parse_config(FILE *input) {
         if(matching_entries){
             input_source = input;
         } else {
+            if (matched == '?') {
+                for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+                    if (matching[i] == 1) {
+                        matched = long_options[i].val;
+                        break;
+                    }
+                }
+            }
             if(matched == '?') {
                 fprintf(stderr, "Got unknown option in config file on line %d\n", fileline);
             }
