@@ -877,6 +877,7 @@ void set_hover(int hovered, node_t * cell, int hover)
 }
 
 void hover_entry(int entry){
+    hoverset = KEYBOARD;
     int to_row = (entry+columns-1)/columns;
     int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
     if (entry>(columns*rows)+scrolled_past*columns || entry<=scrolled_past*columns) {
@@ -2055,8 +2056,8 @@ void handleKeyPress(XEvent ev) {
                 nb++;
                 selected_one=current;
                 if (first == NULL) first = current;
+                if (current->hovered) selected = current;
             }
-            if (!current->hidden && current->hovered) selected=current;
             current=current->next;
         }
         /* if only 1 app was filtered, consider it selected */
