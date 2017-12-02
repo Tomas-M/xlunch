@@ -715,13 +715,13 @@ FILE * determine_input_source(){
         }
         if (fp == NULL)
         {
-            fprintf(stderr, "Error opening config file from %s.\nReverting back to system conf.\n", input_file);
+            fprintf(stderr, "Error opening entries file from %s.\nReverting back to system conf.\n", input_file);
             input_file = "/etc/xlunch/entries.dsv";
             fp = fopen(input_file, "rb");
 
             if (fp == NULL)
             {
-                fprintf(stderr, "Error opening config file %s\n", input_file);
+                fprintf(stderr, "Error opening entries file %s\n", input_file);
                 fprintf(stderr, "You may need to create it. Icon file format is following:\n");
                 fprintf(stderr, "title;icon_path;command\n");
                 fprintf(stderr, "title;icon_path;command\n");
@@ -1398,12 +1398,12 @@ void parse_config(FILE *input) {
     int eol = 0;
     int fileline = 1;
     char *optarg = NULL;
-    char matching[(sizeof(long_options)/32) - 1];
+    char matching[(sizeof(long_options)/sizeof(struct option)) - 1];
     char *entries_word = "entries";
     int matching_entries = 1;
     int matched = '?';
     int comment = 0;
-    memset(matching, 1, sizeof(long_options)/32 - 1);
+    memset(matching, 1, sizeof(long_options)/sizeof(struct option) - 1);
 
     struct pollfd fds;
     fds.fd = fileno(input);
@@ -1423,7 +1423,7 @@ void parse_config(FILE *input) {
         if(comment == 1 && eol != 1) continue;
         if(b == ' ' && position == 0) continue;
         if(optarg == NULL) {
-            for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+            for(int i = 0; i < sizeof(long_options)/sizeof(struct option) - 1; i++) {
                 if (long_options[i].name[position] != b){
                     matching[i] = 0;
                 }
@@ -1432,7 +1432,7 @@ void parse_config(FILE *input) {
                 matching_entries = 0;
             }
             if(b == '\0') {
-                for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+                for(int i = 0; i < sizeof(long_options)/sizeof(struct option) - 1; i++) {
                     if (matching[i] == 1) {
                         optarg = malloc(1);
                         position = -1;
@@ -1462,7 +1462,7 @@ void parse_config(FILE *input) {
             eol = 0;
             comment = 0;
             matching_entries = 1;
-            memset(matching, 1, sizeof(long_options)/32 - 1);
+            memset(matching, 1, sizeof(long_options)/sizeof(struct option) - 1);
             if(optarg != NULL){
                 //free(optarg);
                 optarg = NULL;
@@ -1476,7 +1476,7 @@ void parse_config(FILE *input) {
             input_source = input;
         } else {
             if (matched == '?') {
-                for(int i = 0; i < sizeof(long_options)/32 - 1; i++) {
+                for(int i = 0; i < sizeof(long_options)/sizeof(struct option) - 1; i++) {
                     if (matching[i] == 1) {
                         matched = long_options[i].val;
                         break;
@@ -2594,3 +2594,4 @@ int main(int argc, char **argv){
     }
     return 0;
 }
+
