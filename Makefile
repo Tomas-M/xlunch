@@ -28,6 +28,11 @@ remove:
 	rm $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch.png
 	rm $(DESTDIR)/usr/share/applications/genentries.desktop
 
+livetest: xlunch
+	./extra/gentriesquick > /tmp/xlunch-tmp.dsv
+	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -i /tmp/xlunch-tmp.dsv -b 140 --iconpadding 20 --textpadding 10 --paddingswap --leastmargin 10 --scroll || true
+	rm -f /tmp/xlunch-tmp.dsv
+
 test: xlunch
 	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -i extra/sample_entries.dsv -b 140 --outputonly --iconpadding 20 --textpadding 10 --paddingswap --leastmargin 10 --highlight extra/highlight.png
 
