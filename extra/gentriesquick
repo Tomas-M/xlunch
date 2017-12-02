@@ -1,0 +1,46 @@
+#!/bin/bash
+
+ICONSIZES="48 128 64 32" # icon search in given order
+ICONPATH=/usr/share/icons/hicolor
+
+# $1..$n = dir path with .desktop files
+process_directories()
+{
+   while [ "$1" != "" ]; do
+
+      for desktop in "$1"/*.desktop; do
+
+         Name=
+         Icon=
+         Exec=
+         Hidden=
+         Terminal=
+
+         while read LINE; do
+            eval $LINE
+         done <<< $(cat $desktop | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
+
+         if [ "$Hidden" = "true" ]; then
+            continue
+         fi
+
+         for size in $ICONSIZES; do
+            icon=$ICONPATH/$size"x"$size/apps/$Icon
+            if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
+            if [ -e "$icon" ]; then Icon=$icon; break; fi
+         done
+
+         if [ "$Terminal" = "true" ]; then
+            Exec="xterm -ls -e $Exec"
+         fi
+
+         if [ -e "$Icon" ]; then
+            echo "$Name;$Icon;$Exec"
+         fi
+
+      done
+   shift
+   done
+}
+
+process_directories /usr/share/applications
