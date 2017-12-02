@@ -1453,6 +1453,7 @@ void parse_config(FILE *input) {
                 } else {
                     if(matched == '?') {
                         fprintf(stderr, "Got unknown option in config file on line %d\n", fileline);
+                        exit(CONFIGERROR);
                     }
                     handle_option(matched, optarg);
                 }
@@ -1485,6 +1486,7 @@ void parse_config(FILE *input) {
             }
             if(matched == '?') {
                 fprintf(stderr, "Got unknown option in config file on line %d\n", fileline);
+                exit(CONFIGERROR);
             }
             handle_option(matched, optarg);
         }
@@ -1755,6 +1757,10 @@ void handle_option(int c, char *optarg) {
             break;
 
         case '?':
+            fprintf(stderr, "See --help for usage documentation\n");
+            exit(CONFIGERROR);
+            break;
+
         case 'H':
             fprintf (stderr,"usage: xlunch [options]\n"
                             "    xlunch is a program launcher/option selector similar to dmenu or rofi.\n"
