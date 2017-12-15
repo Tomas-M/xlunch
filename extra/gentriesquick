@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ICONSIZES="48 128 64 32" # icon search in given order
+ICONSIZES="$1 128 64 48 32" # icon search in given order
 ICONPATH=/usr/share/icons/hicolor
 
 # $1..$n = dir path with .desktop files
@@ -26,6 +26,9 @@ process_directories()
 
          for size in $ICONSIZES; do
             icon=$ICONPATH/$size"x"$size/apps/$Icon
+            if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
+            if [ -e "$icon" ]; then Icon=$icon; break; fi
+            icon=$ICONPATH/apps/$size"x"$size/$Icon
             if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
             if [ -e "$icon" ]; then Icon=$icon; break; fi
          done
