@@ -92,23 +92,23 @@ if [ -z "$icontheme" ]; then
   icontheme="hicolor"
   inherits="hicolor"
 else
-  if [ -d "$user_home/.local/share/icons/$icontheme" ]; then
-    iconpath="$user_home/.local/share/icons/$icontheme"
-  elif [ -d "$user_home/.icons/$icontheme" ]; then
-    iconpath="$user_home/.icons/$icontheme"
-  else
-    iconpath="/usr/share/icons/$icontheme"
-  fi
-  indexfile=$(find -L "$iconpath/" -name "index.theme" 2>/dev/null)
   if [ -z "$indexfile" ]; then
-    echo "Could not find index.theme in $iconpath for theme $icontheme"
+    indexfile=$(find -L "$user_home/.local/share/icons/$icontheme" -name "index.theme" -print -quit 2>/dev/null)
+  fi
+  if [ -z "$indexfile" ]; then
+    indexfile=$(find -L "$user_home/.icons/$icontheme" -name "index.theme" -print quit 2>/dev/null)
+  fi
+  if [ -z "$indexfile" ]; then
+    indexfile=$(find -L "/usr/share/icons/$icontheme" -name "index.theme" -print -quit 2>/dev/null)
+  fi
+  if [ -z "$indexfile" ]; then
+    echo "Could not find index.theme for theme $icontheme"
     exit 1
   fi
-  inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|" | grep -v "^hicolor$")
+  inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|g" | grep -v "^hicolor$")
   inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
 fi
 if [ "$debug" == "true" ]; then
-  echo $iconpath >&2
   echo $indexfile >&2
   echo $inherits >&2
 fi
@@ -175,28 +175,28 @@ function readdesktopfile {
             for size in $sizes; do
               while read path; do
                 if ! [ -z "$path" ]; then
-                  icon=$(find -L "$path" -type f "${findargs[@]}" -false | head -n 1 )
+                  icon=$(find -L "$path" -type f "${findargs[@]}" -false -quit )
                   if ! [ -z "$icon" ]; then
                     break 4
                   fi
                 fi
-              done <<< $(find -L "$themepath/" -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$") 
+              done <<< $(find -L "$themepath/" -type d | grep "^$themepath/\([^/]*/\)\?$size\(x$size\)\?$")
             done
           done
         done
 
         # If we can't find anything that matches the theme, just search anywhere
         if [ -z "$icon" ]; then
-          icon="$(find -L "$pixmaps" -type f \( "${findargs[@]}" -false \) | head -n 1)"
+          icon="$(find -L "$pixmaps" -type f \( "${findargs[@]}" -false \) -print -quit)"
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.local/share/icons" ]; then
-          icon=$(find -L "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit)
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.icons" ]; then
-          icon=$(find -L "$user_home/.icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "$user_home/.icons" -type f \( "${findargs[@]}" -false \) -print -quit)
         fi
         if [ -z "$icon" ] && [ -d "/usr/share/icons" ]; then
-          icon=$(find -L "/usr/share/icons" -type f \( "${findargs[@]}" -false \) | head -n 1)
+          icon=$(find -L "/usr/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit)
         fi
       fi
 
@@ -220,40 +220,40 @@ function readdesktopfile {
 }
 
 if [ ! -z "$desktopfile" ]; then
-  readdesktopfile "$desktopfile"
+readdesktopfile "$desktopfile"
 else
-  if ! [ -z "$icontheme" ]; then
-    # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
-    declare -A applications
+if ! [ -z "$icontheme" ]; then
+  # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+  declare -A applications
 
-    # Set for in separator to newline
-    IFS=$'\n'
+  # Set for in separator to newline
+  IFS=$'\n'
 
-    # Iterate over files in localappfolder and add them to the array
-    files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
-    for desktopfile in $files
-    do
-      bname=$(basename "$desktopfile")
+  # Iterate over files in localappfolder and add them to the array
+  files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
+    entry=$(readdesktopfile "$desktopfile")
+    if ! [ -z "$entry" ]; then
+      applications["$bname"]="$entry"
+    fi
+  done
+
+  # Iterate over files in globalappfolder and add them to the array if they don't already exists
+  files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
+  for desktopfile in $files
+  do
+    bname=$(basename "$desktopfile")
+    if ! [[ ${applications[$bname]} ]]; then
       entry=$(readdesktopfile "$desktopfile")
       if ! [ -z "$entry" ]; then
         applications["$bname"]="$entry"
       fi
-    done
+    fi
+  done
 
-    # Iterate over files in globalappfolder and add them to the array if they don't already exists
-    files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
-    for desktopfile in $files
-    do
-      bname=$(basename "$desktopfile")
-      if ! [[ ${applications[$bname]} ]]; then
-        entry=$(readdesktopfile "$desktopfile")
-        if ! [ -z "$entry" ]; then
-          applications["$bname"]="$entry"
-        fi
-      fi
-    done
-
-    # Get all the entries and write them out sorted and unique while removing the placeholder
+  # Get all the entries and write them out sorted and unique while removing the placeholder
     for key in "${!applications[@]}"; do
       echo "${applications[$key]}"
     done | sort | uniq | grep -v "^;;$"
