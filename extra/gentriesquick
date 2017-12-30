@@ -1,7 +1,8 @@
 #!/bin/bash
 
 ICONSIZES="$1 128 64 48 32" # icon search in given order
-ICONPATH=/usr/share/icons/hicolor
+ICONPATHS="/usr/share/icons/hicolor /usr/share/pixmaps"
+
 
 # $1..$n = dir path with .desktop files
 process_directories()
@@ -25,12 +26,17 @@ process_directories()
          fi
 
          for size in $ICONSIZES; do
-            icon=$ICONPATH/$size"x"$size/apps/$Icon
-            if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
-            if [ -e "$icon" ]; then Icon=$icon; break; fi
-            icon=$ICONPATH/apps/$size"x"$size/$Icon
-            if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
-            if [ -e "$icon" ]; then Icon=$icon; break; fi
+            for ICONPATH in $ICONPATHS; do
+               icon=$ICONPATH/$size"x"$size/apps/$Icon
+               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+               icon=$ICONPATH/apps/$size"x"$size/$Icon
+               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+               icon=$ICONPATH/$Icon
+               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+            done
          done
 
          if [ "$Terminal" = "true" ]; then
