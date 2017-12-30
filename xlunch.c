@@ -2003,11 +2003,6 @@ void handleButtonPress(XEvent ev) {
                 current = current->next;
             }
 
-            if (voidclicked && void_click_terminate) {
-                cleanup();
-                exit(VOIDCLICK);
-            }
-
             button_t * button = buttons;
             while (button != NULL) {
                 int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
@@ -2015,11 +2010,17 @@ void handleButtonPress(XEvent ev) {
                 if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
                     if (button->clicked != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                     button->clicked = 1;
+                    voidclicked = 0;
                 } else {
                     if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                     button->clicked = 0;
                 }
                 button = button->next;
+            }
+
+            if (voidclicked && void_click_terminate) {
+                cleanup();
+                exit(VOIDCLICK);
             }
             break;
     }
