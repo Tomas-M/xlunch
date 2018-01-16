@@ -485,18 +485,19 @@ void pop_key()
 
 void clear_entries(){
     node_t * current = entries;
-    entries = NULL;
     while (current != NULL) {
         node_t * last = current;
         if (clear_memory) {
             memset(last->title, 0, 256);
             memset(last->icon, 0, 256);
-            memset(last->cmd, 0, 256);
-            memset(last, 0, sizeof(node_t));
+            memset(last->cmd, 0, 512);
+            // Free the entire struct, except for it's next pointer
+            memset(last, 0, sizeof(node_t) - sizeof(node_t *));
         }
         free(last);
         current = current->next;
     }
+    entries = NULL;
 }
 
 
@@ -619,6 +620,7 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     new_entry->hidden=0;
     new_entry->hovered=0;
     new_entry->clicked=0;
+    new_entry->next = NULL;
 
     shortcut_t *shortcut = shortcuts;
     while (shortcut != NULL) {
@@ -1089,16 +1091,20 @@ int parse_entries()
         if(readstatus <= 0){
             break;
         }
-        if(parsing == 0 && position == 0){
-            if(b != ':') {
+        if(parsing == 0 && position == leading_space){
+            if(b != ':' && b != '#') {
                 current_entry = malloc(sizeof(node_t));
             } else {
                 current_entry = NULL;
+                if(b == '#'){
+                    parsing = -1;
+                }
             }
         }
         if (current_entry == NULL) {
-            if (position != 0)
-                internal_command[position-1] = (b != '\n' ? b : '\0');
+            if (b == '\n') b = '\0';
+            if (position > leading_space && parsing != -1)
+                internal_command[position-leading_space-1] = b;
         } else {
             if(b == '\0') {
                 fprintf(stderr, "Null-byte encountered while reading entries at line %d. Aborting.\n", line);
@@ -1131,21 +1137,23 @@ int parse_entries()
             }
         }
         position++;
-        if(current_entry == NULL && b == '\n') {
-            run_internal_command(internal_command);
-        }
-        if(current_entry != NULL) {
-            if(b == '\0') {
-                position = 0;
-                leading_space = 0;
-                if(parsing == 2) {
+        if(b == '\0') {
+            position = 0;
+            leading_space = 0;
+            if(parsing == 2 || current_entry == NULL) {
+                if(current_entry != NULL) {
                     push_entry(current_entry);
                     changed = 1;
-                    parsing = 0;
                 } else {
-                    parsing++;
+                    if (parsing != -1)
+                        run_internal_command(internal_command);
                 }
+                parsing = 0;
+            } else {
+                parsing++;
             }
+        }
+        if(current_entry != NULL) {
             int maxlen = (parsing == 2 ? 511 : 255);
             if(position == maxlen){
                 fprintf(stderr, "Entry too long on line %d, maximum length is %d characters!\n", line, maxlen);
