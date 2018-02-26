@@ -95,6 +95,11 @@ typedef struct color {
     int r, g, b, a;
 } color_t;
 
+typedef struct percentable {
+    int percent;
+    int value;
+} percentable_t;
+
 int entries_count = 0;
 node_t * entries = NULL;
 button_t * buttons = NULL;
@@ -218,8 +223,8 @@ int uposx = -1;
 int uposy = -1;
 int uwidth = 0;
 int uheight = 0;
-int uborder = 0;
-int uside_border = 0;
+percentable_t uborder = { .percent = -1, .value = 0 };
+percentable_t uside_border = { .percent = -1, .value = 0 };
 int void_click_terminate = 0;
 int focus_lost_terminate = 0;
 int dont_quit = 0;
@@ -259,6 +264,12 @@ Imlib_Image highlight = NULL;
 /* image variable */
 Imlib_Image image = NULL;
 
+void calculate_percentage(int maxvalue, percentable_t* percentable)
+{
+    if(percentable->percent != -1) {
+        percentable->value = (maxvalue * percentable->percent) / 100;
+    }
+}
 
 void recalc_cells()
 {
@@ -279,9 +290,9 @@ void recalc_cells()
         margined_cell_height=icon_size+icon_padding*2+font_height+text_padding+least_v_margin;
     }
 
-    border=screen_width/10;
-    if (uborder>0) border = uborder;
-    if (uborder == -1){
+    border = screen_width/10;
+    if (uborder.value > 0) border = uborder.value;
+    if (uborder.value == -1 && uborder.percent == -1){
         if (ucolumns == 0){
             border = 0;
         } else {
@@ -289,9 +300,9 @@ void recalc_cells()
             border = (screen_height - (no_prompt ? 0 : prompt_font_height + prompt_spacing) - (urows * cell_height + (urows - 1) * least_v_margin))/2;
         }
     }
-    if (side_border == 0) side_border = border;
-    if (uside_border>0) side_border = uside_border;
-    if (uside_border == -1){
+    if (uside_border.value == 0 && uside_border.percent == -1) side_border = border;
+    if (uside_border.value > 0) side_border = uside_border.value;
+    if (uside_border.value == -1 && uside_border.percent == -1){
         if (ucolumns == 0){
             side_border = 0;
         } else {
@@ -1557,17 +1568,25 @@ void handle_option(int c, char *optarg) {
 
         case 'b':
             if(strcmp(optarg, "auto") == 0){
-                uborder = -1;
+                uborder.value = -1;
             } else {
-                uborder = atoi(optarg);
+                if (optarg[strlen(optarg)-1] == '%') {
+                    uborder.percent = atoi(optarg);
+                } else {
+                    uborder.value = atoi(optarg);
+                }
             }
             break;
 
         case 'B':
             if(strcmp(optarg, "auto") == 0){
-                uside_border = -1;
+                uside_border.value = -1;
             } else {
-                uside_border = atoi(optarg);
+                if (optarg[strlen(optarg)-1] == '%') {
+                    uside_border.percent = atoi(optarg);
+                } else {
+                    uside_border.value = atoi(optarg);
+                }
             }
             break;
 
@@ -1857,11 +1876,13 @@ void handle_option(int c, char *optarg) {
                             "                                           This can also be set to 'auto' in order to\n"
                             "                                           automatically calculate a border taking into\n"
                             "                                           account the margin settings and the\n"
-                            "                                           configured columns and rows\n"
+                            "                                           configured columns and rows. You can also specify\n"
+                            "                                           border in terms of percentage of screen width by\n"
+                            "                                           appending a %% sign to the value\n"
                             "        -B, --sideborder [i]               Size of the border on the sides, if this is used\n"
                             "                                           --border will be only top and bottom. Similarily\n"
-                            "                                           this can be set to 'auto' but then only side\n"
-                            "                                           borders are calculated\n"
+                            "                                           this can be set to 'auto' or a percentage but\n"
+                            "                                           then only side borders are calculated\n"
                             "        --borderratio [i]                  The ratio of the border to apply above the\n"
                             "                                           content. 0 is no top border, only bottom. 100 is\n"
                             "                                           only top border, no bottom\n"
@@ -2461,6 +2482,8 @@ int main(int argc, char **argv){
                         {
                             screen_width=ev.xconfigure.width;
                             screen_height=ev.xconfigure.height;
+                            calculate_percentage(screen_height, &uborder);
+                            calculate_percentage(screen_width, &uside_border);
                             if (!use_root_img) update_background_images();
                             recalc_cells();
                             arrange_positions();
