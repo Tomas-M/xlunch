@@ -354,8 +354,8 @@ void recalc_cells()
     }
 
     // These are kept in case manual positioning is reintroduced
-    prompt_x = side_border * (side_border_ratio / 50);
-    prompt_y = border * (border_ratio / 50);
+    prompt_x = (side_border * side_border_ratio) / 50;
+    prompt_y = (border * border_ratio) / 50;
     /*
     if(uside_border == 0){
         side_border = border;
@@ -412,14 +412,14 @@ void arrange_positions()
                 int width = entries_last_line * cell_width + (entries_last_line - 1) * column_margin;
                 int usable_width = screen_width - side_border * 2;
                 int margin = usable_width - width;
-                current->x = (side_border * (side_border_ratio / 50)) + margin / 2 + i * (cell_width + column_margin);
+                current->x = (side_border * side_border_ratio) / 50 + margin / 2 + i * (cell_width + column_margin);
             } else {
-                current->x = (side_border * (side_border_ratio / 50)) + i * (cell_width+column_margin);
+                current->x = (side_border * side_border_ratio) / 50 + i * (cell_width+column_margin);
             }
             if (no_prompt) {
-                current->y = (border * (border_ratio / 50)) + (j - scrolled_past) * (cell_height+row_margin);
+                current->y = (border * border_ratio) / 50 + (j - scrolled_past) * (cell_height+row_margin);
             } else {
-                current->y = (border * (border_ratio / 50)) + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
+                current->y = (border * border_ratio) / 50 + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
             }
             if (upside_down) {
                 current->y=screen_height - cell_height - current->y;
@@ -508,7 +508,7 @@ void cleanup()
     XDestroyWindow(disp,win);
     XFlush(disp);
     XCloseDisplay(disp);
-    
+
     if(input_source == stdin){
         int fd = fileno(stdin);
         int flags = fcntl(fd, F_GETFL, 0);
@@ -516,7 +516,7 @@ void cleanup()
         fcntl(fd, F_SETFL, flags);
         fclose(input_source);
     }
-    
+
     clear_entries();
     button_t * button = buttons;
     buttons = NULL;
