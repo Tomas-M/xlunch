@@ -1960,6 +1960,9 @@ void init(int argc, char **argv)
 
     if (uheight==0) screen_height=DisplayHeight(disp,screen);
     else screen_height=uheight;
+
+    calculate_percentage(screen_height, &uborder);
+    calculate_percentage(screen_width, &uside_border);
 }
 
 void recheckHover(XEvent ev) {
