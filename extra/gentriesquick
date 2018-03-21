@@ -28,14 +28,14 @@ process_directories()
          for size in $ICONSIZES; do
             for ICONPATH in $ICONPATHS; do
                icon=$ICONPATH/$size"x"$size/apps/$Icon
-               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
-               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+               if [ -f "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -f "$icon" ]; then Icon=$icon; break 2; fi
                icon=$ICONPATH/apps/$size"x"$size/$Icon
-               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
-               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+               if [ -f "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -f "$icon" ]; then Icon=$icon; break 2; fi
                icon=$ICONPATH/$Icon
-               if [ -e "$icon".png ]; then Icon="$icon".png; break; fi
-               if [ -e "$icon" ]; then Icon=$icon; break 2; fi
+               if [ -f "$icon".png ]; then Icon="$icon".png; break; fi
+               if [ -f "$icon" ]; then Icon=$icon; break 2; fi
             done
          done
 
