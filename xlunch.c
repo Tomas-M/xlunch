@@ -4,7 +4,7 @@
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 3; // Major version, changes when breaking backwards compatability
 const int VERSION_MINOR = 2; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 9; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_PATCH = 10; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -2029,9 +2029,6 @@ void handleButtonPress(XEvent ev) {
                     voidclicked = 0;
                 }
                 else set_clicked(current,0);
-                if (++checked == rows*columns) {
-                    break;
-                }
                 current = current->next;
             }
 
