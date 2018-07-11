@@ -4,7 +4,7 @@
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 3; // Major version, changes when breaking backwards compatability
 const int VERSION_MINOR = 2; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 10; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_PATCH = 11; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -748,11 +748,12 @@ FILE * determine_input_source(){
     return fp;
 }
 
-int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
+int mouse_over_cell(node_t * cell, int index, int mouse_x, int mouse_y)
 {
     if (cell->hidden) return 0;
 
-    if (   mouse_x >= cell->x
+    if (index > scrolled_past*columns && index < scrolled_past*columns + rows*columns +1
+        && mouse_x >= cell->x
         && mouse_x < cell->x+cell_width
         && mouse_y >= cell->y
         && mouse_y < cell->y+cell_height) return 1;
@@ -1972,7 +1973,7 @@ void recheckHover(XEvent ev) {
 
     while (current != NULL)
     {
-        if (i > scrolled_past*columns && i < scrolled_past*columns + rows*columns +1  && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+        if (mouse_over_cell(current, i, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
@@ -2021,15 +2022,16 @@ void handleButtonPress(XEvent ev) {
         case 1:;
             node_t * current = entries;
             int voidclicked = 1;
-            int checked = 0;
+            int index = 1;
             while (current != NULL)
             {
-                if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+                if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) {
                     set_clicked(current,1);
                     voidclicked = 0;
                 }
                 else set_clicked(current,0);
                 current = current->next;
+                index++;
             }
 
             button_t * button = buttons;
@@ -2057,13 +2059,15 @@ void handleButtonPress(XEvent ev) {
 
 void handleButtonRelease(XEvent ev) {
     node_t * current = entries;
+    int index = 1;
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
+        if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
         set_clicked(current, 0); // button release means all cells are not clicked
         updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
         current = current->next;
+        index++;
     }
 
     button_t * button = buttons;
