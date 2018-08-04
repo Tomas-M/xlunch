@@ -175,7 +175,7 @@ function readdesktopfile {
             for size in $sizes; do
               while read path; do
                 if ! [ -z "$path" ]; then
-                  icon=$(find -L "$path" -type f "${findargs[@]}" -false -quit )
+                  icon=$(find -L "$path" -type f \( "${findargs[@]}" -false \) -print -quit )
                   if ! [ -z "$icon" ]; then
                     break 4
                   fi
