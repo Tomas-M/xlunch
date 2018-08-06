@@ -1969,11 +1969,12 @@ void init(int argc, char **argv)
 void recheckHover(XEvent ev) {
     node_t * current = entries;
     int i = 1;
+    int j = 1;
     int any_hovered = 0;
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, i, ev.xmotion.x, ev.xmotion.y)) {
+        if (mouse_over_cell(current, j, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
@@ -1982,8 +1983,10 @@ void recheckHover(XEvent ev) {
             set_hover(i, current,0);
             set_clicked(current,0);
         }
-        current = current->next;
+        if(!current->hidden)
+            j++;
         i++;
+        current = current->next;
     }
     if (any_hovered == 0) hovered_entry = 0;
 
@@ -2030,8 +2033,9 @@ void handleButtonPress(XEvent ev) {
                     voidclicked = 0;
                 }
                 else set_clicked(current,0);
+                if(!current->hidden)
+                    index++;
                 current = current->next;
-                index++;
             }
 
             button_t * button = buttons;
@@ -2066,8 +2070,9 @@ void handleButtonRelease(XEvent ev) {
         if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
         set_clicked(current, 0); // button release means all cells are not clicked
         updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
+        if(!current->hidden)
+            index++;
         current = current->next;
-        index++;
     }
 
     button_t * button = buttons;
