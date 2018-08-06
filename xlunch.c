@@ -377,7 +377,7 @@ void recalc_cells()
 void restack()
 {
     if (desktop_mode) XLowerWindow(disp,win);
-    else XRaiseWindow(disp,win);
+    else if (!windowed) XRaiseWindow(disp,win);
 }
 
 
