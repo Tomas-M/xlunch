@@ -4,7 +4,7 @@
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 3; // Major version, changes when breaking backwards compatability
 const int VERSION_MINOR = 2; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 11; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_PATCH = 12; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -678,7 +678,7 @@ char *strtok_new(char * string, char const * delimiter){
       riturn = source;
       source = ++p;
    }
-return riturn;
+    return riturn;
 }
 
 
@@ -1002,6 +1002,21 @@ void run_internal_command(char * cmd_orig) {
     }
 }
 
+void reset_prompt()
+{
+    while (cmdline != NULL) pop_key();
+    joincmdline();
+    joincmdlinetext();
+    filter_entries();
+    arrange_positions();
+    node_t * current = entries;
+    while (current != NULL) {
+        set_hover(0, current, 0);
+        current = current->next;
+    }
+    updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+}
+
 void run_command(char * cmd_orig)
 {
 
@@ -1036,6 +1051,7 @@ void run_command(char * cmd_orig)
                 cleanup();
                 exit(OKAY);
             } else {
+                reset_prompt();
                 return;
             }
         }
@@ -1065,11 +1081,7 @@ void run_command(char * cmd_orig)
         }
         else // parent process
         {
-            while (cmdline != NULL) pop_key();
-            joincmdline();
-            joincmdlinetext();
-            filter_entries();
-            arrange_positions();
+            reset_prompt();
         }
     }
     else
