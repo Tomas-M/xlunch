@@ -141,6 +141,7 @@ static struct option long_options[] =
         {"borderratio",           required_argument, 0, 1017},
         {"sideborderratio",       required_argument, 0, 1018},
         {"scroll",                no_argument,       0, 1019},
+        {"maxtextlength",         required_argument, 0, 1020},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -233,6 +234,7 @@ int output_only = 0;
 int select_only = 0;
 int text_after = 0;
 int text_other_side = 0;
+int maxtextlength = -1;
 int clear_memory = 0;
 int upside_down = 0;
 int padding_swap = 0;
@@ -1794,6 +1796,10 @@ void handle_option(int c, char *optarg) {
             scroll = 1;
             break;
 
+        case 1020:
+            maxtextlength = atoi(optarg);
+            break;
+
         case '?':
             fprintf(stderr, "See --help for usage documentation\n");
             exit(CONFIGERROR);
@@ -1906,10 +1912,12 @@ void handle_option(int c, char *optarg) {
                             "                                           row than the maximum\n"
                             "        -P, --promptspacing [i]            Distance between the prompt and the icons\n"
                             "                                           (default: 48)\n"
-                            "        -s, --iconsize [i]                 Size of the icons (default: 48)\n"
+                            "        -s, --iconsize [i]                 Size of the icons (default: 48)\n"
                             "        -a, --textafter                    Draw the title to the right of the icon instead\n"
                             "                                           of below, this option automatically sets\n"
                             "                                           --columns to 1 but this can be overridden.\n"
+                            "        --maxtextlength [i]                The maximum character length of the icon text.\n"
+                            "                                           If set to 0, text truncation is disabled.\n"
                             "        -O, --textotherside                Draw the text on the other side of the icon from\n"
                             "                                           where it is normally drawn.\n"
                             "        -u, --upsidedown                   Draw the prompt on the bottom and have icons\n"
@@ -1957,7 +1965,7 @@ void init(int argc, char **argv)
         exit(WINERROR);
     }
 
-    XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo);
+    XMatchVisualInfo(disp, DefaultScreen(disp), 24, TrueColor, &vinfo);
 
     attr.colormap = XCreateColormap(disp, DefaultRootWindow(disp), vinfo.visual, AllocNone);
     attr.border_pixel = 0;
@@ -2253,18 +2261,38 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
         imlib_context_set_image(buffer);
         int text_w;
         int text_h;
+        int extra_chars;
 
         const size_t osz = strlen(current->title);
         size_t sz = osz;
         imlib_context_set_font(font);
-        do
-        {
-            strncpyutf8(title,current->title,sz);
-            if(sz != osz)
-                strcat(title,"..");
-            imlib_get_text_size(title, &text_w, &text_h);
-            sz--;
-        } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+
+        if (maxtextlength >= 0) {
+          // get full title (--maxtextlength 0)
+          title = current->title;
+          extra_chars = 0;
+          // if value greater than zero, truncate text
+          if (maxtextlength > 0){
+            if (strlen(title) > maxtextlength) {
+              extra_chars = strlen(title)-maxtextlength;
+            }
+            title[strlen(title) - extra_chars]  = '\0';
+            strncpyutf8(title,title,sz);
+            if (strlen(title) != osz) {
+              strcat(title,"..");
+            }
+          }
+          imlib_get_text_size(title, &text_w, &text_h);
+        } else {
+          do
+          {
+              strncpyutf8(title,current->title,sz);
+              if(sz != osz)
+                  strcat(title,"..");
+              imlib_get_text_size(title, &text_w, &text_h);
+              sz--;
+          } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+        }
 
         int d;
         if (current->clicked==1) d=4;
