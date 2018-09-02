@@ -161,7 +161,7 @@ function readdesktopfile {
     iconname="$(echo "$fdata" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
     useterm="$(echo "$fdata" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
     if [ "$useterm" = "true" ]; then
-      cmd="defaultterminal -e ""$cmd"
+      cmd="${TERM:-xterm} -e ""$cmd"
     fi
 
     if [ "$iconname" != "" ]; then
