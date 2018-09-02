@@ -1,11 +1,23 @@
 #!/bin/bash
 
-svgpath="svgicons"
+# this file generates an 'entries.dsv' for xlunch, which when 
+# generated, will contain lines like:
+#
+#  DeaDBeeF Music Player;/opt/deadbeef/deadbeef.png;/usr/bin/deadbeef
+
+# Usage:   genentries > /root/.config/xlunch/entries.dsv 
+
+# where to put the PNG icons we generate from svg
+svgpath="/usr/share/xlunch/svgicons"
+
+# set default icon size
 iconsize=$XLUNCHICONSIZE
 if [ -z "$iconsize" ]; then
   iconsize=48
 fi
 
+
+# let user set options
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -42,13 +54,15 @@ esac
 shift # past argument or value
 done
 
+
 # Get the users actual home directory in case we're running this with sudo
-user_home=$(eval echo ~${SUDO_USER})
+user_home=$(eval echo ~${SUDO_USER:-$USER})
 
 globalappfolder=/usr/share/applications
 localappfolder=$user_home/.local/share/applications
 pixmaps=/usr/share/pixmaps
 
+# get the icon theme being used
 if [ -z "$icontheme" ]; then
   icontheme=$(cat $user_home/.gtkrc-2.0 2>/dev/null| sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
   if [ -z "$icontheme" ]; then
@@ -64,7 +78,13 @@ if [ -z "$icontheme" ]; then
     icontheme=$(gsettings get org.gnome.desktop.interface gtk-theme)
   fi
 fi
-cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
+
+# check if we can convert SVGs to PNG
+cansvg=false
+[ $cansvg = false ] && cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
+[ $cansvg = false ] && cansvg=$(type inkscapelite >/dev/null 2>&1 && echo "true" || echo "false")
+[ $cansvg = false ] && cansvg=$(type rsvg-convert >/dev/null 2>&1 && echo "true" || echo "false")
+
 # File formats supported by most imlib2 installations.
 declare -a formats
 formats=("png" "jpg" "jpeg" "tif" "tiff" "xpm" "bmp" "gif" "pnm" "tga")
@@ -74,21 +94,24 @@ fi
 
 # Debug statements
 if [ "$debug" == "true" ]; then
-  echo $(bash --version | head -n1) >&2
-  echo $user_home >&2
-  echo $icontheme  >&2
-  echo $cansvg >&2
+  echo "bash version       ${BASH_VERSION[0]}" >&2
+  echo "user_home          $user_home" >&2
+  echo "icon_theme         ${icontheme:-hicolor}"  >&2
+  echo "can convert svg    $cansvg" >&2
+  echo -n "formats            " >&2
   for t in "${formats[@]}"; do
     echo -n "$t " >&2
   done
   echo "" >&2
-  echo $svgpath >&2
-  echo $iconsize >&2
+  echo "svg path           $svgpath" >&2
+  echo "icon size          $iconsize" >&2
+  exit 0
 fi
 
 echo "Generating entries file..." >&2
 if [ -z "$icontheme" ]; then
-  echo "Unable to auto-detect icon theme, defaulting to 'hicolor'. Use --theme '<theme name>' to manually override theme." >&2
+  echo -n "Unable to auto-detect icon theme, defaulting to 'hicolor'. " >&2
+  echo "Use --theme '<theme name>' to manually override theme." >&2
   icontheme="hicolor"
   inherits="hicolor"
 else
@@ -108,17 +131,23 @@ else
   inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|g" | grep -v "^hicolor$")
   inherits=$(echo -e "$icontheme\n$inherits\nhicolor" | sed "/^$/d")
 fi
+
 if [ "$debug" == "true" ]; then
   echo $indexfile >&2
   echo $inherits >&2
 fi
 
+
+
+# helper function to used to cycle through available icon filetypes 
 function elementIn {
   local e match="$1"
   shift
   for e; do [[ "$e" == "$match" ]] && return 0; done
   return 1
 }
+
+
 
 function readdesktopfile {
   fdata=$(cat "$1")
@@ -132,13 +161,14 @@ function readdesktopfile {
     iconname="$(echo "$fdata" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
     useterm="$(echo "$fdata" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
     if [ "$useterm" = "true" ]; then
-      cmd="$TERM -e ""$cmd"
+      cmd="defaultterminal -e ""$cmd"
     fi
 
     if [ "$iconname" != "" ]; then
       # Look for icons in the correct size
-      #>&2 echo "$1"
-      #>&2  echo "$iconname"
+      #>&2 echo "$name: "
+      #>&2 echo "  $iconname"
+      #>&2 echo ""
       if [ -f "$iconname" ] && elementIn "${iconname##*.}" "${formats[@]}"; then
         icon="$iconname"
         iconname=$(basename "$iconname")
@@ -169,9 +199,20 @@ function readdesktopfile {
             if [ ! -d "$themepath" ] && [ ! -L "$themepath" ]; then
               continue
             fi
-            sizes=$(find -L "$themepath/" -type d | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" | sort -u | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
-            sizes=$(echo -e "$(echo "$sizes" | grep "^e.*")\n$(echo "$sizes" | grep "^g.*" | sort -k 2.1n)\nscalable\n$(echo "$sizes" | grep "^l.*" | sort -k 2.1nr)")
+            sizes=$(find -L "$themepath/" -type d \
+              | sed -n "s|^"$themepath"/\([^/]*/\)\{0,1\}\([0-9]*\)[^/]*$|\2|p" \
+              | sort -u \
+              | awk -v iconsize="$iconsize" '{if($0 > iconsize) print "g "$0}{if($0 == iconsize) print "e "$0}{if ($0 < iconsize) print "l "$0}')
+
+            sizes=$(echo -e "$(echo "$sizes" \
+              | grep "^e.*")\n$(echo "$sizes" \
+              | grep "^g.*" \
+              | sort -k 2.1n)\nscalable\n$(echo "$sizes" \
+              | grep "^l.*" \
+              | sort -k 2.1nr)")
+
             sizes=$(echo "$sizes" | sed "s|^. ||")
+
             for size in $sizes; do
               while read path; do
                 if ! [ -z "$path" ]; then
@@ -187,26 +228,62 @@ function readdesktopfile {
 
         # If we can't find anything that matches the theme, just search anywhere
         if [ -z "$icon" ]; then
-          icon="$(find -L "$pixmaps" -type f \( "${findargs[@]}" -false \) -print -quit)"
+          icon="$(find -L "$pixmaps" -type f \( "${findargs[@]}" -false \) -print -quit 2>/dev/null)"
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.local/share/icons" ]; then
-          icon=$(find -L "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit)
+          icon=$(find -L "$user_home/.local/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit 2>/dev/null)
         fi
         if [ -z "$icon" ] && [ -d "$user_home/.icons" ]; then
-          icon=$(find -L "$user_home/.icons" -type f \( "${findargs[@]}" -false \) -print -quit)
+          icon=$(find -L "$user_home/.icons" -type f \( "${findargs[@]}" -false \) -print -quit 2>/dev/null)
         fi
         if [ -z "$icon" ] && [ -d "/usr/share/icons" ]; then
-          icon=$(find -L "/usr/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit)
+          icon=$(find -L "/usr/share/icons" -type f \( "${findargs[@]}" -false \) -print -quit 2>/dev/null)
+        fi
+        if [ -z "$icon" ] && [ -d "/usr/share/pixmaps/puppy" ]; then
+          icon=$(find -L "/usr/share/pixmaps/puppy" -type f \( "${findargs[@]}" -false \) -print -quit 2>/dev/null)
         fi
       fi
 
+      # if the icon is a SVG, xlunch cant show it, so convert to PNG and
+      # put it in /usr/share/xlunch/svgicons/<name>.png
       if [ "${icon: -4}" == ".svg" ]; then
-        if ! [ -f "$svgpath/"$iconname".png" ]; then
-          >&2 echo "Converting $icon to png"
+        # if the generated SVG doesnt exist yet
+        if [ ! -f "${svgpath}/${iconname}.png" ]; then
           mkdir -p "$svgpath"
-          convert -density 500 -resize "$iconsize"x"$iconsize" -background none "$icon" "$svgpath/"$iconname".png"
+
+          echo "$name:  $icon  =>  $svgpath/$iconname.png" >&2 
+
+          # use rsvg-convert to convert SVG to PNG
+          if [ ! -f "${svgpath}/${iconname}.png" ] && \
+             [ "$(which rsvg-convert)" != "" ];then
+            rsvg-convert "$icon" \
+              -w "$iconsize" \
+              -h "$iconsize" \
+              --keep-aspect-ratio \
+              --output "$svgpath/"$iconname".png" 2>/dev/null
+          fi
+
+          # use inkscape to convert SVG to PNG
+          if [ ! -f "${svgpath}/${iconname}.png" ] && \
+             [ "$(which inkscapelite)" != "" ];then
+            inkscapelite -z -e "${svgpath}/${iconname}.png" \
+            -w "$iconsize" \
+            -h "$iconsize" \
+            "$icon" 2>/dev/null
+          fi
+
+          # use convert (from ImageMagick)  if rsvg failed or not installed
+          if [ ! -f "${svgpath}/${iconname}.png" ] && \
+             [ "$(which convert)" != "" ];then
+            convert \
+              -density 500 \
+              -resize "$iconsize"x"$iconsize" \
+              -background none \
+              "$icon"
+          fi
         fi
-        icon="$svgpath/"$iconname".png"
+        # if a new PNG was created successfully, set it as our application icon
+        [ -f "${svgpath}/${iconname}.png" ] && icon="${svgpath}/${iconname}.png"
       fi
 
       # If we have all the data we need, output an entry. Empty icon is fine
@@ -219,41 +296,45 @@ function readdesktopfile {
   fi
 }
 
+
+
+
+
 if [ ! -z "$desktopfile" ]; then
-readdesktopfile "$desktopfile"
+  readdesktopfile "$desktopfile"
 else
-if ! [ -z "$icontheme" ]; then
-  # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
-  declare -A applications
-
-  # Set for in separator to newline
-  IFS=$'\n'
-
-  # Iterate over files in localappfolder and add them to the array
-  files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
-  for desktopfile in $files
-  do
-    bname=$(basename "$desktopfile")
-    entry=$(readdesktopfile "$desktopfile")
-    if ! [ -z "$entry" ]; then
-      applications["$bname"]="$entry"
-    fi
-  done
-
-  # Iterate over files in globalappfolder and add them to the array if they don't already exists
-  files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
-  for desktopfile in $files
-  do
-    bname=$(basename "$desktopfile")
-    if ! [[ ${applications[$bname]} ]]; then
+  if ! [ -z "$icontheme" ]; then
+    # Create an assoc array (ie. hashmap, ie. table, ie. you get the point)
+    declare -A applications
+  
+    # Set for in separator to newline
+    IFS=$'\n'
+  
+    # Iterate over files in localappfolder and add them to the array
+    files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
+    for desktopfile in $files
+    do
+      bname=$(basename "$desktopfile")
       entry=$(readdesktopfile "$desktopfile")
       if ! [ -z "$entry" ]; then
         applications["$bname"]="$entry"
       fi
-    fi
-  done
-
-  # Get all the entries and write them out sorted and unique while removing the placeholder
+    done
+  
+    # Iterate over files in globalappfolder and add them to the array if they don't already exists
+    files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
+    for desktopfile in $files
+    do
+      bname=$(basename "$desktopfile")
+      if ! [[ ${applications[$bname]} ]]; then
+        entry=$(readdesktopfile "$desktopfile")
+        if ! [ -z "$entry" ]; then
+          applications["$bname"]="$entry"
+        fi
+      fi
+    done
+  
+    # Get all the entries and write them out sorted and unique while removing the placeholder
     for key in "${!applications[@]}"; do
       echo "${applications[$key]}"
     done | sort | uniq | grep -v "^;;$"
