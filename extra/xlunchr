@@ -1,0 +1,207 @@
+#!/bin/bash
+# Copyright (C) 2018 xlunchr.
+#
+# xlunchr
+# a simple xlunch modernization
+# https://github.com/saymoncoppi/xlunchr
+#
+# This tool is based on original xlunch project
+# http://xlunch.org
+#
+# Author:     Saymon Coppi <saymoncoppi@gmail.com>
+# Maintainer: Saymon Coppi <saymoncoppi@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#######################################################################
+# Icons credits		:	Font Awesome (http://fa2png.io)
+# xlunchr_setings	:	fa-sliders
+# favorites			:	fa-bookmark
+# recent			:	fa-history
+# all				:	fa-bars
+# multimedia		:	fa-play-circle
+# graphics			:	fa-picture-o
+# network			:	fa-globe
+# office			:	fa-file-text-o
+# settings			:	fa-gear
+# system			:	fa-desktop
+# utility			:	fa-bolt
+# others			:	fa-more
+
+
+# go to where the svgicons are
+cd /usr/share/xlunch/svgicons
+
+# theme_folder
+THEME=/usr/share/xlunch/themes/classic
+
+# the file xlunch reads from when generating its program icons and titles
+if [ -z "$ENTRIES_FILE" ];then
+  if [ -f ~/.config/xlunch/entries.dsv ];then
+    ENTRIES_FILE=~/.config/xlunch/entries.dsv
+
+  elif [ -f /etc/xlunch/entries.dsv ];then
+    ENTRIES_FILE=/etc/xlunch/entries.dsv
+  fi
+fi
+
+# Detect default language (ignoring Country)
+get_lang=$(locale|grep LANGUAGE|sed -e "s/^LANGUAGE=//"|sed -r 's/(.{2}).*/\1/')
+case $get_lang in
+"en")lang=0;;
+"pt")lang=1;;
+"es")lang=2;;
+esac
+
+#Translations EN=0, PT=1 and ES=2
+shutdown_command=('Turn off' 'Desligar' 'Desligar_ES')
+restart_command=('Restart' 'Reiniciar' 'Reiniciar_ES')
+suspend_command=('Suspend' 'Suspender' 'Suspender_ES')
+lock_command=('Lock' 'Bloquear' 'Bloquear_ES')
+exit_command=('Exit' 'Sair' 'Sair_ES')
+
+prompt_desc=('Run: ' 'Executar: ' 'Executar_ES: ')
+
+case "$1" in
+  #
+  # desktop - runs underneath ALL other windows, never auto-closes
+  #
+  "--desktop")
+    #begin desktop
+    xlunch --input $ENTRIES_FILE \
+    --desktop \
+    --maxtextlength 0 \
+    --prompt "${prompt_desc[$lang]}" \
+    --promptfont "DejaVuSans.ttf/14" \
+    --background $THEME"/bg.png" \
+    --columns 4 \
+    --iconsize 48 \
+    --iconpadding 10 \
+    --textpadding 10 \
+    --highlight /usr/share/xlunch/icons/base/xlunch_highlight.png \
+    --font "DejaVuSans.ttf/10" \
+    --scroll \
+    --dontquit \
+    --button "/usr/share/xlunch/icons/categories/20x20/office.png;;30,430;defaultfilemanager" \
+    --button "/usr/share/xlunch/icons/categories/20x20/system.png;;30,530;defaultterminal" \
+    --button "/usr/share/xlunch/icons/categories/20x20/multimedia.png;;30,280;defaultmediaplayer" \
+    --button "/usr/share/xlunch/icons/categories/20x20/graphics.png;;30,330;defaultpaint" \
+    --button "/usr/share/xlunch/icons/categories/20x20/network.png;;30,380;defaultbrowser" \
+    --button "/usr/share/xlunch/icons/categories/20x20/office.png;;30,430;defaultwordprocessor" \
+    --button "/usr/share/xlunch/icons/categories/20x20/settings.png;;30,480;wizardwizard" \
+    --button "/usr/share/xlunch/icons/categories/20x20/utility.png;;30,580;defaultconnect"
+    ;;
+
+  #
+  # menu - pops up, above ALL other windows, choose an app, will auto-close and run the app
+  #
+  "--menu")
+    #begin menu
+    xlunch --input $ENTRIES_FILE \
+    --prompt "${prompt_desc[$lang]}" \
+    --background $THEME"/bg.png" \
+    --columns 5 \
+    --iconsize 48 \
+    --hidemissing \
+    --highlight /usr/share/xlunch/icons/base/xlunch_highlight.png \
+    --font "DejaVuSans.ttf/10" \
+    --scroll \
+    --button "/usr/share/xlunch/icons/categories/20x20/office.png;;30,430;defaultfilemanager" \
+    --button "/usr/share/xlunch/icons/categories/20x20/system.png;;30,530;defaultterminal" \
+    --button "/usr/share/xlunch/icons/categories/20x20/multimedia.png;;30,280;defaultmediaplayer" \
+    --button "/usr/share/xlunch/icons/categories/20x20/graphics.png;;30,330;defaultpaint" \
+    --button "/usr/share/xlunch/icons/categories/20x20/network.png;;30,380;defaultbrowser" \
+    --button "/usr/share/xlunch/icons/categories/20x20/office.png;;30,430;defaultwordprocessor" \
+    --button "/usr/share/xlunch/icons/categories/20x20/settings.png;;30,480;wizardwizard" \
+    --button "/usr/share/xlunch/icons/categories/20x20/utility.png;;30,580;defaultconnect"
+    ;;
+
+  "--logout")
+    #begin logout
+    COMMAND=$(
+    xlunch --input /etc/xlunch/logout.dsv \
+    --noprompt \
+    --border auto \
+    --sideborder auto \
+    --columns 5 --rows 1 \
+    --voidclickterminate \
+    --paddingswap \
+    --leastmargin 10 \
+    --hidemissing \
+    --background $THEME"/bg.png" \
+    --highlight /usr/share/xlunch/xlunch_highlight.png \
+    --font "DejaVuSans.ttf/10" \
+    --textpadding 10 \
+    --iconsize 64 \
+    --iconpadding 30 \
+    --outputonly \
+    --button "/usr/share/xlunch/icons/base/xlunch_settings.png;;-30,-30;xlunch_settings"
+    )
+
+    SND=/usr/share/xlunch/shutdown.wav
+
+    if [ "$COMMAND" != "" -a -r $SND ]; then
+      # blank desktop with smooth effect (if compton still running)
+      xlunch --noprompt --input /dev/null --bc 111111ff &
+      # play shutdown sound
+      aplay $SND
+    fi
+
+    [ "$COMMAND" = "logout"   ] && killall Xorg
+    [ "$COMMAND" = "restart"  ] && reboot
+    [ "$COMMAND" = "shutdown" ] && poweroff
+    #end logout
+    ;;
+
+
+  "--config")
+    ROOT_UID=0
+    if [ "$UID" != "$ROOT_UID" ]; then
+    	echo -e "Please run this script as root..."
+    	exit 1
+    fi
+
+    mkdir -pv /root/.config/xlunch
+    echo "Generating icons in:  /tmp/entries.dsv"
+    genentries 1>/tmp/entries.dsv
+    echo ""
+    cp -v $ENTRIES_FILE ${ENTRIES_FILE}.bkp
+    cp -v /tmp/entries.dsv $ENTRIES_FILE
+    rm /tmp/entries.dsv
+    sleep 1
+    ;;
+
+  "--help")
+    echo "Xlunchr - a profile manager for xlunch desktop/app launcher"
+    echo
+    echo "Usage:"
+    echo -e "  xlunchr --desktop    Display as desktop background"
+    echo -e "  xlunchr --menu       Display applications menu"
+    echo -e "  xlunchr --logout     Display logout screen"
+    echo -e "  xlunchr --config     Generate the required icons and config files"
+    echo -e "  xlunchr --help       Help content\n"
+    exit 0
+    ;;
+
+  *)
+    echo -e "Invalid option! Please use:\n"
+    echo -e "  xlunchr --desktop    Display as desktop background"
+    echo -e "  xlunchr --menu       Display applications menu"
+    echo -e "  xlunchr --logout     Display logout screen"
+    echo -e "  xlunchr --config     Generate the required icons and config files"
+    echo -e "  xlunchr --help       Help content\n"
+    exit 1
+    ;;
+
+esac
