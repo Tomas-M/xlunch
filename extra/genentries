@@ -105,7 +105,6 @@ if [ "$debug" == "true" ]; then
   echo "" >&2
   echo "svg path           $svgpath" >&2
   echo "icon size          $iconsize" >&2
-  exit 0
 fi
 
 echo "Generating entries file..." >&2
