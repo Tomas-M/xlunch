@@ -27,11 +27,15 @@ case $key in
     icontheme="$2"
     shift
     ;;
+    -c|--category)
+    forcecategory="$2"
+    shift
+    ;;
     -d|--debug)
     debug="true"
     ;;
     -h|--help)
-    echo "Usage: genentries [-s|--size <icon size>] [-p|--path <path for converted icons>] [-f|--file <desktop file to parse>] [-t|--theme <manually theme override>] [-d|--debug]"
+    echo "Usage: genentries [-s|--size <icon size>] [-p|--path <path for converted icons>] [-f|--file <desktop file to parse>] [-t|--theme <manually theme override>] [-d|--debug] [-c|--category <name of category to generate>]"
     exit 0
     ;;
     *)
@@ -131,6 +135,10 @@ function readdesktopfile {
     cmd="$(echo "$fdata" | grep -i "^Exec=" | head -n 1 | cut -d "=" -f 2- | sed 's/ %[UuFfDdNnickvm]//g')"
     iconname="$(echo "$fdata" | grep -i "^Icon=" | head -n 1 | cut -d "=" -f 2-)"
     useterm="$(echo "$fdata" | grep -i "^Terminal=" | head -n 1 | cut -d "=" -f 2-)"
+    categories="$(echo "$fdata" | grep -i "^Categories=" | head -n 1 | cut -d "=" -f 2-)"
+    if ! [[ "$categories" = *"$forcecategory"* ]]; then
+      return
+    fi
     if [ "$useterm" = "true" ]; then
       cmd="$TERM -e ""$cmd"
     fi
