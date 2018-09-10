@@ -1,0 +1,51 @@
+#!/bin/bash
+# updateentries is intended to be run before xlunch in order to update the
+# entries file with the most recent desktop files. This works by comparing the
+# timestamps of the files in the folders containing desktop-files with the
+# entries file.
+#
+# Usage: updateentries [<entries file> [<options to genentries>]]
+#
+# "Entries file" is the file to update, it defaults to:
+#   ~/.config/xlunch/entries.dsv
+# "Options to genentries" are passed directly to the genentries script, this is
+#   used to control that script. Note that -f is used to indicate the desktop
+#   file to update and shouldn't be passed here.
+user_home=$(eval echo ~${SUDO_USER})
+
+if [[ -z "$1" ]]; then
+  entriesfile="$user_home/.config/xlunch/entries.dsv"
+else
+  entriesfile="$1"
+fi
+entriestimestamp=$(stat -c "%Y" "$entriesfile")
+
+localappfolder=$user_home/.local/share/applications
+globalappfolder=/usr/share/applications
+
+genentries=$(which genentries 2>/dev/null)
+if [[ -z "$genentries" ]]; then
+  genentries="./genentries"
+fi
+
+updated=false
+
+for appfolder in "$localappfolder" "$globalappfolder"
+do
+  while IFS= read -r timestampfile
+  do
+    timestamp=${timestampfile:0:10}
+    desktopfile=${timestampfile:22}
+    if [ "$timestamp" -gt "$entriestimestamp" ]; then
+      $genentries ${@:2} -f "$desktopfile" >> "$entriesfile"
+      updated=true
+    else
+      break
+    fi
+  done <<< $(find -L "$appfolder" -name "*.desktop" -printf "%T@ %p\n" 2>/dev/null | sort -nr)
+done
+
+if [ "$updated" = true ]; then
+  cat "$entriesfile" | sort | uniq > "$entriesfile.tmp"
+  mv "$entriesfile.tmp" "$entriesfile"
+fi
