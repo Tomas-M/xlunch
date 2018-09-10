@@ -141,6 +141,7 @@ static struct option long_options[] =
         {"borderratio",           required_argument, 0, 1017},
         {"sideborderratio",       required_argument, 0, 1018},
         {"scroll",                no_argument,       0, 1019},
+        {"iconvpadding",          required_argument, 0, 1020},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -192,6 +193,7 @@ int rows;
 int column_margin = 0;
 int row_margin = 0;
 int icon_padding = 10;
+int icon_v_padding = -1;
 int text_padding = 10;
 int border;
 int side_border = 0;
@@ -275,19 +277,18 @@ void recalc_cells()
 {
     int margined_cell_width, margined_cell_height;
 
-    if (least_v_margin == -1) least_v_margin = least_margin;
     if (text_after){
         cell_width=icon_size+icon_padding*2;
-        cell_height=icon_size+icon_padding*2;
+        cell_height=icon_size+icon_v_padding*2;
         margined_cell_width=icon_size+icon_padding*2+least_margin;
-        margined_cell_height=icon_size+icon_padding*2+least_v_margin;
+        margined_cell_height=icon_size+icon_v_padding*2+least_v_margin;
         if(ucolumns == 0)
             ucolumns = 1;
     } else {
         cell_width=icon_size+icon_padding*2;
-        cell_height=icon_size+icon_padding*2+font_height+text_padding;
+        cell_height=icon_size+icon_v_padding*2+font_height+text_padding;
         margined_cell_width=icon_size+icon_padding*2+least_margin;
-        margined_cell_height=icon_size+icon_padding*2+font_height+text_padding+least_v_margin;
+        margined_cell_height=icon_size+icon_v_padding*2+font_height+text_padding+least_v_margin;
     }
 
     border = screen_width/10;
@@ -1567,6 +1568,10 @@ void handle_option(int c, char *optarg) {
             icon_padding = atoi(optarg);
             break;
 
+        case 1020:
+            icon_v_padding = atoi(optarg);
+            break;
+
         case 'T':
             text_padding = atoi(optarg);
             break;
@@ -1879,6 +1884,8 @@ void handle_option(int c, char *optarg) {
                             "        -L, --highlight [file]             Image set as highlighting under selected icon\n"
                             "                                           (jpg/png)\n"
                             "        -I, --iconpadding [i]              Padding around icons (default: 10)\n"
+                            "            --iconvpadding [i]             Vertical padding around icons (default: same as\n"
+                            "                                           iconpadding)\n"
                             "        -T, --textpadding [i]              Padding around entry titles (default: 10)\n"
                             "        -c, --columns [i]                  Number of columns to show (without this the max\n"
                             "                                           amount possible is used)\n"
@@ -1947,6 +1954,9 @@ void init(int argc, char **argv)
     while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
         handle_option(c, optarg);
     }
+
+    if (least_v_margin == -1) least_v_margin = least_margin;
+    if (icon_v_padding == -1) icon_v_padding = icon_padding;
     //parse_config(fopen("/home/peter/.xlunchrc", "rb"));
 
     /* connect to X */
@@ -2238,7 +2248,7 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
             else d=0;
             int x = current->x - up_x +
                         (text_other_side && text_after ? cell_width - icon_padding - icon_size : icon_padding)+d;
-            int y = current->y - up_y +(text_other_side && !text_after ? cell_height - icon_padding - icon_size : icon_padding)+d;
+            int y = current->y - up_y +(text_other_side && !text_after ? cell_height - icon_v_padding - icon_size : icon_v_padding)+d;
 
             imlib_blend_image_onto_image(image, 1, 0, 0, w, h, x, y, icon_size-d*2, icon_size-d*2);
 
@@ -2273,7 +2283,7 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
         if (text_after) {
             draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
         } else {
-            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_padding + text_padding : icon_padding*2) + icon_size), title, text_color);
+            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_v_padding + text_padding : icon_v_padding*2) + icon_size), title, text_color);
         }
 
         /* free the font */
