@@ -17,7 +17,7 @@ install: xlunch
 	cp extra/genentries $(DESTDIR)/usr/bin
 	cp extra/updateentries $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop $(DESTDIR)/usr/share/applications/
-	cp extra/default.conf $(DESTDIR)/etc/xlunch/default.conf
+	cp default.conf $(DESTDIR)/etc/xlunch/default.conf
 	bash extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
 	cp -r svgicons/ $(DESTDIR)/usr/share/xlunch/ 2>/dev/null || :
 

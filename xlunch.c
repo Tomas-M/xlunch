@@ -212,6 +212,7 @@ int prompt_y;
 char * background_file = "";
 char * highlight_file = "";
 char * input_file = "";
+char * config_file = "";
 FILE * input_source = NULL;
 char * prompt = "";
 char * font_name = "";
@@ -730,7 +731,7 @@ FILE * determine_input_source(){
         }
         if (fp == NULL)
         {
-            fprintf(stderr, "Error opening entries file from %s.\nReverting back to system conf.\n", input_file);
+            fprintf(stderr, "Error opening entries file from %s.\nReverting back to system entries list.\n", input_file);
             input_file = "/etc/xlunch/entries.dsv";
             fp = fopen(input_file, "rb");
 
@@ -749,6 +750,28 @@ FILE * determine_input_source(){
     }
     return fp;
 }
+
+FILE * determine_config_source(){
+    FILE * fp;
+    if(strlen(config_file) == 0) {
+        char * homeconf = NULL;
+
+        char * home = getenv("HOME");
+        if (home!=NULL)
+        {
+            homeconf = concat(home,"/.config/xlunch/xlunch.conf");
+        }
+        fp = fopen(homeconf, "rb");
+        if(fp == NULL) {
+            fp = fopen("/etc/xlunch/default.conf", "rb");
+        }
+        free(homeconf);
+    } else {
+        fp = fopen(config_file, "rb");
+    }
+    return fp;
+}
+
 
 int mouse_over_cell(node_t * cell, int index, int mouse_x, int mouse_y)
 {
@@ -1777,7 +1800,7 @@ void handle_option(int c, char *optarg) {
             break;
 
         case 1014:
-            parse_config(fopen(optarg, "rb"));
+            config_file = optarg;
             break;
 
         case 1015:
@@ -1955,6 +1978,13 @@ void init(int argc, char **argv)
     while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
         handle_option(c, optarg);
     }
+
+    FILE *config_source = determine_config_source();
+    if(config_source != NULL){
+        parse_config(config_source);
+        fclose(config_source);
+    }
+
 
     if (least_v_margin == -1) least_v_margin = least_margin;
     if (icon_v_padding == -1) icon_v_padding = icon_padding;
