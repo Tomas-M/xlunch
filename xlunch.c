@@ -32,6 +32,7 @@ const int VERSION_PATCH = 12; // Patch version, changes when something is change
 #include <ctype.h>
 /* one instance */
 #include <sys/file.h>
+#include <sys/stat.h>
 /* check stdin */
 #include <sys/poll.h>
 #include <errno.h>
@@ -2316,7 +2317,9 @@ int main(int argc, char **argv){
     // If an instance is already running, quit
     if (!multiple_instances)
     {
-        lock=open("/tmp/xlunch.lock",O_CREAT | O_RDWR,0666);
+        int oldmask = umask(0);
+        lock = open("/tmp/xlunch.lock", O_CREAT | O_RDWR, 0666);
+        umask(oldmask);
         int rc = flock(lock, LOCK_EX | LOCK_NB);
         if (rc) {
             if (errno == EWOULDBLOCK) fprintf(stderr,"xlunch already running. You may want to consider --multiple\nIf this is an error, you may remove /tmp/xlunch.lock\n");
