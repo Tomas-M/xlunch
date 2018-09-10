@@ -15,15 +15,18 @@ install: xlunch
 	cp docs/logo.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch.png
 	cp xlunch $(DESTDIR)/usr/bin/
 	cp extra/genentries $(DESTDIR)/usr/bin
+	cp extra/updateentries $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop $(DESTDIR)/usr/share/applications/
+	cp extra/default.conf $(DESTDIR)/etc/xlunch/default.conf
 	bash extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
 	cp -r svgicons/ $(DESTDIR)/usr/share/xlunch/ 2>/dev/null || :
 
 remove:
 	rm -r $(DESTDIR)/etc/xlunch
 	rm -r $(DESTDIR)/usr/share/xlunch
-	rm -r $(DESTDIR)/usr/bin/xlunch
-	rm -r $(DESTDIR)/usr/bin/genentries
+	rm $(DESTDIR)/usr/bin/xlunch
+	rm $(DESTDIR)/usr/bin/genentries
+	rm $(DESTDIR)/usr/bin/updateentries
 	rm $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch_ghost.png
 	rm $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch.png
 	rm $(DESTDIR)/usr/share/applications/genentries.desktop

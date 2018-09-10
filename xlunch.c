@@ -1449,7 +1449,7 @@ void parse_config(FILE *input) {
         if(readstatus <= 0){
             break;
         }
-        if(b == ':' || b == '\n') {
+        if((b == ':' && optarg == NULL) || b == '\n') {
             if (b == '\n') eol = 1;
             b = '\0';
         }
@@ -1958,7 +1958,6 @@ void init(int argc, char **argv)
 
     if (least_v_margin == -1) least_v_margin = least_margin;
     if (icon_v_padding == -1) icon_v_padding = icon_padding;
-    //parse_config(fopen("/home/peter/.xlunchrc", "rb"));
 
     /* connect to X */
     disp = XOpenDisplay(NULL);
