@@ -1997,7 +1997,9 @@ void init(int argc, char **argv)
         exit(WINERROR);
     }
 
-    XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo);
+    if (!XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo)) {
+        XMatchVisualInfo(disp, DefaultScreen(disp), 24, TrueColor, &vinfo);
+    }
 
     attr.colormap = XCreateColormap(disp, DefaultRootWindow(disp), vinfo.visual, AllocNone);
     attr.border_pixel = 0;
