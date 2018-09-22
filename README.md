@@ -9,7 +9,7 @@ detailed info at: http://www.xlunch.org/
 
     make test
 
-on some distros (like ubuntu) `libimlib2-dev` is neede for compilation:
+on some distros (like ubuntu) `libimlib2-dev` is needed for compilation:
 ``` sh
 sudo apt install libimlib2-dev
 ```
