@@ -9,6 +9,11 @@ detailed info at: http://www.xlunch.org/
 
     make test
 
+on some distros (like ubuntu) `libimlib2-dev` is neede for compilation:
+``` sh
+sudo apt install libimlib2-dev
+```
+
 # screenshots
 
 ![Screenshot](/../Screenshot/screenshot.png?raw=true "Screenshot")
