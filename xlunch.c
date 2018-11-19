@@ -2676,6 +2676,34 @@ int main(int argc, char **argv){
                 }
 
 
+                /* draw scrollbar, currently not draggable, only indication of scroll */
+                if (scroll)
+                {
+                   int scrollbar_width=15; // width of entire scrollbar
+                   int scrollbar_height=screen_height-2*border; // height of entire scrollbar
+                   int scrollbar_screen_margin=50; // distance from screen edge
+                   int pages = (entries_count - 1) / rows / columns + 1; // total pages to scroll, round up, min 1
+
+                   // show scrollbar only if there are more pages
+                   if (pages > 1)
+                   {
+                      int scrollbar_draggable_height = scrollbar_height * rows * columns / (entries_count+columns - ((entries_count+columns-1)%columns)); // height of scrollbar page (draggable), round to whole rows
+                      float p = (entries_count - 1) / columns + 1 - rows; // current scrolled percentage
+                      int scrollbar_draggable_shift = p ? (scrollbar_height - scrollbar_draggable_height) * scrolled_past / p : 0;
+
+                      imlib_context_set_blend(1);
+
+                      // draw scrollbar background on full height
+                      imlib_context_set_color(255,255,255,60);
+                      imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border, scrollbar_width, scrollbar_height);
+
+                      // draw current scroll position
+                      imlib_context_set_color(255,255,255,112);
+                      imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border + scrollbar_draggable_shift, scrollbar_width, scrollbar_draggable_height);
+                      imlib_context_set_blend(0);
+                   }
+                }
+
                 /* don't blend the image onto the drawable - slower */
                 imlib_context_set_blend(0);
                 /* render the image at 0, 0 */
