@@ -209,6 +209,7 @@ char commandline[10024];
 char commandlinetext[10024];
 int prompt_x;
 int prompt_y;
+int mouse_moves=0;
 char * background_file = "";
 char * highlight_file = "";
 char * input_file = "";
@@ -2028,7 +2029,7 @@ void recheckHover(XEvent ev) {
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, j, ev.xmotion.x, ev.xmotion.y)) {
+        if (mouse_moves>3 && mouse_over_cell(current, j, ev.xmotion.x, ev.xmotion.y)) {
             set_hover(i, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
@@ -2080,6 +2081,8 @@ void handleButtonPress(XEvent ev) {
             node_t * current = entries;
             int voidclicked = 1;
             int index = 1;
+            mouse_moves += 4;
+            recheckHover(ev);
             while (current != NULL)
             {
                 if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) {
@@ -2578,6 +2581,7 @@ int main(int argc, char **argv){
 
                     case EnterNotify:
                     case MotionNotify:
+                        mouse_moves++;
                         recheckHover(ev);
                         break;
 
