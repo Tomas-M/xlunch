@@ -193,7 +193,7 @@ int urows = 0;
 int rows;
 int column_margin = 0;
 int row_margin = 0;
-int icon_padding = 10;
+int icon_padding = 40;
 int icon_v_padding = -1;
 int text_padding = 10;
 int border;
@@ -245,7 +245,7 @@ int least_margin = 0;
 int least_v_margin = -1;
 int hide_missing = 0;
 int center_icons = 0;
-int scroll = 0;
+int noscroll = 0;
 int scrolled_past= 0;
 int hovered_entry = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
@@ -892,7 +892,7 @@ void joincmdlinetext()
 }
 
 void set_scroll_level(int new_scroll) {
-    if (scroll){
+    if (!noscroll){
         if (new_scroll != scrolled_past) {
             scrolled_past = new_scroll;
             if (scrolled_past > (entries_count - 1)/columns - rows + 1) {
@@ -1821,7 +1821,7 @@ void handle_option(int c, char *optarg) {
             break;
 
         case 1019:
-            scroll = 1;
+            noscroll = 1;
             break;
 
         case '?':
@@ -1884,10 +1884,10 @@ void handle_option(int c, char *optarg) {
                             "        -A, --button [button]              Adds a button to the window. The argument\n"
                             "                                            \"button\" is a semicolon-separated list on the\n"
                             "                                           form \"<icon>;<highlight icon>;<x>,<y>;<command>\"\n"
-                            "                                           . If x or y is negative positioning is relative\n"
+                            "                                           If x or y is negative positioning is relative\n"
                             "                                           to the other side of the screen.\n"
-                            "        --scroll                           Enable to make xlunch scroll when reaching end of\n"
-                            "                                           entries or when using scrollwheel or pgup pgdn\n\n"
+                            "        --noscroll                         Disable scroll in xlunch. Ignore entries\n"
+                            "                                           that can't fit the screen.\n\n"
                             "    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n"
                             "    as a big single screen. You can customize this manually by setting windowed mode and\n"
                             "    providing the top/left coordinates and width/height of your monitor screen which\n"
@@ -2316,9 +2316,9 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
         else d=0;
 
         if (text_after) {
-            draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding + text_padding : icon_padding*2) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+            draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding*2 : icon_padding + text_padding) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
         } else {
-            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_v_padding + text_padding : icon_v_padding*2) + icon_size), title, text_color);
+            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_v_padding*2 : icon_v_padding + text_padding) + icon_size), title, text_color);
         }
 
         /* free the font */
@@ -2681,7 +2681,7 @@ int main(int argc, char **argv){
 
 
                 /* draw scrollbar, currently not draggable, only indication of scroll */
-                if (scroll)
+                if (!noscroll)
                 {
                    int scrollbar_width=15; // width of entire scrollbar
                    int scrollbar_height=screen_height-2*border; // height of entire scrollbar

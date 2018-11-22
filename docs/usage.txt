@@ -52,10 +52,10 @@ usage: xlunch [options]
         -A, --button [button]              Adds a button to the window. The argument
                                             "button" is a semicolon-separated list on the
                                            form "<icon>;<highlight icon>;<x>,<y>;<command>"
-                                           . If x or y is negative positioning is relative
+                                           If x or y is negative positioning is relative
                                            to the other side of the screen.
-        --scroll                           Enable to make xlunch scroll when reaching end of
-                                           entries or when using scrollwheel or pgup pgdn
+        --noscroll                         Disable scroll in xlunch. Ignore entries
+                                           that can't fit the screen.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and
