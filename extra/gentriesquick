@@ -19,7 +19,7 @@ process_directories()
 
          while read LINE; do
             eval $LINE
-         done <<< $(cat $desktop | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
+         done <<< $(cat "$desktop" | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
 
          if [ "$Hidden" = "true" ]; then
             continue
