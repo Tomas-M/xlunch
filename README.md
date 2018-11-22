@@ -9,9 +9,18 @@ detailed info at: http://www.xlunch.org/
 
     make test
 
-on some distros (like ubuntu) `libimlib2-dev` is needed for compilation:
+on some distros `libimlib2-dev` is needed for compilation.
+
+For Ubuntu and other Debian-based distros, do: 
+
 ``` sh
 sudo apt install libimlib2-dev
+```
+
+For Fedora: 
+
+```sh
+sudo dnf install imlib2-devel
 ```
 
 # screenshots
