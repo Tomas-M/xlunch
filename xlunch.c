@@ -2063,21 +2063,21 @@ void recheckHover(XEvent ev) {
 
 void handleButtonPress(XEvent ev) {
     switch (ev.xbutton.button) {
-        case 3:
+        case 3: // right click
             if (!desktop_mode) {
                 cleanup();
                 exit(RIGHTCLICK);
             }
             break;
-        case 4:
+        case 4: // scroll up
             set_scroll_level(scrolled_past - 1);
             recheckHover(ev);
             break;
-        case 5:;
+        case 5: // scroll down
             set_scroll_level(scrolled_past + 1);
             recheckHover(ev);
             break;
-        case 1:;
+        case 1:; // left click
             node_t * current = entries;
             int voidclicked = 1;
             int index = 1;
