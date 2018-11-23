@@ -141,7 +141,7 @@ static struct option long_options[] =
         {"focuslostterminate",    no_argument,       0, 1016},
         {"borderratio",           required_argument, 0, 1017},
         {"sideborderratio",       required_argument, 0, 1018},
-        {"scroll",                no_argument,       0, 1019},
+        {"noscroll",              no_argument,       0, 1019},
         {"iconvpadding",          required_argument, 0, 1020},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
