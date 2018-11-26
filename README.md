@@ -9,18 +9,18 @@ detailed info at: http://www.xlunch.org/
 
     make test
 
-on some distros `libimlib2-dev` is needed for compilation.
+on some distros `libimlib2-dev` and `libx11` are needed for compilation.
 
 For Ubuntu and other Debian-based distros, do: 
 
 ``` sh
-sudo apt install libimlib2-dev
+sudo apt install libimlib2-dev libx11-dev
 ```
 
 For Fedora: 
 
 ```sh
-sudo dnf install imlib2-devel
+sudo dnf install imlib2-devel libx11-devel
 ```
 
 # screenshots
