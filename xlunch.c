@@ -4,7 +4,7 @@
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 4; // Major version, changes when breaking backwards compatability
 const int VERSION_MINOR = 1; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_PATCH = 1; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -213,7 +213,7 @@ int mouse_moves=0;
 char * background_file = "";
 char * highlight_file = "";
 char * input_file = "";
-char * config_file = "";
+int read_config = 0;
 FILE * input_source = NULL;
 char * prompt = "";
 char * font_name = "";
@@ -732,7 +732,7 @@ FILE * determine_input_source(){
         }
         if (fp == NULL)
         {
-            fprintf(stderr, "Error opening entries file from %s.\nReverting back to system entries list.\n", input_file);
+            fprintf(stderr, "Error getting entries from %s.\nReverting back to system entries list.\n", strlen(input_file) == 0 ? "stdin" : input_file);
             input_file = "/etc/xlunch/entries.dsv";
             fp = fopen(input_file, "rb");
 
@@ -751,28 +751,6 @@ FILE * determine_input_source(){
     }
     return fp;
 }
-
-FILE * determine_config_source(){
-    FILE * fp;
-    if(strlen(config_file) == 0) {
-        char * homeconf = NULL;
-
-        char * home = getenv("HOME");
-        if (home!=NULL)
-        {
-            homeconf = concat(home,"/.config/xlunch/xlunch.conf");
-        }
-        fp = fopen(homeconf, "rb");
-        if(fp == NULL) {
-            fp = fopen("/etc/xlunch/default.conf", "rb");
-        }
-        free(homeconf);
-    } else {
-        fp = fopen(config_file, "rb");
-    }
-    return fp;
-}
-
 
 int mouse_over_cell(node_t * cell, int index, int mouse_x, int mouse_y)
 {
@@ -1801,7 +1779,8 @@ void handle_option(int c, char *optarg) {
             break;
 
         case 1014:
-            config_file = optarg;
+            parse_config(fopen(optarg, "rb"));
+            read_config = 1;
             break;
 
         case 1015:
@@ -1980,10 +1959,25 @@ void init(int argc, char **argv)
         handle_option(c, optarg);
     }
 
-    FILE *config_source = determine_config_source();
-    if(config_source != NULL){
-        parse_config(config_source);
-        fclose(config_source);
+    // If no configuration file was explicitly given, try to read a default one
+    if (read_config == 0) {
+        FILE *config_source;
+        char * homeconf = NULL;
+
+        char * home = getenv("HOME");
+        if (home!=NULL)
+        {
+            homeconf = concat(home,"/.config/xlunch/xlunch.conf");
+        }
+        config_source = fopen(homeconf, "rb");
+        if(config_source == NULL) {
+            config_source = fopen("/etc/xlunch/default.conf", "rb");
+        }
+        free(homeconf);
+        if(config_source != NULL){
+            parse_config(config_source);
+            fclose(config_source);
+        }
     }
 
 
