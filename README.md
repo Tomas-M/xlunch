@@ -20,7 +20,7 @@ sudo apt install libimlib2-dev libx11-dev
 For Fedora: 
 
 ```sh
-sudo dnf install imlib2-devel libx11-devel
+sudo dnf install imlib2-devel libX11-devel
 ```
 
 # screenshots
