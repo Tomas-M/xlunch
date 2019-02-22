@@ -36,6 +36,8 @@ const int VERSION_PATCH = 1; // Patch version, changes when something is changed
 /* check stdin */
 #include <sys/poll.h>
 #include <errno.h>
+/* definitions of common functions for Linux and FreeBSD */
+#include <libgen.h>
 
 /* some globals for our window & X display */
 Display *disp;
@@ -2476,7 +2478,7 @@ int main(int argc, char **argv){
     // Get the FD of the X11 display
     x11_fd = ConnectionNumber(disp);
     eventfds[0].fd = x11_fd;
-    eventfds[0].events = POLLIN || POLLPRI || POLLOUT || POLLRDHUP;
+    eventfds[0].events = POLLIN || POLLPRI || POLLOUT;
     if(input_source == stdin) {
         eventfds[1].fd = 0; /* this is STDIN */
         eventfds[1].events = POLLIN;
