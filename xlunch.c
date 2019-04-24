@@ -3,8 +3,8 @@
 // Authors: Tomas Matejicek <www.slax.org>
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 4; // Major version, changes when breaking backwards compatability
-const int VERSION_MINOR = 1; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 2; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_MINOR = 2; // Minor version, changes when new functionality is added
+const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
