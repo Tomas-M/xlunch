@@ -1886,7 +1886,9 @@ void handle_option(int c, char *optarg) {
                             "    providing the top/left coordinates and width/height of your monitor screen which\n"
                             "    effectively positions xlunch on the desired monitor. Use the following options:\n"
                             "        -x, --xposition [i]                The x coordinate of the launcher window\n"
+                            "                                           Use negative number to align from right\n"
                             "        -y, --yposition [i]                The y coordinate of the launcher window\n"
+                            "                                           Use negative number to align from bottom\n"
                             "        -w, --width [i]                    The width of the launcher window\n"
                             "        -h, --height [i]                   The height of the launcher window\n\n"
                             "    Style options:\n"
@@ -2017,13 +2019,16 @@ void init(int argc, char **argv)
     /* get default visual , colormap etc. you could ask imlib2 for what it */
     /* thinks is the best, but this example is intended to be simple */
     screen = DefaultScreen(disp);
-
     /* get/set screen size */
     if (uwidth==0) screen_width=DisplayWidth(disp,screen);
     else screen_width=uwidth;
 
     if (uheight==0) screen_height=DisplayHeight(disp,screen);
     else screen_height=uheight;
+
+    // calculate relative positions if they are negative
+    if (uposx < 0) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
+    if (uposy < 0) uposy = DisplayHeight(disp,screen) + uposy - uheight;
 
     calculate_percentage(screen_height, &uborder);
     calculate_percentage(screen_width, &uside_border);
