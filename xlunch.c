@@ -166,6 +166,7 @@ static struct option long_options[] =
         {"clearmemory",           no_argument,       0, 'M'},
         {"multiple",              no_argument,       0, 'm'},
         {"noprompt",              no_argument,       0, 'n'},
+        {"notitle",               no_argument,       0, 'N'},
         {"outputonly",            no_argument,       0, 'o'},
         {"textotherside",         no_argument,       0, 'O'},
         {"prompt",                required_argument, 0, 'p'},
@@ -223,6 +224,7 @@ char * prompt_font_name = "";
 char * program_name;
 int bg_fill = 0;
 int no_prompt = 0;
+int no_title = 0;
 int prompt_spacing = 48;
 int windowed = 0;
 int multiple_instances = 0;
@@ -1304,7 +1306,10 @@ Imlib_Font load_font()
         fprintf(stderr, "Font %s could not be loaded! Please specify one with -f parameter\n", font_name);
         exit(FONTERROR);
     }
-    font_height = get_font_height(font);
+
+    if (!no_title)
+       font_height = get_font_height(font);
+
     return font;
 }
 
@@ -1553,6 +1558,12 @@ void handle_option(int c, char *optarg) {
 
         case 'n':
             no_prompt = 1;
+            break;
+
+        case 'N':
+            no_title = 1;
+            font_height = 0;
+            text_padding = 0;
             break;
 
         case 'g':
@@ -1835,6 +1846,7 @@ void handle_option(int c, char *optarg) {
                             "        --name                             POSIX-esque way to specify the first part of\n"
                             "                                           WM_CLASS (default: environment variable \n"
                             "                                           RESOURCE_NAME or argv[0])\n"
+                            "        -N, --notitle                      Do not display any titles under/around icons\n"
                             "        -n, --noprompt                     Hides the prompt, only allowing selection\n"
                             "                                           by icon\n"
                             "        -o, --outputonly                   Do not run the selected entry, only output it\n"
@@ -1957,7 +1969,7 @@ void init(int argc, char **argv)
 {
 
     int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:ng:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vdr:nNg:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
         handle_option(c, optarg);
     }
 
@@ -2289,7 +2301,7 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
     }
     /* draw text under icon */
     Imlib_Font font = load_font();
-    if (font)
+    if (font && !no_title)
     {
         imlib_context_set_image(buffer);
         int text_w;
