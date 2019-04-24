@@ -2009,7 +2009,11 @@ void init(int argc, char **argv)
     }
 
     if (!XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo)) {
-        XMatchVisualInfo(disp, DefaultScreen(disp), 24, TrueColor, &vinfo);
+        if (!XMatchVisualInfo(disp, DefaultScreen(disp), 24, TrueColor, &vinfo)) {
+           if (!XMatchVisualInfo(disp, DefaultScreen(disp), 16, DirectColor, &vinfo)) {
+              XMatchVisualInfo(disp, DefaultScreen(disp), 8, PseudoColor, &vinfo);
+           }
+        }
     }
 
     attr.colormap = XCreateColormap(disp, DefaultRootWindow(disp), vinfo.visual, AllocNone);
