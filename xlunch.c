@@ -305,9 +305,10 @@ void recalc_cells()
             border = 0;
         } else {
             side_border = (screen_width - (ucolumns * cell_width + (ucolumns - 1) * least_margin))/2;
-            border = (screen_height - (no_prompt ? 0 : prompt_font_height + prompt_spacing) - (urows * cell_height + (urows - 1) * least_v_margin))/2;
+            border = (screen_height - prompt_font_height - prompt_spacing - (urows * cell_height + (urows - 1) * least_v_margin))/2;
         }
     }
+
     if (uside_border.value == 0 && uside_border.percent == -1) side_border = border;
     if (uside_border.value > 0) side_border = uside_border.value;
     if (uside_border.value == -1 && uside_border.percent == -1){
@@ -323,11 +324,8 @@ void recalc_cells()
     // These do while loops should run at most three times, it's just to avoid copying code
     do {
         usable_width = screen_width-side_border*2;
-        if (no_prompt) {
-            usable_height = screen_height-border*2;
-        } else {
-            usable_height = screen_height-border*2-prompt_spacing-prompt_font_height;
-        }
+        usable_height = screen_height-border*2;
+        usable_height = screen_height-border*2-prompt_spacing-prompt_font_height;
 
         // If the usable_width is too small, take some space away from the border
         if (usable_width < cell_width) {
@@ -335,7 +333,13 @@ void recalc_cells()
         } else if (usable_height < cell_height) {
             border = (screen_height - cell_height - prompt_spacing - prompt_font_height - 1)/2;
         }
+
     } while ((usable_width < cell_width && screen_width > cell_width) || (usable_height < cell_height && screen_height > cell_height));
+
+    // just in case, make sure border is never negative
+    if (border < 0) border = 0;
+    if (side_border < 0) side_border = 0;
+
     // If columns were not manually overriden, calculate the most it can possibly contain
     if (ucolumns == 0){
         columns = usable_width/margined_cell_width;
@@ -435,11 +439,7 @@ void arrange_positions()
             } else {
                 current->x = (side_border * side_border_ratio) / 50 + i * (cell_width+column_margin);
             }
-            if (no_prompt) {
-                current->y = (border * border_ratio) / 50 + (j - scrolled_past) * (cell_height+row_margin);
-            } else {
-                current->y = (border * border_ratio) / 50 + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
-            }
+            current->y = (border * border_ratio) / 50 + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
             if (upside_down) {
                 current->y=screen_height - cell_height - current->y;
             }
@@ -1329,7 +1329,10 @@ Imlib_Font load_prompt_font()
         fprintf(stderr, "Prompt font %s could not be loaded! Please specify one with -F parameter\n", prompt_font_name);
         exit(FONTERROR);
     }
-    prompt_font_height = get_font_height(font);
+
+    if (!no_prompt)
+       prompt_font_height = get_font_height(font);
+
     return font;
 }
 
@@ -1558,6 +1561,8 @@ void handle_option(int c, char *optarg) {
 
         case 'n':
             no_prompt = 1;
+            prompt_spacing = 0;
+            prompt_font_height = 0;
             break;
 
         case 'N':
