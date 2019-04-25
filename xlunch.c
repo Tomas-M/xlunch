@@ -349,10 +349,10 @@ void recalc_cells()
     }
 
     // If we don't have space for a single column or row, force it.
-    if (columns == 0) {
+    if (columns <= 0) {
         columns = 1;
     }
-    if (rows == 0) {
+    if (rows <= 0 ) {
         rows = 1;
     }
 
