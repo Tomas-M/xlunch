@@ -228,8 +228,9 @@ int no_title = 0;
 int prompt_spacing = 48;
 int windowed = 0;
 int multiple_instances = 0;
-int uposx = -1;
-int uposy = -1;
+int uposx = 0;
+int uposy = 0;
+int force_reposition = 0;
 int uwidth = 0;
 int uheight = 0;
 percentable_t uborder = { .percent = -1, .value = 0 };
@@ -1667,10 +1668,12 @@ void handle_option(int c, char *optarg) {
 
         case 'x':
             uposx = atoi(optarg);
+            force_reposition = 1;
             break;
 
         case 'y':
             uposy = atoi(optarg);
+            force_reposition = 1;
             break;
 
         case 'w':
@@ -2036,8 +2039,8 @@ void init(int argc, char **argv)
     else screen_height=uheight;
 
     // calculate relative positions if they are negative
-    if (uposx < 0 && uposx != -1) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
-    if (uposy < 0 && uposy != -1) uposy = DisplayHeight(disp,screen) + uposy - uheight;
+    if (uposx < 0) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
+    if (uposy < 0) uposy = DisplayHeight(disp,screen) + uposy - uheight;
 
     calculate_percentage(screen_height, &uborder);
     calculate_percentage(screen_width, &uside_border);
@@ -2384,7 +2387,7 @@ int main(int argc, char **argv){
     }
 
     //win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
-    win = XCreateWindow(disp, DefaultRootWindow(disp), (uposx == -1 ? 0 : uposx), (uposy == -1 ? 0 : uposy), screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
+    win = XCreateWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
 
     // absolute fullscreen mode by overide redirect
     if (!windowed && desktop_mode)
@@ -2446,8 +2449,8 @@ int main(int argc, char **argv){
     /* show the window */
     XMapRaised(disp, win);
     /* Force window reposition, can make effect only when windowed is enabled, depending on WM */
-    if (uposx != -1 || uposy != -1)
-        XMoveWindow(disp,win,uposx,uposy);
+    if (force_reposition)
+       XMoveWindow(disp,win,uposx,uposy);
 
     // prepare for keyboard UTF8 input
     if (XSetLocaleModifiers("@im=none") == NULL) {
