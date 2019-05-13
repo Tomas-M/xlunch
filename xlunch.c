@@ -2036,8 +2036,8 @@ void init(int argc, char **argv)
     else screen_height=uheight;
 
     // calculate relative positions if they are negative
-    if (uposx < 0) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
-    if (uposy < 0) uposy = DisplayHeight(disp,screen) + uposy - uheight;
+    if (uposx < 0 && uposx != -1) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
+    if (uposy < 0 && uposy != -1) uposy = DisplayHeight(disp,screen) + uposy - uheight;
 
     calculate_percentage(screen_height, &uborder);
     calculate_percentage(screen_width, &uside_border);
