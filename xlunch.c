@@ -145,6 +145,8 @@ static struct option long_options[] =
         {"sideborderratio",       required_argument, 0, 1018},
         {"noscroll",              no_argument,       0, 1019},
         {"iconvpadding",          required_argument, 0, 1020},
+        {"shadowcolor",           required_argument, 0, 1021},
+        {"sc",                    required_argument, 0, 1021},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -256,6 +258,7 @@ int hovered_entry = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
+color_t shadow_color = {.r = 0, .g = 0, .b = 0, .a = 30};
 int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
 
@@ -1427,7 +1430,7 @@ void update_background_images()
 }
 
 void draw_text_with_shadow(int posx, int posy, char * text, color_t color) {
-    imlib_context_set_color(0, 0, 0, 30);
+    imlib_context_set_color(shadow_color.r, shadow_color.g, shadow_color.b, shadow_color.a);
     imlib_text_draw(posx +1, posy +1, text);
     imlib_text_draw(posx +1, posy +2, text);
     imlib_text_draw(posx +2, posy +2, text);
@@ -1705,6 +1708,10 @@ void handle_option(int c, char *optarg) {
             background_color_set = 1;
             break;
 
+        case 1021:
+            sscanf(optarg, "%02x%02x%02x%02x", &shadow_color.r, &shadow_color.g, &shadow_color.b, &shadow_color.a);
+            break;
+
         case 1012:
             sscanf(optarg, "%02x%02x%02x%02x", &highlight_color.r, &highlight_color.g, &highlight_color.b, &highlight_color.a);
             break;
@@ -1963,6 +1970,9 @@ void handle_option(int c, char *optarg) {
                             "        --bc, --backgroundcolor [color]    Color to use for the background\n"
                             "                                           (default: 2e3440ff) NOTE: transparent background\n"
                             "                                           color requires a compositor\n"
+                            "        --sc, --shadowcolor [color]        Color to use for text shadows\n"
+                            "                                           (default: 00000030) NOTE: transparent color\n"
+                            "                                           requires a compositor\n"
                             "        --hc, --highlightcolor [color]     Color to use for the highlight box\n"
                             "                                           (default: ffffff32)\n\n");
             // Check if we came from the error block above or if this was a call with --help
