@@ -63,7 +63,9 @@ usage: xlunch [options]
     providing the top/left coordinates and width/height of your monitor screen which
     effectively positions xlunch on the desired monitor. Use the following options:
         -x, --xposition [i]                The x coordinate of the launcher window
+                                           Use negative number to align from right
         -y, --yposition [i]                The y coordinate of the launcher window
+                                           Use negative number to align from bottom
         -w, --width [i]                    The width of the launcher window
         -h, --height [i]                   The height of the launcher window
 
@@ -131,6 +133,9 @@ usage: xlunch [options]
         --bc, --backgroundcolor [color]    Color to use for the background
                                            (default: 2e3440ff) NOTE: transparent background
                                            color requires a compositor
+        --sc, --shadowcolor [color]        Color to use for text shadows
+                                           (default: 00000030) NOTE: transparent color
+                                           requires a compositor
         --hc, --highlightcolor [color]     Color to use for the highlight box
                                            (default: ffffff32)
 
