@@ -1,5 +1,15 @@
 #!/bin/bash
 
+cd $(dirname $(readlink -f $0))/..
+
+$(pwd)/xlunch --help 2>docs/usage2.txt
+if [ $? -ne 0 ]; then
+   rm docs/usage2.txt
+   echo "Please compile xlunch first, so we can generate usage.txt by running it with --help argument"
+   exit 1
+fi
+mv -f docs/usage2.txt docs/usage.txt
+
 OLDMAJOR=$(cat xlunch.c | grep 'int VERSION_MAJOR' | sed -r 's/.*= *|;.*//g')
 OLDMINOR=$(cat xlunch.c | grep 'int VERSION_MINOR' | sed -r 's/.*= *|;.*//g')
 OLDPATCH=$(cat xlunch.c | grep 'int VERSION_PATCH' | sed -r 's/.*= *|;.*//g')
