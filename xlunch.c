@@ -1970,9 +1970,7 @@ void handle_option(int c, char *optarg) {
                             "        --bc, --backgroundcolor [color]    Color to use for the background\n"
                             "                                           (default: 2e3440ff) NOTE: transparent background\n"
                             "                                           color requires a compositor\n"
-                            "        --sc, --shadowcolor [color]        Color to use for text shadows\n"
-                            "                                           (default: 00000030) NOTE: transparent color\n"
-                            "                                           requires a compositor\n"
+                            "        --sc, --shadowcolor [color]        Color to use for text shadows (default: 00000030)\n"
                             "        --hc, --highlightcolor [color]     Color to use for the highlight box\n"
                             "                                           (default: ffffff32)\n\n");
             // Check if we came from the error block above or if this was a call with --help
