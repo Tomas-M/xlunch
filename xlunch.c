@@ -2678,11 +2678,15 @@ int main(int argc, char **argv){
                     if (image)
                     {
                         imlib_context_set_image(buffer);
+                        imlib_image_set_has_alpha(0);
+
                         int d;
                         if (button->clicked) d=2;
                         else d=0;
                         int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
                         int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
+
+                        imlib_image_copy_alpha_to_image(image,x - up_x + d, y - up_y + d);
                         imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, x - up_x + d, y - up_y + d, button->w-d*2, button->h-d*2);
 
                         imlib_context_set_image(image);
