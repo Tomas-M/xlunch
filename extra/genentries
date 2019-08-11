@@ -1,7 +1,16 @@
 #!/bin/bash
 
-svgpath="svgicons"
-iconsize=$XLUNCHICONSIZE
+# Get the users actual home directory in case we're running this with sudo
+user_home=$(eval echo ~${SUDO_USER})
+
+source $user_home/.genentriesrc
+
+if [ -z "$svgpath" ]; then
+  svgpath="svgicons"
+fi
+if [ -z "$iconsize" ]; then
+  iconsize=$XLUNCHICONSIZE
+fi
 if [ -z "$iconsize" ]; then
   iconsize=48
 fi
@@ -45,9 +54,6 @@ case $key in
 esac
 shift # past argument or value
 done
-
-# Get the users actual home directory in case we're running this with sudo
-user_home=$(eval echo ~${SUDO_USER})
 
 globalappfolder=/usr/share/applications
 localappfolder=$user_home/.local/share/applications
