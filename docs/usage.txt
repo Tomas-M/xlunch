@@ -76,7 +76,10 @@ usage: xlunch [options]
         -F, --promptfont [name]            Font to use for the prompt
                                            (default: same as --font)
         -G, --rootwindowbackground         Use root windows background image
-        -g, --background [file]            Image to set as background (jpg/png)
+        -g, --background [file]            Image to set as background (jpg/png). NOTE: the
+                                           background color will be drawn over this image
+                                           so use a fully transparent background color if
+                                           the image should be drawn as-is.
         --bgfill                           Makes the background keep aspect ratio
                                            while stretching
         -L, --highlight [file]             Image set as highlighting under selected icon
