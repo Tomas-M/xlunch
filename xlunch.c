@@ -1985,12 +1985,6 @@ void handle_option(int c, char *optarg) {
 
 void init(int argc, char **argv)
 {
-
-    int c, option_index;
-    while ((c = getopt_long(argc, argv, "vdr:nNg:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
-        handle_option(c, optarg);
-    }
-
     // If no configuration file was explicitly given, try to read a default one
     if (read_config == 0) {
         FILE *config_source;
@@ -2012,6 +2006,11 @@ void init(int argc, char **argv)
         }
     }
 
+    // Handle options from the command line
+    int c, option_index;
+    while ((c = getopt_long(argc, argv, "vdr:nNg:L:b:B:s:i:p:f:mc:x:y:w:h:oatGHI:T:P:WF:SqROMuXeCl:V:U:A:", long_options, &option_index)) != -1) {
+        handle_option(c, optarg);
+    }
 
     if (least_v_margin == -1) least_v_margin = least_margin;
     if (icon_v_padding == -1) icon_v_padding = icon_padding;
