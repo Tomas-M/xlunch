@@ -1032,9 +1032,14 @@ void reset_prompt()
 void run_command(char * cmd_orig)
 {
 
-    char cmd[512];
+    char *cmd;
     char *array[100] = {0};
-    strcpy(cmd,cmd_orig);
+
+    cmd = strdup(cmd_orig);
+    if (!cmd) {
+        fprintf(stderr, "Out of memory!\n");
+        exit(ALLOCERROR);
+    }
 
     int isrecur = starts_with(":recur ", cmd_orig) || (strcmp(":recur", cmd_orig) == 0);
     if(isrecur) {
@@ -1091,6 +1096,8 @@ void run_command(char * cmd_orig)
 
         default:  /* Parent */
             reset_prompt();
+            if (cmd != cmd_orig)
+                free(cmd);
             return;
         }
     }
