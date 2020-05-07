@@ -1087,7 +1087,7 @@ void run_command(char * cmd_orig)
 
         case -1:  /* Error */
             perror("fork");
-            return;
+            /*FALLTHROUGH*/
 
         default:  /* Parent */
             reset_prompt();
