@@ -1072,7 +1072,7 @@ void run_command(char * cmd_orig)
                 return;
             }
         }
-        array[0] = "/bin/bash";
+        array[0] = "/bin/sh";
         array[1] = "-c";
         array[2] = cmd_orig;
         array[3] = NULL;
