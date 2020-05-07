@@ -124,7 +124,8 @@ enum exit_code {
     LOCALEERROR,
     INPUTMERROR,
     INPUTCERROR,
-    POLLERROR
+    POLLERROR,
+    EXTERNALERROR
 };
 
 static struct option long_options[] =
@@ -1031,7 +1032,6 @@ void reset_prompt()
 
 void run_command(char * cmd_orig)
 {
-
     char *cmd;
     char *array[100] = {0};
 
@@ -1107,10 +1107,10 @@ void run_command(char * cmd_orig)
         printf("Running command: %s\n",cmd);
     }
 
-    int err;
-    err = execvp(array[0],array);
-    fprintf(stderr,"Error running %s : %d\n",cmd, err);
-    exit(OKAY);
+    execvp(array[0],array);
+    fprintf(stderr,"Error running '%s -c \"%s\"': %s\n", array[0], array[2],
+	strerror(errno));
+    exit(EXTERNALERROR);
 }
 
 int parse_entries()
