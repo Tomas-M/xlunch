@@ -1078,33 +1078,32 @@ void run_command(char * cmd_orig)
     if (dont_quit)
     {
         pid_t pid=fork();
-        if (pid==0) // child process
-        {
+
+        switch (pid) {
+        case 0:   /* Child process */
             if (!multiple_instances) close(lock);
             printf("Forking command: %s\n",cmd);
-            int err;
-            err = execvp(array[0],array);
-            fprintf(stderr,"Error forking %s : %d\n",cmd,err);
-            exit(OKAY);
-        }
-        else if (pid<0) // error forking
-        {
-            fprintf(stderr,"Error running %s\n",cmd);
-        }
-        else // parent process
-        {
+            break;
+
+        case -1:  /* Error */
+            perror("fork");
+            return;
+
+        default:  /* Parent */
             reset_prompt();
+            return;
         }
     }
     else
     {
         cleanup();
         printf("Running command: %s\n",cmd);
-        int err;
-        err = execvp(array[0],array);
-        fprintf(stderr,"Error running %s : %d\n",cmd, err);
-        exit(OKAY);
     }
+
+    int err;
+    err = execvp(array[0],array);
+    fprintf(stderr,"Error running %s : %d\n",cmd, err);
+    exit(OKAY);
 }
 
 int parse_entries()
