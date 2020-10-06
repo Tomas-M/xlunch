@@ -3,6 +3,7 @@
 # Get the users actual home directory in case we're running this with sudo
 user_home=$(eval echo ~${SUDO_USER})
 
+touch $user_home/.genentriesrc
 source $user_home/.genentriesrc
 
 if [ -z "$svgpath" ]; then
