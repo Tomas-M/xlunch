@@ -3,8 +3,8 @@
 // Authors: Tomas Matejicek <www.slax.org>
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 4; // Major version, changes when breaking backwards compatability
-const int VERSION_MINOR = 5; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 4; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_MINOR = 6; // Minor version, changes when new functionality is added
+const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 #define _GNU_SOURCE
 /* open and O_RDWR,O_CREAT */
@@ -147,6 +147,7 @@ static struct option long_options[] =
         {"iconvpadding",          required_argument, 0, 1020},
         {"shadowcolor",           required_argument, 0, 1021},
         {"sc",                    required_argument, 0, 1021},
+        {"title",                 required_argument, 0, 1022},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -224,6 +225,7 @@ char * prompt = "";
 char * font_name = "";
 char * prompt_font_name = "";
 char * program_name;
+char * window_title;
 int bg_fill = 0;
 int no_prompt = 0;
 int no_title = 0;
@@ -1724,6 +1726,10 @@ void handle_option(int c, char *optarg) {
             program_name = optarg;
             break;
 
+        case 1022:
+            window_title = optarg;
+            break;
+
         case 'q':
             dont_quit = 1;
             break;
@@ -1883,6 +1889,8 @@ void handle_option(int c, char *optarg) {
                             "                                           previous versions).\n"
                             "        -R, --reverse                      All entries in xlunch as reversly ordered.\n"
                             "        -W, --windowed                     Start in windowed mode\n"
+                            "        --title                            Specifies the title to put on the window when\n"
+                            "                                           running in windowed mode.\n"
                             "        -M, --clearmemory                  Set the memory of each entry to null before\n"
                             "                                           exiting. Used for passing sensitive information\n"
                             "                                           through xlunch.\n"
@@ -2448,7 +2456,10 @@ int main(int argc, char **argv){
     XClassHint* classHint;
 
     /* set the titlebar name */
-    XStoreName(disp, win, "xlunch: Graphical app launcher");
+    if (window_title == NULL) {
+        window_title = "xlunch: Graphical app launcher";
+    }
+    XStoreName(disp, win, window_title);
 
     /* set the name and class hints for the window manager to use */
     classHint = XAllocClassHint();

@@ -44,6 +44,8 @@ usage: xlunch [options]
                                            previous versions).
         -R, --reverse                      All entries in xlunch as reversly ordered.
         -W, --windowed                     Start in windowed mode
+        --title                            Specifies the title to put on the window when
+                                           running in windowed mode.
         -M, --clearmemory                  Set the memory of each entry to null before
                                            exiting. Used for passing sensitive information
                                            through xlunch.
