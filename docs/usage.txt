@@ -141,4 +141,8 @@ usage: xlunch [options]
         --sc, --shadowcolor [color]        Color to use for text shadows (default: 00000030)
         --hc, --highlightcolor [color]     Color to use for the highlight box
                                            (default: ffffff32)
+        --scrollbarcolor [color]           Color to use for the scrollbar
+                                           (default: ffffff3c)
+        --scrollindicatorcolor [color]     Color to use for the scrollbar indicator
+                                           (default: ffffff70)
 

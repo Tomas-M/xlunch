@@ -148,6 +148,8 @@ static struct option long_options[] =
         {"shadowcolor",           required_argument, 0, 1021},
         {"sc",                    required_argument, 0, 1021},
         {"title",                 required_argument, 0, 1022},
+        {"scrollbarcolor",        required_argument, 0, 1023},
+        {"scrollindicatorcolor",  required_argument, 0, 1024},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -263,6 +265,8 @@ color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
 color_t shadow_color = {.r = 0, .g = 0, .b = 0, .a = 30};
 int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
+color_t scrollbar_color = {.r = 255, .g = 255, .b = 255, .a = 60};
+color_t scrollindicator_color = {.r = 255, .g = 255, .b = 255, .a = 112};
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -1718,6 +1722,14 @@ void handle_option(int c, char *optarg) {
             sscanf(optarg, "%02x%02x%02x%02x", &highlight_color.r, &highlight_color.g, &highlight_color.b, &highlight_color.a);
             break;
 
+        case 1023:
+            sscanf(optarg, "%02x%02x%02x%02x", &scrollbar_color.r, &scrollbar_color.g, &scrollbar_color.b, &scrollbar_color.a);
+            break;
+
+        case 1024:
+            sscanf(optarg, "%02x%02x%02x%02x", &scrollindicator_color.r, &scrollindicator_color.g, &scrollindicator_color.b, &scrollindicator_color.a);
+            break;
+
         case 'a':
             text_after = 1;
             break;
@@ -1983,7 +1995,11 @@ void handle_option(int c, char *optarg) {
                             "                                           color requires a compositor\n"
                             "        --sc, --shadowcolor [color]        Color to use for text shadows (default: 00000030)\n"
                             "        --hc, --highlightcolor [color]     Color to use for the highlight box\n"
-                            "                                           (default: ffffff32)\n\n");
+                            "                                           (default: ffffff32)\n"
+                            "        --scrollbarcolor [color]           Color to use for the scrollbar\n"
+                            "                                           (default: ffffff3c)\n"
+                            "        --scrollindicatorcolor [color]     Color to use for the scrollbar indicator\n"
+                            "                                           (default: ffffff70)\n\n");
             // Check if we came from the error block above or if this was a call with --help
             if(c == '?'){
                 exit(CONFIGERROR);
@@ -2751,11 +2767,11 @@ int main(int argc, char **argv){
                       imlib_context_set_blend(1);
 
                       // draw scrollbar background on full height
-                      imlib_context_set_color(255,255,255,60);
+                      imlib_context_set_color(scrollbar_color.r, scrollbar_color.g, scrollbar_color.b, scrollbar_color.a);
                       imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border, scrollbar_width, scrollbar_height);
 
                       // draw current scroll position
-                      imlib_context_set_color(255,255,255,112);
+                      imlib_context_set_color(scrollindicator_color.r, scrollindicator_color.g, scrollindicator_color.b, scrollindicator_color.a);
                       imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border + scrollbar_draggable_shift, scrollbar_width, scrollbar_draggable_height);
                       imlib_context_set_blend(0);
                    }
