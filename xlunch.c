@@ -2321,7 +2321,7 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor *
             w = imlib_image_get_width();
             h = imlib_image_get_height();
             imlib_context_set_image(buffer);
-            imlib_image_set_has_alpha(0);
+            imlib_image_set_has_alpha(1);
 
             int d;
             if (current->clicked) d=2;
