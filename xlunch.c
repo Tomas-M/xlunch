@@ -148,6 +148,7 @@ static struct option long_options[] =
         {"shadowcolor",           required_argument, 0, 1021},
         {"sc",                    required_argument, 0, 1021},
         {"title",                 required_argument, 0, 1022},
+        {"icon",                  required_argument, 0, 1025},
         {"scrollbarcolor",        required_argument, 0, 1023},
         {"scrollindicatorcolor",  required_argument, 0, 1024},
         {"button",                required_argument, 0, 'A'},
@@ -228,6 +229,7 @@ char * font_name = "";
 char * prompt_font_name = "";
 char * program_name;
 char * window_title;
+char * window_icon;
 int bg_fill = 0;
 int no_prompt = 0;
 int no_title = 0;
@@ -1742,6 +1744,10 @@ void handle_option(int c, char *optarg) {
             window_title = optarg;
             break;
 
+        case 1025:
+            window_icon = optarg;
+            break;
+
         case 'q':
             dont_quit = 1;
             break;
@@ -1902,6 +1908,8 @@ void handle_option(int c, char *optarg) {
                             "        -R, --reverse                      All entries in xlunch as reversly ordered.\n"
                             "        -W, --windowed                     Start in windowed mode\n"
                             "        --title                            Specifies the title to put on the window when\n"
+                            "                                           running in windowed mode.\n"
+                            "        --icon                             Specifies the icon to put on the window when\n"
                             "                                           running in windowed mode.\n"
                             "        -M, --clearmemory                  Set the memory of each entry to null before\n"
                             "                                           exiting. Used for passing sensitive information\n"
@@ -2476,6 +2484,32 @@ int main(int argc, char **argv){
         window_title = "xlunch: Graphical app launcher";
     }
     XStoreName(disp, win, window_title);
+
+    /* set the icon */
+    if (window_icon != NULL) {
+        Imlib_Image icon = imlib_load_image(window_icon);
+        if (icon != NULL) {
+            imlib_context_set_image(icon);
+            DATA32* icon_data = imlib_image_get_data_for_reading_only();
+            int width = imlib_image_get_width();
+            int height = imlib_image_get_height();
+            int elements = width*height + 2;
+            size_t* icon_data_x11 = malloc(elements * sizeof(size_t));
+            icon_data_x11[0] = width;
+            icon_data_x11[1] = height;
+            // Can't simply use memcpy here because the target buffer is
+            // architecture dependent but the imlib buffer is always 32-bit
+            for(int i = 0; i < width*height; i++) {
+                icon_data_x11[2+i] = icon_data[i];
+            }
+            Atom net_wm_icon = XInternAtom(disp, "_NET_WM_ICON", False);
+            Atom cardinal = XInternAtom(disp, "CARDINAL", False);
+            XChangeProperty(disp, win, net_wm_icon, cardinal, 32, PropModeReplace, (const unsigned char*) icon_data_x11, elements);
+            free(icon_data_x11);
+            imlib_free_image();
+        }
+    }
+
 
     /* set the name and class hints for the window manager to use */
     classHint = XAllocClassHint();
