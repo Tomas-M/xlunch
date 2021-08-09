@@ -124,7 +124,8 @@ enum exit_code {
     LOCALEERROR,
     INPUTMERROR,
     INPUTCERROR,
-    POLLERROR
+    POLLERROR,
+    EXTERNALERROR
 };
 
 static struct option long_options[] =
@@ -1039,10 +1040,14 @@ void reset_prompt()
 
 void run_command(char * cmd_orig)
 {
-
-    char cmd[512];
+    char *cmd;
     char *array[100] = {0};
-    strcpy(cmd,cmd_orig);
+
+    cmd = strdup(cmd_orig);
+    if (!cmd) {
+        fprintf(stderr, "Out of memory!\n");
+        exit(ALLOCERROR);
+    }
 
     int isrecur = starts_with(":recur ", cmd_orig) || (strcmp(":recur", cmd_orig) == 0);
     if(isrecur) {
@@ -1075,7 +1080,7 @@ void run_command(char * cmd_orig)
                 return;
             }
         }
-        array[0] = "/bin/bash";
+        array[0] = "/bin/sh";
         array[1] = "-c";
         array[2] = cmd_orig;
         array[3] = NULL;
@@ -1086,33 +1091,34 @@ void run_command(char * cmd_orig)
     if (dont_quit)
     {
         pid_t pid=fork();
-        if (pid==0) // child process
-        {
+
+        switch (pid) {
+        case 0:   /* Child process */
             if (!multiple_instances) close(lock);
             printf("Forking command: %s\n",cmd);
-            int err;
-            err = execvp(array[0],array);
-            fprintf(stderr,"Error forking %s : %d\n",cmd,err);
-            exit(OKAY);
-        }
-        else if (pid<0) // error forking
-        {
-            fprintf(stderr,"Error running %s\n",cmd);
-        }
-        else // parent process
-        {
+            break;
+
+        case -1:  /* Error */
+            perror("fork");
+            /*FALLTHROUGH*/
+
+        default:  /* Parent */
             reset_prompt();
+            if (cmd != cmd_orig)
+                free(cmd);
+            return;
         }
     }
     else
     {
         cleanup();
         printf("Running command: %s\n",cmd);
-        int err;
-        err = execvp(array[0],array);
-        fprintf(stderr,"Error running %s : %d\n",cmd, err);
-        exit(OKAY);
     }
+
+    execvp(array[0],array);
+    fprintf(stderr,"Error running '%s -c \"%s\"': %s\n", array[0], array[2],
+	strerror(errno));
+    exit(EXTERNALERROR);
 }
 
 int parse_entries()
