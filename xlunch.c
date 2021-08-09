@@ -2407,7 +2407,7 @@ int main(int argc, char **argv){
     XEvent ev;
     /* our virtual framebuffer image we draw into */
     Imlib_Image buffer;
-    char title[255];
+    char title[256];
 
     /* width and height values */
     int w, h, x, y;
