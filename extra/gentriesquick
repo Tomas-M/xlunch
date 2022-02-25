@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ICONSIZES="$1 128 64 48 32" # icon search in given order
-ICONPATHS="/usr/share/icons/hicolor /usr/share/pixmaps"
+ICONPATHS="/usr/share/icons/hicolor /usr/share/pixmaps /usr/share/icons/gnome"
 
 if [ "$1" = "--desktop" -o "$2" = "--desktop" ]; then
    DESKTOPCMD="yes"
@@ -25,7 +25,7 @@ process_directories()
 
          while read LINE; do
             eval $LINE
-         done <<< $(cat "$desktop" | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
+         done <<< $(tac "$desktop" | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
 
          if [ "$Hidden" = "true" ]; then
             continue
