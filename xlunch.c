@@ -2407,6 +2407,7 @@ int main(int argc, char **argv){
     XEvent ev;
     /* our virtual framebuffer image we draw into */
     Imlib_Image buffer;
+    Imlib_Image render_buffer;
     char title[256];
 
     /* width and height values */
@@ -2749,7 +2750,6 @@ int main(int argc, char **argv){
                     if (image)
                     {
                         imlib_context_set_image(buffer);
-                        imlib_image_set_has_alpha(0);
 
                         int d;
                         if (button->clicked) d=2;
@@ -2757,7 +2757,6 @@ int main(int argc, char **argv){
                         int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
                         int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
 
-                        imlib_image_copy_alpha_to_image(image,x - up_x + d, y - up_y + d);
                         imlib_blend_image_onto_image(image, 1, 0, 0, button->w, button->h, x - up_x + d, y - up_y + d, button->w-d*2, button->h-d*2);
 
                         imlib_context_set_image(image);
@@ -2817,11 +2816,19 @@ int main(int argc, char **argv){
                    }
                 }
 
-                /* don't blend the image onto the drawable - slower */
-                imlib_context_set_blend(0);
-                /* render the image at 0, 0 */
+                render_buffer = imlib_create_image(up_w, up_h);
+                imlib_context_set_image(render_buffer);
+                imlib_context_set_blend(1);
+                imlib_image_clear();
+
+                imlib_image_copy_alpha_to_image(buffer, 0, 0);
+                imlib_blend_image_onto_image(buffer, 1, 0, 0, up_w, up_h, 0, 0, up_w, up_h);
+
+                imlib_context_set_image(buffer);
+                imlib_free_image();
+
+                imlib_context_set_image(render_buffer);
                 imlib_render_image_on_drawable(up_x, up_y);
-                /* don't need that temporary buffer image anymore */
                 imlib_free_image();
             }
         }
