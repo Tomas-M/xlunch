@@ -15,6 +15,7 @@ install: xlunch
 	cp docs/logo.png $(DESTDIR)/usr/share/icons/hicolor/48x48/apps/xlunch.png
 	cp xlunch $(DESTDIR)/usr/bin/
 	cp extra/genentries $(DESTDIR)/usr/bin
+	cp extra/gentriesquick $(DESTDIR)/usr/bin/xlunch_genquick
 	cp extra/updateentries $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop.sh $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop $(DESTDIR)/usr/share/applications/
