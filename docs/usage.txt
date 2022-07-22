@@ -1,4 +1,3 @@
-
 usage: xlunch [options]
     xlunch is a program launcher/option selector similar to dmenu or rofi.
     By default it launches in full-screen mode and terminates after a selection is made,
@@ -148,5 +147,4 @@ usage: xlunch [options]
                                            (default: ffffff3c)
         --scrollindicatorcolor [color]     Color to use for the scrollbar indicator
                                            (default: ffffff70)
-
 
