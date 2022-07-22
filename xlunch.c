@@ -264,7 +264,7 @@ int scrolled_past= 0;
 int hovered_entry = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
-color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 255};
+color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 102};
 color_t shadow_color = {.r = 0, .g = 0, .b = 0, .a = 30};
 int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
