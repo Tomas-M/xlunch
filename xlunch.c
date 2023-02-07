@@ -152,6 +152,7 @@ static struct option long_options[] =
         {"icon",                  required_argument, 0, 1025},
         {"scrollbarcolor",        required_argument, 0, 1023},
         {"scrollindicatorcolor",  required_argument, 0, 1024},
+        {"stdinpolltimeout",      required_argument, 0, 1026},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -270,6 +271,7 @@ int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
 color_t scrollbar_color = {.r = 255, .g = 255, .b = 255, .a = 60};
 color_t scrollindicator_color = {.r = 255, .g = 255, .b = 255, .a = 112};
+int stdin_poll_timeout = 10;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -737,7 +739,7 @@ FILE * determine_input_source(){
             fds.fd = 0; /* this is STDIN */
             fds.events = POLLIN;
             // Give poll a little timeout to make give the piping program some time
-            if (poll(&fds, 1, 10) == 0){
+            if (poll(&fds, 1, stdin_poll_timeout) == 0){
                 int flags = fcntl(fd, F_GETFL, 0);
                 flags &= ~O_NONBLOCK;
                 fcntl(fd, F_SETFL, flags);
@@ -1866,6 +1868,10 @@ void handle_option(int c, char *optarg) {
             exit(CONFIGERROR);
             break;
 
+        case 1026:
+            stdin_poll_timeout = atoi(optarg);
+            break;
+
         case 'H':
             fprintf (stderr,"usage: xlunch [options]\n"
                             "    xlunch is a program launcher/option selector similar to dmenu or rofi.\n"
@@ -1929,7 +1935,13 @@ void handle_option(int c, char *optarg) {
                             "                                           If x or y is negative positioning is relative\n"
                             "                                           to the other side of the screen.\n"
                             "        --noscroll                         Disable scroll in xlunch. Ignore entries\n"
-                            "                                           that can't fit the screen.\n\n"
+                            "                                           that can't fit the screen.\n"
+                            "        --stdinpolltimeout [i]             How long xlunch should wait (in milliseconds)\n"
+                            "                                           for data on stdin before assuming it is\n"
+                            "                                           invalid. Use if you find that your xlunch\n"
+                            "                                           menu ends up empty on occasion, even though\n"
+                            "                                           the entries you pass to xlunch through stdin\n"
+                            "                                           are sound. Defaults to 10.\n\n"
                             "    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n"
                             "    as a big single screen. You can customize this manually by setting windowed mode and\n"
                             "    providing the top/left coordinates and width/height of your monitor screen which\n"
