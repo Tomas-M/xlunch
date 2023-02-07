@@ -61,6 +61,12 @@ usage: xlunch [options]
                                            to the other side of the screen.
         --noscroll                         Disable scroll in xlunch. Ignore entries
                                            that can't fit the screen.
+        --stdinpolltimeout [i]             How long xlunch should wait (in milliseconds)
+                                           for data on stdin before assuming it is
+                                           invalid. Use if you find that your xlunch
+                                           menu ends up empty on occasion, even though
+                                           the entries you pass to xlunch through stdin
+                                           are sound. Defaults to 10.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and
