@@ -244,19 +244,8 @@ if ! [ -z "$icontheme" ]; then
   # Set for in separator to newline
   IFS=$'\n'
 
-  # Iterate over files in localappfolder and add them to the array
-  files=$(find -L "$localappfolder" -name "*.desktop" 2>/dev/null)
-  for desktopfile in $files
-  do
-    bname=$(basename "$desktopfile")
-    entry=$(readdesktopfile "$desktopfile")
-    if ! [ -z "$entry" ]; then
-      applications["$bname"]="$entry"
-    fi
-  done
-
-  # Iterate over files in globalappfolder and add them to the array if they don't already exists
-  files=$(find -L "$globalappfolder" -name "*.desktop" 2>/dev/null)
+  # Iterate over desktop files and add them to the array if they don't already exist
+  files=$(find -L "$localappfolder" "$globalappfolder" -name "*.desktop" 2>/dev/null)
   for desktopfile in $files
   do
     bname=$(basename "$desktopfile")
