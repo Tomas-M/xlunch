@@ -58,6 +58,7 @@ done
 
 globalappfolder=/usr/share/applications
 localappfolder=$user_home/.local/share/applications
+snapappfolder=/var/lib/snapd/desktop/applications
 pixmaps=/usr/share/pixmaps
 
 if [ -z "$icontheme" ]; then
@@ -245,7 +246,7 @@ if ! [ -z "$icontheme" ]; then
   IFS=$'\n'
 
   # Iterate over desktop files and add them to the array if they don't already exist
-  files=$(find -L "$localappfolder" "$globalappfolder" -name "*.desktop" 2>/dev/null)
+  files=$(find -L "$localappfolder" "$globalappfolder" "$snapappfolder" -name "*.desktop" 2>/dev/null)
   for desktopfile in $files
   do
     bname=$(basename "$desktopfile")
