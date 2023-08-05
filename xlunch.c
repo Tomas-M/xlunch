@@ -2181,6 +2181,7 @@ void handleButtonPress(XEvent ev) {
             }
 
             button_t * button = buttons;
+            button_t * lastbuttonclicked = NULL;
             while (button != NULL) {
                 int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
                 int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
@@ -2192,8 +2193,20 @@ void handleButtonPress(XEvent ev) {
                     if (button->clicked != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
                     button->clicked = 0;
                 }
+                if (button->clicked) lastbuttonclicked = button;
                 button = button->next;
             }
+
+            // mark as clicked only the last (top most visible) button
+            if (lastbuttonclicked != NULL) {
+               button = buttons;
+               while (button != NULL) {
+                  button->clicked = 0;
+                  button = button->next;
+               }
+               lastbuttonclicked->clicked = 1;
+            }
+
 
             if (voidclicked && void_click_terminate) {
                 cleanup();
