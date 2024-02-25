@@ -2586,6 +2586,9 @@ int main(int argc, char **argv){
         parse_entries();
     }
 
+    // accept delete window notifications from window managers
+    Atom wm_delete_window = XInternAtom(disp, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(disp, win, &wm_delete_window, 1);
 
     // prepare message for window manager that we are requesting fullscreen
     XClientMessageEvent msg = {
@@ -2714,6 +2717,13 @@ int main(int argc, char **argv){
                     case MotionNotify:
                         mouse_moves++;
                         recheckHover(ev);
+                        break;
+
+                    case ClientMessage:
+                        if (ev.xclient.data.l[0] == wm_delete_window) {
+                          cleanup();
+                          exit(ESCAPE);
+                        }
                         break;
 
                     default:
