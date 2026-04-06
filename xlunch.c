@@ -153,6 +153,7 @@ static struct option long_options[] =
         {"scrollbarcolor",        required_argument, 0, 1023},
         {"scrollindicatorcolor",  required_argument, 0, 1024},
         {"stdinpolltimeout",      required_argument, 0, 1026},
+        {"nostdin",               no_argument,       0, 1027},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -272,6 +273,7 @@ color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
 color_t scrollbar_color = {.r = 255, .g = 255, .b = 255, .a = 60};
 color_t scrollindicator_color = {.r = 255, .g = 255, .b = 255, .a = 112};
 int stdin_poll_timeout = 10;
+int nostdin = 0;
 
 #define MOUSE 1
 #define KEYBOARD 2
@@ -727,8 +729,10 @@ FILE * determine_input_source(){
         {
             homeconf = concat(home,"/.config/xlunch/entries.dsv");
         }
-
-        if (strlen(input_file)==0){
+        size_t input_file_len = strlen(input_file);
+        if (input_file_len == 0 && nostdin) {
+            fp = fopen(homeconf, "rb");
+        } else if (input_file_len == 0) {
             fp = stdin;
             int flags;
             int fd = fileno(fp);
@@ -1872,6 +1876,10 @@ void handle_option(int c, char *optarg) {
             stdin_poll_timeout = atoi(optarg);
             break;
 
+        case 1027:
+            nostdin = 1;
+            break;
+
         case 'H':
             fprintf (stderr,"usage: xlunch [options]\n"
                             "    xlunch is a program launcher/option selector similar to dmenu or rofi.\n"
@@ -1941,7 +1949,8 @@ void handle_option(int c, char *optarg) {
                             "                                           invalid. Use if you find that your xlunch\n"
                             "                                           menu ends up empty on occasion, even though\n"
                             "                                           the entries you pass to xlunch through stdin\n"
-                            "                                           are sound. Defaults to 10.\n\n"
+                            "                                           are sound. Defaults to 10.\n"
+                            "        --nostdin                          Disable stdin feature.\n\n"
                             "    Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors\n"
                             "    as a big single screen. You can customize this manually by setting windowed mode and\n"
                             "    providing the top/left coordinates and width/height of your monitor screen which\n"
