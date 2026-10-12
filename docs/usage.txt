@@ -67,6 +67,7 @@ usage: xlunch [options]
                                            menu ends up empty on occasion, even though
                                            the entries you pass to xlunch through stdin
                                            are sound. Defaults to 10.
+        --nostdin                          Disable stdin feature.
 
     Multi monitor setup: xlunch cannot detect your output monitors, it sees your monitors
     as a big single screen. You can customize this manually by setting windowed mode and
