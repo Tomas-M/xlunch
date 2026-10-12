@@ -21,13 +21,14 @@ process_directories()
          Icon=
          Exec=
          Hidden=
+         NoDisplay=
          Terminal=
 
          while read LINE; do
             eval $LINE
-         done <<< $(tac "$desktop" | egrep '^(Name|Icon|Exec|Hidden|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
+         done <<< $(tac "$desktop" | egrep '^(Name|Icon|Exec|Hidden|NoDisplay|Terminal)=' | sed -r "s/ *%.*//" | sed -r "s/=(.*)/='\\1'/")   #'
 
-         if [ "$Hidden" = "true" ]; then
+         if [ "$Hidden" = "true" -o "$NoDisplay" = "true" ]; then
             continue
          fi
 
