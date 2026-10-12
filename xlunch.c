@@ -38,6 +38,7 @@ const int VERSION_PATCH = 7; // Patch version, changes when something is changed
 /* check stdin */
 #include <sys/poll.h>
 #include <errno.h>
+#include <time.h>
 
 /* some globals for our window & X display */
 Display *disp;
@@ -154,6 +155,7 @@ static struct option long_options[] =
         {"scrollindicatorcolor",  required_argument, 0, 1024},
         {"stdinpolltimeout",      required_argument, 0, 1026},
         {"nostdin",               no_argument,       0, 1027},
+        {"nostretchrows",          no_argument,       0, 1028},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -205,6 +207,7 @@ int urows = 0;
 int rows;
 int column_margin = 0;
 int row_margin = 0;
+int no_row_stretch = 0;
 int icon_padding = 40;
 int icon_v_padding = -1;
 int text_padding = 10;
@@ -262,7 +265,14 @@ int least_v_margin = -1;
 int hide_missing = 0;
 int center_icons = 0;
 int noscroll = 0;
-int scrolled_past= 0;
+double scrolled_past=0;
+double scroll_target=0;
+struct timespec scroll_time;
+int scrollbar_drag_y=-1;
+double scrollbar_drag_scroll;
+typedef struct scrollbar {
+    int x, y, width, height, thumb_y, thumb_height;
+} scrollbar_t;
 int hovered_entry = 0;
 color_t text_color = {.r = 255, .g = 255, .b = 255, .a = 255};
 color_t prompt_color = {.r = 255, .g = 255, .b = 255, .a = 255};
@@ -270,8 +280,8 @@ color_t background_color = {.r = 46, .g = 52, .b = 64, .a = 102};
 color_t shadow_color = {.r = 0, .g = 0, .b = 0, .a = 30};
 int background_color_set = 0;
 color_t highlight_color = {.r = 255, .g = 255, .b = 255, .a = 50};
-color_t scrollbar_color = {.r = 255, .g = 255, .b = 255, .a = 60};
-color_t scrollindicator_color = {.r = 255, .g = 255, .b = 255, .a = 112};
+color_t scrollbar_color = {.r = 255, .g = 255, .b = 255, .a = 32};
+color_t scrollindicator_color = {.r = 255, .g = 255, .b = 255, .a = 160};
 int stdin_poll_timeout = 10;
 int nostdin = 0;
 
@@ -387,7 +397,10 @@ void recalc_cells()
     } else {
         column_margin = (usable_width - cell_width*columns)/(columns - 1);
     }
-    if (rows == 1){
+    // Keep configured row gaps instead of distributing unused vertical space.
+    if (no_row_stretch){
+        row_margin = least_v_margin;
+    } else if (rows == 1){
         row_margin = (usable_height - cell_height*rows);
     } else {
         row_margin = (usable_height - cell_height*rows)/(rows - 1);
@@ -456,7 +469,7 @@ void arrange_positions()
             } else {
                 current->x = (side_border * side_border_ratio) / 50 + i * (cell_width+column_margin);
             }
-            current->y = (border * border_ratio) / 50 + prompt_font_height + prompt_spacing + (j - scrolled_past) * (cell_height+row_margin);
+            current->y = (border * border_ratio) / 50 + prompt_font_height + prompt_spacing + j * (cell_height+row_margin) - (int)(scrolled_past * (cell_height+row_margin));
             if (upside_down) {
                 current->y=screen_height - cell_height - current->y;
             }
@@ -523,6 +536,7 @@ void clear_entries(){
     node_t * current = entries;
     while (current != NULL) {
         node_t * last = current;
+        current = current->next;
         if (clear_memory) {
             memset(last->title, 0, 256);
             memset(last->icon, 0, 256);
@@ -531,7 +545,6 @@ void clear_entries(){
             memset(last, 0, sizeof(node_t) - sizeof(node_t *));
         }
         free(last);
-        current = current->next;
     }
     entries = NULL;
 }
@@ -775,12 +788,26 @@ FILE * determine_input_source(){
     return fp;
 }
 
-int mouse_over_cell(node_t * cell, int index, int mouse_x, int mouse_y)
+// Keep drawing and hit testing inside the same scrolling viewport.
+void entry_viewport(int *top, int *bottom)
+{
+    *top=(border * border_ratio)/50+prompt_font_height+prompt_spacing;
+    *bottom=*top+(rows-1)*(cell_height+row_margin)+cell_height;
+    if (upside_down)
+    {
+        int original_top=*top;
+        *top=screen_height-*bottom;
+        *bottom=screen_height-original_top;
+    }
+}
+
+int mouse_over_cell(node_t * cell, int mouse_x, int mouse_y)
 {
     if (cell->hidden) return 0;
-
-    if (index > scrolled_past*columns && index < scrolled_past*columns + rows*columns +1
-        && mouse_x >= cell->x
+    int top, bottom;
+    entry_viewport(&top, &bottom);
+    if (mouse_y < top || mouse_y >= bottom) return 0;
+    if (mouse_x >= cell->x
         && mouse_x < cell->x+cell_width
         && mouse_y >= cell->y
         && mouse_y < cell->y+cell_height) return 1;
@@ -892,20 +919,77 @@ void joincmdlinetext()
     strcat(commandlinetext,"_");
 }
 
-void set_scroll_level(int new_scroll) {
-    if (!noscroll){
-        if (new_scroll != scrolled_past) {
-            scrolled_past = new_scroll;
-            if (scrolled_past > (entries_count - 1)/columns - rows + 1) {
-                scrolled_past = (entries_count - 1)/columns - rows + 1;
-            }
-            if (scrolled_past < 0) {
-                scrolled_past = 0;
-            }
-            arrange_positions();
-            updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
-        }
-    }
+// Scroll only as far as the last complete viewport.
+int max_scroll_level()
+{
+    int max=(entries_count+columns-1)/columns-rows;
+    return max > 0 ? max : 0;
+}
+
+// Direct positioning also stops any pending wheel animation.
+void set_scroll_level(double new_scroll)
+{
+    if (noscroll) return;
+    if (new_scroll > max_scroll_level()) new_scroll=max_scroll_level();
+    if (new_scroll < 0) new_scroll=0;
+    scroll_target=new_scroll;
+    if (new_scroll == scrolled_past) return;
+    scrolled_past=new_scroll;
+    arrange_positions();
+    updates=imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
+}
+
+// Accumulate wheel ticks while the displayed position catches up.
+void scroll_wheel(int direction)
+{
+    if (noscroll || scrollbar_drag_y >= 0) return;
+    if (scroll_target == scrolled_past) clock_gettime(CLOCK_MONOTONIC, &scroll_time);
+    scroll_target+=direction;
+    if (scroll_target > max_scroll_level()) scroll_target=max_scroll_level();
+    if (scroll_target < 0) scroll_target=0;
+}
+
+// Share scrollbar geometry between rendering and pointer handling.
+scrollbar_t scrollbar_geometry()
+{
+    int top, bottom;
+    entry_viewport(&top, &bottom);
+    scrollbar_t bar={.x=screen_width-36, .y=top+8, .width=20, .height=bottom-top-16};
+    int max=max_scroll_level();
+    if (noscroll || !max || bar.height < 10) { bar.width=0; return bar; }
+    bar.thumb_height=bar.height * (double)rows/(rows+max);
+    if (bar.thumb_height < 24) bar.thumb_height=24;
+    if (bar.thumb_height >= bar.height) bar.thumb_height=bar.height-1;
+    bar.thumb_y=bar.y+(int)((bar.height-bar.thumb_height)*scrolled_past/max);
+    return bar;
+}
+
+// Draw smooth rounded caps without blending overlapping translucent shapes twice.
+void draw_scrollbar_pill(Imlib_Image buffer, int x, int y, int height, color_t color)
+{
+    Imlib_Image pill=imlib_create_image(24, height*3);
+    imlib_context_set_image(pill);
+    imlib_image_set_has_alpha(1);
+    imlib_image_clear();
+    imlib_context_set_blend(0);
+    imlib_context_set_color(color.r, color.g, color.b, color.a);
+    imlib_image_fill_ellipse(12, 12, 12, 12);
+    imlib_image_fill_ellipse(12, height*3-13, 12, 12);
+    imlib_image_fill_rectangle(0, 12, 24, height*3-24);
+    imlib_context_set_image(buffer);
+    imlib_context_set_blend(1);
+    imlib_blend_image_onto_image(pill, 1, 0, 0, 24, height*3, x, y, 8, height);
+    imlib_context_set_image(pill);
+    imlib_free_image();
+    imlib_context_set_image(buffer);
+}
+
+// Preserve the grab point and clamp dragging at either end of the track.
+void drag_scrollbar(int mouse_y)
+{
+    scrollbar_t bar=scrollbar_geometry();
+    if (!bar.width) return;
+    set_scroll_level(scrollbar_drag_scroll+(double)(mouse_y-scrollbar_drag_y)*max_scroll_level()/(bar.height-bar.thumb_height));
 }
 
 void set_hover(int hovered, node_t * cell, int hover)
@@ -919,23 +1003,18 @@ void set_hover(int hovered, node_t * cell, int hover)
 
 void hover_entry(int entry){
     hoverset = KEYBOARD;
-    int to_row = (entry+columns-1)/columns;
-    int display_row = (hovered_entry-(scrolled_past*columns)+columns-1)/columns;
-    if (entry>(columns*rows)+scrolled_past*columns || entry<=scrolled_past*columns) {
-        set_scroll_level(to_row - display_row);
-    }
+    if (!entries_count) { hovered_entry=0; return; }
+    if (entry < 1) entry=1;
+    if (entry > entries_count) entry=entries_count;
+    if (noscroll && entry > rows*columns) entry=rows*columns;
+    set_scroll_level(scrolled_past);
+    int to_row=(entry-1)/columns;
+    if (to_row < scrolled_past) set_scroll_level(to_row);
+    if (to_row > scrolled_past+rows-1) set_scroll_level(to_row-rows+1);
     int j = 1;
-    int max = scrolled_past*columns + columns*rows;
-    max = (max > entries_count ? entries_count : max);
-    int i = (entry < scrolled_past*columns + 1
-            ? scrolled_past*columns + 1
-            : (entry > max
-                ? max
-                : entry));
     node_t * current = entries;
     while (current != NULL) {
-        if (j == i) set_hover(i, current, 1);
-        else        set_hover(i, current, 0);
+        set_hover(entry, current, j == entry);
         if (!current->hidden) j++;
         current = current->next;
     }
@@ -1880,6 +1959,10 @@ void handle_option(int c, char *optarg) {
             nostdin = 1;
             break;
 
+        case 1028:
+            no_row_stretch = 1;
+            break;
+
         case 'H':
             fprintf (stderr,"usage: xlunch [options]\n"
                             "    xlunch is a program launcher/option selector similar to dmenu or rofi.\n"
@@ -2020,6 +2103,8 @@ void handle_option(int c, char *optarg) {
                             "                                           application sizes.\n"
                             "        -V, --leastvmargin [i]             Adds a vertical margin to the calculation of\n"
                             "                                           application sizes.\n"
+                            "        --nostretchrows                    Keep row gaps at leastvmargin instead of\n"
+                            "                                           stretching them to fill the available height.\n"
                             "        -e, --hidemissing                  Hide entries with missing or broken icon images\n"
                             "        --tc, --textcolor [color]          Color to use for the text on the format rrggbbaa\n"
                             "                                           (default: ffffffff)\n"
@@ -2032,9 +2117,9 @@ void handle_option(int c, char *optarg) {
                             "        --hc, --highlightcolor [color]     Color to use for the highlight box\n"
                             "                                           (default: ffffff32)\n"
                             "        --scrollbarcolor [color]           Color to use for the scrollbar\n"
-                            "                                           (default: ffffff3c)\n"
+                            "                                           (default: ffffff20)\n"
                             "        --scrollindicatorcolor [color]     Color to use for the scrollbar indicator\n"
-                            "                                           (default: ffffff70)\n\n");
+                            "                                           (default: ffffffa0)\n\n");
             // Check if we came from the error block above or if this was a call with --help
             if(c == '?'){
                 exit(CONFIGERROR);
@@ -2117,24 +2202,26 @@ void init(int argc, char **argv)
 
 void recheckHover(XEvent ev) {
     node_t * current = entries;
-    int i = 1;
     int j = 1;
     int any_hovered = 0;
+    scrollbar_t bar=scrollbar_geometry();
+    int over_scrollbar=bar.width && ev.xmotion.x >= bar.x && ev.xmotion.x < bar.x+bar.width
+                       && ev.xmotion.y >= bar.y && ev.xmotion.y < bar.y+bar.height;
+    int pointer_selects_entries=mouse_moves>3 && !over_scrollbar && scrollbar_drag_y < 0;
 
     while (current != NULL)
     {
-        if (mouse_moves>3 && mouse_over_cell(current, j, ev.xmotion.x, ev.xmotion.y)) {
-            set_hover(i, current, 1);
+        if (pointer_selects_entries && mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
+            set_hover(j, current, 1);
             any_hovered = 1;
             hoverset=MOUSE;
         }
         else {
-            set_hover(i, current,0);
+            set_hover(j, current,0);
             set_clicked(current,0);
         }
         if(!current->hidden)
             j++;
-        i++;
         current = current->next;
     }
     if (any_hovered == 0) hovered_entry = 0;
@@ -2143,7 +2230,7 @@ void recheckHover(XEvent ev) {
     while (button != NULL) {
         int x = (button->x < 0 ? screen_width + button->x + 1 - button->w : button->x);
         int y = (button->y < 0 ? screen_height + button->y + 1 - button->h : button->y);
-        if (mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
+        if (!over_scrollbar && scrollbar_drag_y < 0 && mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
             if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
             button->hovered = 1;
         } else {
@@ -2156,6 +2243,7 @@ void recheckHover(XEvent ev) {
 }
 
 void handleButtonPress(XEvent ev) {
+    if (scrollbar_drag_y >= 0) return;
     switch (ev.xbutton.button) {
         case 3: // right click
             if (!desktop_mode) {
@@ -2164,28 +2252,37 @@ void handleButtonPress(XEvent ev) {
             }
             break;
         case 4: // scroll up
-            set_scroll_level(scrolled_past - 1);
-            recheckHover(ev);
+            scroll_wheel(-1);
             break;
         case 5: // scroll down
-            set_scroll_level(scrolled_past + 1);
-            recheckHover(ev);
+            scroll_wheel(1);
             break;
         case 1:; // left click
+            scrollbar_t bar=scrollbar_geometry();
+            // The scrollbar consumes the click even when void clicks terminate xlunch.
+            if (bar.width && ev.xbutton.x >= bar.x && ev.xbutton.x < bar.x+bar.width
+                && ev.xbutton.y >= bar.y && ev.xbutton.y < bar.y+bar.height)
+            {
+                set_scroll_level(scrolled_past);
+                if (ev.xbutton.y < bar.thumb_y || ev.xbutton.y >= bar.thumb_y+bar.thumb_height)
+                    set_scroll_level((double)(ev.xbutton.y-bar.y-bar.thumb_height/2)*max_scroll_level()/(bar.height-bar.thumb_height));
+                scrollbar_drag_y=ev.xbutton.y;
+                scrollbar_drag_scroll=scrolled_past;
+                recheckHover(ev);
+                return;
+            }
+            set_scroll_level(scrolled_past);
             node_t * current = entries;
             int voidclicked = 1;
-            int index = 1;
             mouse_moves += 4;
             recheckHover(ev);
             while (current != NULL)
             {
-                if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) {
+                if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
                     set_clicked(current,1);
                     voidclicked = 0;
                 }
                 else set_clicked(current,0);
-                if(!current->hidden)
-                    index++;
                 current = current->next;
             }
 
@@ -2226,16 +2323,20 @@ void handleButtonPress(XEvent ev) {
 }
 
 void handleButtonRelease(XEvent ev) {
+    if (ev.xbutton.button != Button1) return;
+    if (scrollbar_drag_y >= 0)
+    {
+        drag_scrollbar(ev.xbutton.y);
+        scrollbar_drag_y=-1;
+        recheckHover(ev);
+        return;
+    }
     node_t * current = entries;
-    int index = 1;
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, index, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
+        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) run_command(current->cmd);
         set_clicked(current, 0); // button release means all cells are not clicked
-        updates = imlib_update_append_rect(updates, current->x, current->y, icon_size, icon_size);
-        if(!current->hidden)
-            index++;
         current = current->next;
     }
 
@@ -2355,12 +2456,12 @@ void handleKeyPress(XEvent ev) {
     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
 }
 
-void renderEntry(Imlib_Image buffer, char title[256], node_t * current, Cursor * c, int up_x, int up_y) {
+void renderEntry(Imlib_Image buffer, char title[256], node_t * current, unsigned int * cursor_shape, int up_x, int up_y) {
     int h = 0;
     int w = 0;
     if (current->hovered)
     {
-        if (hoverset == MOUSE) *c = XCreateFontCursor(disp,XC_hand1);
+        if (hoverset == MOUSE) *cursor_shape = XC_hand1;
 
         if (highlight)
         {
@@ -2624,11 +2725,15 @@ int main(int argc, char **argv){
     // Get the FD of the X11 display
     x11_fd = ConnectionNumber(disp);
     eventfds[0].fd = x11_fd;
-    eventfds[0].events = POLLIN || POLLPRI || POLLOUT;
+    eventfds[0].events = POLLIN;
     if(input_source == stdin) {
         eventfds[1].fd = 0; /* this is STDIN */
         eventfds[1].events = POLLIN;
     }
+
+    // Reuse cursor resources across animation frames and partial repaints.
+    Cursor arrow_cursor=XCreateFontCursor(disp,XC_top_left_arrow);
+    Cursor hand_cursor=XCreateFontCursor(disp,XC_hand1);
 
     /* infinite event loop */
     for (;;)
@@ -2639,7 +2744,7 @@ int main(int argc, char **argv){
         // Poll for events, while blocking until one becomes available
         int poll_result;
         if(!XPending(disp)){
-            poll_result = poll(eventfds, (input_source == stdin ? 2 : 1), -1);
+            poll_result = poll(eventfds, (input_source == stdin ? 2 : 1), scroll_target != scrolled_past ? 16 : -1);
         } else {
             poll_result = 1;
             eventfds[0].revents = 1;
@@ -2696,6 +2801,8 @@ int main(int argc, char **argv){
                             calculate_percentage(screen_width, &uside_border);
                             if (!use_root_img) update_background_images();
                             recalc_cells();
+                            scrollbar_drag_y=-1;
+                            set_scroll_level(scrolled_past);
                             arrange_positions();
                             updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
                         }
@@ -2724,6 +2831,7 @@ int main(int argc, char **argv){
                     case LeaveNotify:
                     case EnterNotify:
                     case MotionNotify:
+                        if (ev.type == MotionNotify && scrollbar_drag_y >= 0) drag_scrollbar(ev.xmotion.y);
                         mouse_moves++;
                         recheckHover(ev);
                         break;
@@ -2740,6 +2848,25 @@ int main(int argc, char **argv){
                         break;
                     }
                 }
+            }
+            // Animate wheel scrolling using elapsed time, including frames without X events.
+            if (scroll_target != scrolled_past)
+            {
+                struct timespec now;
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                double elapsed=(now.tv_sec-scroll_time.tv_sec)+(now.tv_nsec-scroll_time.tv_nsec)/1000000000.0;
+                double fraction=elapsed/(0.06+elapsed);
+                scroll_time=now;
+                scrolled_past+=(scroll_target-scrolled_past)*fraction;
+                double remaining=(scroll_target-scrolled_past)*(cell_height+row_margin);
+                if (remaining > -0.5 && remaining < 0.5) scrolled_past=scroll_target;
+                arrange_positions();
+                Window root, child;
+                int root_x, root_y;
+                unsigned int mask;
+                XEvent pointer={0};
+                if (XQueryPointer(disp, win, &root, &child, &root_x, &root_y, &pointer.xmotion.x, &pointer.xmotion.y, &mask)) recheckHover(pointer);
+                updates=imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
             }
             /* no more events for now ? ok - idle time so lets draw stuff */
 
@@ -2768,28 +2895,24 @@ int main(int argc, char **argv){
                 imlib_blend_image_onto_image(background, 1, 0, 0, screen_width, screen_height, - up_x, - up_y, screen_width, screen_height);
 
                 node_t * current = entries;
-                int drawn = 0;
-                int seen = 0;
-                Cursor c = XCreateFontCursor(disp,XC_top_left_arrow);
+                int top, bottom;
+                entry_viewport(&top, &bottom);
+                imlib_context_set_cliprect(0, top-up_y, up_w, bottom-top);
+                unsigned int cursor_shape = XC_top_left_arrow;
 
                 while (current != NULL)
                 {
-                    if (!current->hidden)
+                    if (!current->hidden && current->y+cell_height > top && current->y < bottom)
                     {
-                        if (seen++ < scrolled_past * columns) {
-                            current = current->next;
-                            continue;
-                        }
-                        renderEntry(buffer, title, current, &c, up_x, up_y);
-                        if (++drawn == columns*rows)
-                            break;
+                        renderEntry(buffer, title, current, &cursor_shape, up_x, up_y);
                     }
                     current = current->next;
                 }
+                imlib_context_set_cliprect(0, 0, 0, 0);
 
                 button_t *button = buttons;
                 while (button != NULL) {
-                    if(button->hovered) c = XCreateFontCursor(disp,XC_hand1);
+                    if(button->hovered) cursor_shape = XC_hand1;
                     image = imlib_load_image(button->hovered ? (button->icon_highlight[0] == '\0' ? button->icon_normal : button->icon_highlight) : button->icon_normal);
                     if (image)
                     {
@@ -2810,7 +2933,7 @@ int main(int argc, char **argv){
                     button = button->next;
                 }
 
-                XDefineCursor(disp,win,c);
+                XDefineCursor(disp,win,cursor_shape == XC_hand1 ? hand_cursor : arrow_cursor);
 
                 /* set the buffer image as our current image */
                 imlib_context_set_image(buffer);
@@ -2832,32 +2955,14 @@ int main(int argc, char **argv){
                 }
 
 
-                /* draw scrollbar, currently not draggable, only indication of scroll */
-                if (!noscroll)
+                /* draw the scrollbar using the same geometry as its hit testing */
+                scrollbar_t bar=scrollbar_geometry();
+                if (bar.width)
                 {
-                   int scrollbar_width=15; // width of entire scrollbar
-                   int scrollbar_height=screen_height-2*border; // height of entire scrollbar
-                   int scrollbar_screen_margin=50; // distance from screen edge
-                   int pages = (entries_count - 1) / rows / columns + 1; // total pages to scroll, round up, min 1
-
-                   // show scrollbar only if there are more pages
-                   if (pages > 1)
-                   {
-                      int scrollbar_draggable_height = scrollbar_height * rows * columns / (entries_count+columns - ((entries_count+columns-1)%columns)); // height of scrollbar page (draggable), round to whole rows
-                      float p = (entries_count - 1) / columns + 1 - rows; // current scrolled percentage
-                      int scrollbar_draggable_shift = p ? (scrollbar_height - scrollbar_draggable_height) * scrolled_past / p : 0;
-
-                      imlib_context_set_blend(1);
-
-                      // draw scrollbar background on full height
-                      imlib_context_set_color(scrollbar_color.r, scrollbar_color.g, scrollbar_color.b, scrollbar_color.a);
-                      imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border, scrollbar_width, scrollbar_height);
-
-                      // draw current scroll position
-                      imlib_context_set_color(scrollindicator_color.r, scrollindicator_color.g, scrollindicator_color.b, scrollindicator_color.a);
-                      imlib_image_fill_rectangle(screen_width - scrollbar_screen_margin, border + scrollbar_draggable_shift, scrollbar_width, scrollbar_draggable_height);
-                      imlib_context_set_blend(0);
-                   }
+                    int x=bar.x+(bar.width-8)/2-up_x;
+                    draw_scrollbar_pill(buffer, x, bar.y-up_y, bar.height, scrollbar_color);
+                    draw_scrollbar_pill(buffer, x, bar.thumb_y-up_y, bar.thumb_height, scrollindicator_color);
+                    imlib_context_set_blend(0);
                 }
 
                 render_buffer = imlib_create_image(up_w, up_h);
