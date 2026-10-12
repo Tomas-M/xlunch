@@ -60,6 +60,9 @@ int screen_height;
 typedef struct node
 {
     char title[256];
+    char display_title[258];
+    int text_width;
+    int text_cell_width;
     char icon[256];
     char cmd[512];
     int hovered;
@@ -669,6 +672,8 @@ void push_entry(node_t * new_entry)//(char * title, char * icon, char * cmd, int
     new_entry->hidden=0;
     new_entry->hovered=0;
     new_entry->clicked=0;
+    new_entry->display_title[0]='\0';
+    new_entry->text_cell_width=-1;
     new_entry->next = NULL;
 
     shortcut_t *shortcut = shortcuts;
@@ -2456,7 +2461,7 @@ void handleKeyPress(XEvent ev) {
     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
 }
 
-void renderEntry(Imlib_Image buffer, char title[256], node_t * current, unsigned int * cursor_shape, int up_x, int up_y) {
+void renderEntry(Imlib_Image buffer, node_t * current, unsigned int * cursor_shape, int up_x, int up_y) {
     int h = 0;
     int w = 0;
     if (current->hovered)
@@ -2506,29 +2511,32 @@ void renderEntry(Imlib_Image buffer, char title[256], node_t * current, unsigned
     if (font && !no_title)
     {
         imlib_context_set_image(buffer);
-        int text_w;
-        int text_h;
-
-        const size_t osz = strlen(current->title);
-        size_t sz = osz;
         imlib_context_set_font(font);
-        do
+
+        // Keep label geometry stable across hover redraws; recompute it after resizing.
+        if (current->text_cell_width != cell_width)
         {
-            strncpyutf8(title,current->title,sz);
-            if(sz != osz)
-                strcat(title,"..");
-            imlib_get_text_size(title, &text_w, &text_h);
-            sz--;
-        } while(text_w > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+            const size_t osz = strlen(current->title);
+            size_t sz = osz;
+            do
+            {
+                strncpyutf8(current->display_title,current->title,sz);
+                if(sz != osz)
+                    strcat(current->display_title,"..");
+                imlib_get_text_size(current->display_title, &current->text_width, NULL);
+                sz--;
+            } while(current->text_width > cell_width-(text_after ? (icon_size != 0 ? icon_padding*2 : icon_padding) + icon_size + text_padding : 2*text_padding) && sz>0);
+            current->text_cell_width=cell_width;
+        }
 
         int d;
         if (current->clicked==1) d=4;
         else d=0;
 
         if (text_after) {
-            draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding*2 : icon_padding + text_padding) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, title, text_color);
+            draw_text_with_shadow(current->x - up_x + (text_other_side ? text_padding : (icon_size != 0 ? (padding_swap ? icon_padding*2 : icon_padding + text_padding) : icon_padding) + icon_size), current->y - up_y + cell_height/2 - font_height/2, current->display_title, text_color);
         } else {
-            draw_text_with_shadow(current->x - up_x + cell_width/2 - text_w/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_v_padding*2 : icon_v_padding + text_padding) + icon_size), title, text_color);
+            draw_text_with_shadow(current->x - up_x + cell_width/2 - current->text_width/2, current->y - up_y + (text_other_side ? text_padding : (padding_swap ? icon_v_padding*2 : icon_v_padding + text_padding) + icon_size), current->display_title, text_color);
         }
 
         /* free the font */
@@ -2543,7 +2551,6 @@ int main(int argc, char **argv){
     /* our virtual framebuffer image we draw into */
     Imlib_Image buffer;
     Imlib_Image render_buffer;
-    char title[256];
 
     /* width and height values */
     int w, h, x, y;
@@ -2904,7 +2911,7 @@ int main(int argc, char **argv){
                 {
                     if (!current->hidden && current->y+cell_height > top && current->y < bottom)
                     {
-                        renderEntry(buffer, title, current, &cursor_shape, up_x, up_y);
+                        renderEntry(buffer, current, &cursor_shape, up_x, up_y);
                     }
                     current = current->next;
                 }
