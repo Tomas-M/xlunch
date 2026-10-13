@@ -329,6 +329,8 @@ void focus_layout(void)
     footer_rect=(ui_rect_t){margin,bottom,screen_width-margin*2,0};
     if (ui_bool("footer.visible"))
     {
+        // A dedicated bottom margin moves the footer and frees the same height for the grid.
+        if (*ui_value("footer.bottom_margin")) bottom=screen_height-px("footer.bottom_margin");
         footer_rect.h=line_height("fonts.footer")+px("footer.padding")*2;
         if (ui_bool("footer.show_shortcuts")) footer_rect.h=fmax(footer_rect.h,line_height("fonts.footer")+px("footer.key_padding")*2);
         footer_rect.y=bottom-footer_rect.h;

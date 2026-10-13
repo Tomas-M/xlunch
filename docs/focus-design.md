@@ -25,6 +25,9 @@ are pixels multiplied by `ui.scale`, and fonts use names such as `DejaVuSans/12`
 Icon values can be theme names or file paths, relative to the profile.
 Set `footer.align=grid` to place selection details and shortcuts under the
 application area, leaving the space under the sidebar available for image buttons.
+`footer.bottom_margin` overrides the shared window margin at the bottom. Setting
+it to `0` places the footer against the bottom edge and gives the grid the freed
+height. When omitted, it follows `ui.margin` plus `ui.padding`.
 
 Groups match `.desktop` categories through `[group.<id>] categories=Network`.
 Favorites are an ordered list of desktop IDs in `[favorites] ids=...`.
