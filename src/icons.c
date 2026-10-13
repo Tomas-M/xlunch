@@ -5,6 +5,59 @@ static icon_cache_t *icon_cache;
 typedef struct icon_image { char *path; int w,h; Imlib_Image image; struct icon_image *next; } icon_image_t;
 static icon_image_t *icon_images;
 
+// Discard resolved paths and decoded pixels before rebuilding against current sources.
+void ui_icons_reset(void)
+{
+    while (icon_cache)
+    {
+        icon_cache_t *next=icon_cache->next;
+        free(icon_cache->name); free(icon_cache->path); free(icon_cache); icon_cache=next;
+    }
+    while (icon_images)
+    {
+        icon_image_t *next=icon_images->next;
+        imlib_context_set_image(icon_images->image); imlib_free_image();
+        free(icon_images->path); free(icon_images); icon_images=next;
+    }
+}
+
+// Persist resolved icon names and final-size ARGB pixels in the catalog snapshot.
+void ui_icons_cache(cache_io_t *io)
+{
+    if (!io->file) ui_icons_reset();
+    uint32_t count=0;
+    for (icon_cache_t *item=icon_cache;item;item=item->next) count++;
+    count=cache_number(io,count); if (count>100000) io->valid=0;
+    icon_cache_t *source=icon_cache;
+    for (uint32_t i=0;i<count && io->valid;i++)
+    {
+        icon_cache_t *item=io->file ? source : calloc(1,sizeof(*item));
+        item->name=cache_text(io,item->name); item->path=cache_text(io,item->path); item->size=cache_number(io,item->size);
+        if (io->file) source=source->next;
+        else { item->next=icon_cache; icon_cache=item; if (!item->name) io->valid=0; }
+    }
+    count=0;
+    for (icon_image_t *item=icon_images;item;item=item->next) count++;
+    count=cache_number(io,count); if (count>100000) io->valid=0;
+    icon_image_t *image_source=icon_images;
+    for (uint32_t i=0;i<count && io->valid;i++)
+    {
+        icon_image_t *item=io->file ? image_source : calloc(1,sizeof(*item));
+        item->path=cache_text(io,item->path); item->w=cache_number(io,item->w); item->h=cache_number(io,item->h);
+        if (io->file) imlib_context_set_image(item->image);
+        uint32_t w=cache_number(io,io->file ? imlib_image_get_width() : 0),h=cache_number(io,io->file ? imlib_image_get_height() : 0);
+        int dimensions=w && h && w<=4096 && h<=4096 && item->w>0 && item->h>0;
+        if (!dimensions || !item->path) io->valid=0;
+        size_t bytes=(size_t)w*h*sizeof(DATA32);
+        if (!io->file && bytes>(size_t)(io->end-io->position)) io->valid=0;
+        if (!io->valid) { if (!io->file) { free(item->path); free(item); } break; }
+        if (!io->file) { item->image=imlib_create_image(w,h); imlib_context_set_image(item->image); imlib_image_set_has_alpha(1); }
+        DATA32 *pixels=imlib_image_get_data(); cache_bytes(io,pixels,bytes); imlib_image_put_back_data(pixels);
+        if (io->file) image_source=image_source->next;
+        else { item->next=icon_images; icon_images=item; }
+    }
+}
+
 // Compare available icon sizes using fixed, threshold and scalable theme metadata.
 static void icon_candidate(const char *root, const char *theme, const char *directory, const char *name,
                            int requested, int size, int minimum, int maximum, int threshold, int scale,

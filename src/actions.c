@@ -77,6 +77,8 @@ void run_command(char * cmd_orig)
         exit(ALLOCERROR);
     }
 
+    if (cmd_orig[0]!=':' || starts_with(":recur",cmd_orig)) cache_cancel();
+
     int isrecur = starts_with(":recur ", cmd_orig) || (strcmp(":recur", cmd_orig) == 0);
     if(isrecur) {
         // split arguments into pieces

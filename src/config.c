@@ -359,6 +359,9 @@ void handle_option(int c, char *optarg) {
         case 1032:
             ui_read(optarg); ui_check_file=optarg;
             break;
+        case 1033:
+            rebuild_cache=1;
+            break;
 
         case 'a':
             text_after = 1;
@@ -525,6 +528,7 @@ void handle_option(int c, char *optarg) {
                             "        --ui-config [file]                 Apply a UTF-8 INI appearance profile\n"
                             "        --set [section.key=value]          Override one INI property\n"
                             "        --check-ui-config [file]           Validate INI without opening X11\n"
+                            "        --rebuild-cache                    Rebuild desktop/icon cache without X11\n"
                             "        -H, --help                         Shows this help message\n"
                             "        --name                             POSIX-esque way to specify the first part of\n"
                             "                                           WM_CLASS (default: environment variable \n"

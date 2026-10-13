@@ -7,8 +7,35 @@ static const ui_definition_t definitions[]={
 #include "ui_properties.h"
 };
 static ui_setting_t *settings;
+static const ui_definition_t *definition(const char *key);
 int focus_mode;
 const char *ui_check_file;
+
+// Fingerprint effective profile values independently of the INI's ordering and filename.
+uint64_t ui_cache_config(uint64_t hash)
+{
+    for (size_t i=0;i<sizeof(definitions)/sizeof(*definitions);i++)
+        if (!strchr(definitions[i].key,'*')) hash=cache_hash(cache_hash(hash,definitions[i].key),ui_value(definitions[i].key));
+    uint64_t named=0;
+    for (ui_setting_t *item=settings;item;item=item->next)
+        if (strchr(definition(item->key)->key,'*')) named+=cache_hash(cache_hash(14695981039346656037ULL,item->key),item->value);
+    char value[24]; snprintf(value,sizeof(value),"%016llx",(unsigned long long)named);
+    return cache_hash(hash,value);
+}
+
+// Prepare application and component icon sizes without requiring an X11 connection.
+void ui_warm_icons(void)
+{
+    int sizes[]={lround(icon_size*ui_scale()),lround(ui_number("sidebar.icon_size")*ui_scale()),
+        lround(ui_number("header.icon_size")*ui_scale()),lround(ui_number("session.icon_size")*ui_scale())};
+    for (node_t *entry=entries;entry;entry=entry->next) ui_icon_image(entry->icon,sizes[0],sizes[0]);
+    for (size_t i=0;i<sizeof(definitions)/sizeof(*definitions);i++)
+        if (definitions[i].type==UI_ICON && !strchr(definitions[i].key,'*'))
+            for (int k=0;k<4;k++) if (sizes[k]>0) ui_icon_image(ui_value(definitions[i].key),sizes[k],sizes[k]);
+    for (ui_setting_t *item=settings;item;item=item->next)
+        if (definition(item->key)->type==UI_ICON && strchr(definition(item->key)->key,'*'))
+            for (int k=0;k<4;k++) if (sizes[k]>0) ui_icon_image(item->value,sizes[k],sizes[k]);
+}
 
 // Report configuration failures without opening X11 or writing protocol output.
 static void config_error(const char *file, int line, const char *message, const char *key)

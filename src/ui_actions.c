@@ -3,6 +3,7 @@
 // Return a selection without invoking a backend, preserving the stdout protocol.
 static void output_selection(const char *value)
 {
+    cache_cancel();
     printf("%s\n",value); fflush(stdout);
     if (!dont_quit) { cleanup(); exit(OKAY); }
     reset_prompt();
@@ -19,6 +20,7 @@ void ui_action(const char *command, const char *output)
 // Launch helpers with separate arguments, preserving quoting and the stdout contract.
 static void launch(const char *launcher, const char *arguments, const char *value, const char *program)
 {
+    cache_cancel();
     int count; char **items=ui_list(arguments,&count);
     char **argv=calloc(count+4,sizeof(*argv)); argv[0]=strdup(launcher);
     for (int i=0;i<count;i++) argv[i+1]=items[i];

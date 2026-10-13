@@ -23,6 +23,23 @@ Bundled interface SVGs use librsvg/Cairo at runtime for sharp rendering at the r
 Their license is included in `extra/focus-icons`.
 See [the profile](extra/focus.ini.example) and [configuration documentation](docs/focus-design.md).
 
+Desktop catalogs load from `~/.cache/xlunch` by default (`$XDG_CACHE_HOME/xlunch` when set), including resolved icons and
+uncompressed pixels at the configured sizes. After the first frame, a separate process
+refreshes the snapshot at nice priority 19. A completed refresh updates the open menu
+while preserving its query, category, scroll and selected desktop ID. Launching an
+application or closing the menu cancels the refresh; incomplete files never replace
+the previous snapshot. Missing or damaged snapshots fall back to scanning desktop files.
+
+Create a snapshot during image preparation without a running X server:
+
+```sh
+xlunch --ui-config /etc/xlunch/focus.ini --rebuild-cache
+```
+
+Use the same HOME, locale, PATH, XDG environment and appearance settings as the target
+session. Different contexts get separate snapshots. Runtime buttons do not affect the
+cache key. This cache applies to `entries.source=desktop`; streamed DSV input stays live.
+
 # website
 
 detailed info at: http://www.xlunch.org/

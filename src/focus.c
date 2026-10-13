@@ -442,6 +442,20 @@ scrollbar_t focus_scrollbar(void)
 // Queue a complete Focus redraw, including selection details and navigation states.
 void focus_refresh(void) { updates=imlib_update_append_rect(updates,0,0,screen_width,screen_height); }
 
+// Replace refreshed metadata while keeping the query, category, scroll and selection identity.
+void focus_catalog_changed(node_t *catalog)
+{
+    char *selection=selected>=0 && selected<view_count && view[selected]->id ? strdup(view[selected]->id) : NULL;
+    clear_entries(); entries=catalog; ui_custom_entries(); filter_entries();
+    navigation_build(); navigation_positions(); navigation_positions(); focus_positions();
+    selected=-1;
+    for (int i=0;i<view_count;i++) if (selection && view[i]->id && !strcmp(selection,view[i]->id)) selected=i;
+    free(selection);
+    if (selected<0 && view_count) selected=0;
+    if (keyboard_target>=10000) keyboard_target=selected<0 ? 5000 : 10000+selected;
+    hovered=-1; pressed_target=0; hovered_entry=0;
+}
+
 // Render shared component interaction states from global colors and local overrides.
 static void item_box(Imlib_Image buffer, const char *component, ui_rect_t rect, int radius, int border,
                      color_t normal, int is_hovered, int is_selected, int is_focused, int ox, int oy)

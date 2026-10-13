@@ -106,7 +106,7 @@ extern Window   win;
 extern XVisualInfo vinfo;
 extern XSetWindowAttributes attr;
 extern int x11_fd;
-extern struct pollfd eventfds[2];
+extern struct pollfd eventfds[3];
 extern XIM im;
 extern XIC ic;
 extern int screen;

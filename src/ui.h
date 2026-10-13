@@ -1,6 +1,7 @@
 #ifndef XLUNCH_UI_H
 #define XLUNCH_UI_H
 #include "xlunch.h"
+#include "cache.h"
 #include <dirent.h>
 #include <locale.h>
 #include <langinfo.h>

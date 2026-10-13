@@ -29,7 +29,7 @@ Window   win;
 XVisualInfo vinfo;
 XSetWindowAttributes attr;
 int x11_fd;
-struct pollfd eventfds[2];
+struct pollfd eventfds[3]={{.fd=-1},{.fd=-1},{.fd=-1}};
 
 XIM im;
 XIC ic;
@@ -90,6 +90,7 @@ struct option long_options[] =
         {"ui-config",              required_argument, 0, 1030},
         {"set",                    required_argument, 0, 1031},
         {"check-ui-config",        required_argument, 0, 1032},
+        {"rebuild-cache",          no_argument,       0, 1033},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -242,6 +243,7 @@ void restack()
 
 void cleanup()
 {
+    cache_cancel();
     focus_cleanup();
     flock(lock, LOCK_UN | LOCK_NB);
     // destroy window, disconnect display, and exit
@@ -313,6 +315,15 @@ void init(int argc, char **argv)
         setlocale(LC_CTYPE,""); setlocale(LC_MESSAGES,""); setlocale(LC_COLLATE,"");
         // Desktop metadata and INI labels are UTF-8 even under the C locale.
         if (strcasecmp(nl_langinfo(CODESET),"UTF-8") && strcasecmp(nl_langinfo(CODESET),"UTF8")) setlocale(LC_CTYPE,"C.UTF-8");
+    }
+
+    if (rebuild_cache)
+    {
+        if (strcmp(ui_value("entries.source"),"desktop"))
+        {
+            fprintf(stderr,"--rebuild-cache requires entries.source=desktop\n"); exit(CONFIGERROR);
+        }
+        exit(cache_rebuild() ? OKAY : EXTERNALERROR);
     }
 
     /* connect to X */
@@ -509,7 +520,8 @@ int main(int argc, char **argv){
     if (!strcmp(ui_value("entries.source"),"desktop"))
     {
         if (input_source && input_source!=stdin) fclose(input_source);
-        input_source=NULL; ui_load_entries();
+        input_source=NULL;
+        if (!cache_load(0)) ui_load_entries();
     }
     else
     {
@@ -560,6 +572,7 @@ int main(int argc, char **argv){
     Cursor hand_cursor=XCreateFontCursor(disp,XC_hand1);
     Cursor text_cursor=focus_mode ? XCreateFontCursor(disp,XC_xterm) : arrow_cursor;
 
+    int cache_started=0;
     /* infinite event loop */
     for (;;)
     {
@@ -569,7 +582,7 @@ int main(int argc, char **argv){
         // Poll for events, while blocking until one becomes available
         int poll_result;
         if(!XPending(disp)){
-            poll_result = poll(eventfds, (input_source == stdin ? 2 : 1), scroll_target != scrolled_past ? 16 : -1);
+            poll_result = poll(eventfds, 3, scroll_target != scrolled_past ? 16 : -1);
         } else {
             poll_result = 1;
             eventfds[0].revents = 1;
@@ -675,6 +688,7 @@ int main(int argc, char **argv){
                     }
                 }
             }
+            cache_update();
             // Animate wheel scrolling using elapsed time, including frames without X events.
             if (scroll_target != scrolled_past)
             {
@@ -831,6 +845,10 @@ int main(int argc, char **argv){
         /* if we had updates - free them */
         if (updates)
             imlib_updates_free(updates);
+        if (!cache_started && updates)
+        {
+            XFlush(disp); cache_start(); cache_started=1;
+        }
         /* loop again waiting for events */
     }
     return 0;
