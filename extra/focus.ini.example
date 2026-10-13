@@ -232,6 +232,8 @@ thumb_drag=ffffffff
 
 [footer]
 visible=true
+# Align selection text and shortcut hints with the window or the application grid.
+align=window
 show_selection=true
 show_description=true
 show_shortcuts=true

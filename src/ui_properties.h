@@ -138,6 +138,7 @@
 {"scrollbar.thumb_hover",UI_COLOR,"ffffffc0",""},
 {"scrollbar.thumb_drag",UI_COLOR,"ffffffff",""},
 {"footer.visible",UI_BOOL,"true",""},
+{"footer.align",UI_ENUM,"window","window|grid"},
 {"footer.show_selection",UI_BOOL,"true",""},
 {"footer.show_description",UI_BOOL,"true",""},
 {"footer.show_shortcuts",UI_BOOL,"true",""},

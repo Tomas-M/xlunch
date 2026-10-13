@@ -372,6 +372,11 @@ void focus_layout(void)
     if (ui_bool("heading.visible")) { heading_rect.h=line_height("fonts.heading"); top+=heading_rect.h+px("heading.gap"); }
     int reserved=ui_bool("scrollbar.visible") ? px("scrollbar.hit_width")+px("scrollbar.margin") : 0;
     grid_rect=(ui_rect_t){left,top,width-reserved,bottom-top};
+    if (!strcmp(ui_value("footer.align"),"grid"))
+    {
+        footer_rect.x=grid_rect.x;
+        footer_rect.w=screen_width-margin-footer_rect.x;
+    }
     if (grid_rect.w<=0 || grid_rect.h<=0) { fprintf(stderr,"Focus components do not fit this window; reduce margins or hide components.\n"); exit(CONFIGERROR); }
     navigation_positions(); navigation_positions();
     if (!search_rect.h && keyboard_target==5000) keyboard_target=0;
