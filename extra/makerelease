@@ -10,9 +10,9 @@ if [ $? -ne 0 ]; then
 fi
 mv -f docs/usage2.txt docs/usage.txt
 
-OLDMAJOR=$(cat xlunch.c | grep 'int VERSION_MAJOR' | sed -r 's/.*= *|;.*//g')
-OLDMINOR=$(cat xlunch.c | grep 'int VERSION_MINOR' | sed -r 's/.*= *|;.*//g')
-OLDPATCH=$(cat xlunch.c | grep 'int VERSION_PATCH' | sed -r 's/.*= *|;.*//g')
+OLDMAJOR=$(cat src/main.c | grep 'int VERSION_MAJOR' | sed -r 's/.*= *|;.*//g')
+OLDMINOR=$(cat src/main.c | grep 'int VERSION_MINOR' | sed -r 's/.*= *|;.*//g')
+OLDPATCH=$(cat src/main.c | grep 'int VERSION_PATCH' | sed -r 's/.*= *|;.*//g')
 
 echo -ne "New MAJOR VERSION ($OLDMAJOR): "
 read MAJOR
@@ -27,9 +27,9 @@ read PATCH
 if [ "$PATCH" = "" ]; then PATCH=$OLDPATCH; fi
 
 
-sed -r -i "s/(int VERSION_MAJOR *= *)[0-9]+/\\1$MAJOR/" xlunch.c
-sed -r -i "s/(int VERSION_MINOR *= *)[0-9]+/\\1$MINOR/" xlunch.c
-sed -r -i "s/(int VERSION_PATCH *= *)[0-9]+/\\1$PATCH/" xlunch.c
+sed -r -i "s/(int VERSION_MAJOR *= *)[0-9]+/\\1$MAJOR/" src/main.c
+sed -r -i "s/(int VERSION_MINOR *= *)[0-9]+/\\1$MINOR/" src/main.c
+sed -r -i "s/(int VERSION_PATCH *= *)[0-9]+/\\1$PATCH/" src/main.c
 
 sed -r -i "s:v[0-9]+.[0-9]+.[0-9]+:v$MAJOR.$MINOR.$PATCH:g" docs/index.html
 

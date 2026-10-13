@@ -1,5 +1,5 @@
 CC = gcc
-LDFLAGS = -lImlib2 -lX11
+LDFLAGS = -lImlib2 -lX11 -lm -ldl
 CFLAGS ?= -O2 -s
 #CFLAGS ?= -ggdb -g3 # For debugging
 
@@ -22,6 +22,8 @@ install: xlunch
 	cp default.conf $(DESTDIR)/etc/xlunch/default.conf
 	bash extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
 	cp -r svgicons/ $(DESTDIR)/usr/share/xlunch/ 2>/dev/null || :
+	cp extra/focus.ini.example $(DESTDIR)/usr/share/xlunch/
+	cp -r extra/focus-icons $(DESTDIR)/usr/share/xlunch/
 
 remove:
 	rm -r $(DESTDIR)/etc/xlunch
@@ -42,8 +44,10 @@ livetest: xlunch
 test: xlunch
 	./xlunch -g extra/wp.jpg -f "extra/OpenSans-Regular.ttf/10" -i extra/sample_entries.dsv -b 140 --outputonly --iconpadding 20 --textpadding 10 --paddingswap --leastmargin 10 --highlight extra/highlight.png
 
-xlunch: xlunch.c
-	$(CC) xlunch.c -o xlunch $(LDFLAGS) $(CFLAGS)
+SOURCES = $(wildcard src/*.c)
+
+xlunch: $(SOURCES) $(wildcard src/*.h)
+	$(CC) $(SOURCES) -o xlunch $(LDFLAGS) $(CFLAGS)
 
 entries.dsv:
 	bash extra/genentries > entries.dsv

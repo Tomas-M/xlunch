@@ -1,0 +1,282 @@
+# Generic Focus profile. Enable with --ui-config /etc/xlunch/focus.ini.
+# Disable a component with visible=false; empty text/icon hides that part.
+# Colors are RRGGBBAA with alpha last. Geometry uses scaled logical pixels.
+
+[ui]
+mode=focus
+scale=1
+margin=28
+padding=0
+
+[entries]
+source=desktop
+
+[desktop]
+# The desktop file path is passed as the final argument, without a shell.
+launcher=gio
+launcher_args=launch
+
+[icons]
+# Application icons use this theme; interface SVGs are bundled under focus-icons.
+theme=hicolor
+# Empty inherits the text color for symbolic icons.
+color=
+
+[fonts]
+entries=DejaVuSans/10
+body=DejaVuSans/12
+small=DejaVuSans/10
+header=DejaVuSans/18
+heading=DejaVuSans/15
+search=DejaVuSans/12
+sidebar=DejaVuSans/12
+footer=DejaVuSans/10
+
+[colors]
+text=ffffffff
+muted=ffffffb3
+surface=ffffff32
+border=ffffff20
+accent=ffffffff
+hover=ffffff32
+selected=ffffff32
+selected_border=00000000
+focus_border=ffffff50
+
+[labels]
+confirm_title=Confirm action
+confirm_accept=Continue
+confirm_cancel=Cancel
+
+[background]
+color=101010ff
+use_root=true
+# Use the desktop wallpaper, or set image to an explicit background file.
+image=
+placement=fill
+overlay=00000066
+blur=0
+
+[header]
+visible=true
+text=xlunch
+icon=/usr/share/icons/hicolor/48x48/apps/xlunch.png
+icon_size=36
+caption=Applications
+gap=12
+padding=16
+background=00000000
+separator_width=0
+
+[sidebar]
+visible=true
+width=176
+padding=12
+gap=6
+item_height=44
+item_padding=12
+item_radius=8
+icon_size=16
+show_labels=true
+show_counts=false
+separator_after=favorites
+separator_before_session=true
+order=all,favorites,groups,other
+background=00000000
+
+[navigation.all]
+visible=true
+label=All apps
+icon=./focus-icons/grid-2x2-symbolic.svg
+
+[navigation.favorites]
+visible=true
+label=Favorites
+icon=./focus-icons/pin-symbolic.svg
+
+[navigation.other]
+visible=true
+label=Other
+icon=./focus-icons/folder-symbolic.svg
+
+[groups]
+visible=true
+show_empty=false
+order=internet,office,graphics,media,development,utility,system,education,games,science
+
+[group.internet]
+label=Internet
+icon=./focus-icons/globe-symbolic.svg
+categories=Network
+
+[group.office]
+label=Office
+icon=./focus-icons/file-text-symbolic.svg
+categories=Office
+
+[group.graphics]
+label=Graphics
+icon=./focus-icons/palette-symbolic.svg
+categories=Graphics
+
+[group.media]
+label=Media
+icon=./focus-icons/headphones-symbolic.svg
+categories=AudioVideo,Audio,Video
+
+[group.development]
+label=Development
+icon=./focus-icons/code-xml-symbolic.svg
+categories=Development
+
+[group.system]
+label=System
+icon=./focus-icons/settings-2-symbolic.svg
+categories=System,Settings
+
+[group.utility]
+label=Accessories
+icon=./focus-icons/wrench-symbolic.svg
+categories=Utility
+
+[group.education]
+label=Education
+icon=./focus-icons/graduation-cap-symbolic.svg
+categories=Education
+
+[group.games]
+label=Games
+icon=./focus-icons/gamepad-2-symbolic.svg
+categories=Game
+
+[group.science]
+label=Science
+icon=./focus-icons/flask-conical-symbolic.svg
+categories=Science
+
+[favorites]
+# Fixed list in display order. Adjust desktop file IDs to installed apps.
+# Missing applications are omitted without changing this profile.
+# Custom entries can be referenced as custom:terminal.
+ids=firefox-esr.desktop,org.gnome.Terminal.desktop
+empty_text=No favorite applications available
+
+[search]
+enabled=true
+visible=true
+placeholder=Search applications
+icon=./focus-icons/search-symbolic.svg
+# Search all applications even when a menu category is selected; group restricts it.
+scope=all
+height=60
+padding=16
+radius=8
+border_width=0
+background=ffffff12
+show_shortcut=true
+allow_commands=false
+command_prefix=>
+# Empty prefix enables executable detection and prefers an existing application icon.
+# Optional helper receives the command and resolved executable as separate arguments.
+command_launcher=
+command_launcher_args=
+
+[heading]
+visible=true
+all_text=All applications
+search_text=Search results
+show_count=true
+count_text=Apps: {count}
+empty_text=No applications found
+gap=16
+
+[grid]
+visible=true
+# 0 computes the column count from available width and minimum tile width.
+columns=0
+tile_min_width=140
+tile_min_height=128
+gap_x=14
+gap_y=14
+padding=12
+icon_size=64
+icon_text_gap=10
+label_lines=1
+tile_radius=10
+tile_border_width=0
+tile_background=00000000
+tile_border=00000000
+# Optional overrides; empty values inherit shared colors.
+hover_background=ffffff32
+selected_border=00000000
+
+[scroll]
+enabled=true
+smooth=true
+# Animation duration is milliseconds; wheel distance is logical pixels.
+duration=120
+wheel_step=72
+
+[scrollbar]
+visible=true
+width=8
+hit_width=20
+margin=16
+inset=8
+radius=4
+min_thumb_height=24
+track=ffffff20
+thumb=ffffffa0
+thumb_hover=ffffffc0
+thumb_drag=ffffffff
+
+[footer]
+visible=true
+show_selection=true
+show_description=true
+show_shortcuts=true
+select_text=Select
+open_text=Open
+close_text=Close
+padding=16
+separator_width=1
+background=00000000
+key_background=ffffff10
+key_border=ffffff60
+key_padding=4
+key_radius=4
+key_border_width=1
+key_gap=6
+shortcut_gap=16
+
+[session]
+# Session belongs to the sidebar; hiding the sidebar hides this control.
+# Enable after defining your own action sections and listing their IDs below.
+visible=false
+# Extra gap after the sidebar separator.
+margin_top=0
+label=Session
+icon=./focus-icons/power-symbolic.svg
+# grid replaces applications in the main area; menu opens a popup list.
+view=grid
+items=
+count_text={count} items
+# Popup menu only; the main Session grid uses all dimensions and styles from [grid].
+icon_size=24
+padding=12
+gap=8
+radius=10
+# Popup surface; the sidebar button inherits normal menu styling.
+background=ffffff32
+
+# Define any number of [action.<id>] sections with label, icon and command.
+# Icons and commands belong to the user's system, not to xlunch defaults.
+# Optional keys: output, confirm, confirm_text. output is used only with --outputonly.
+
+# Optional custom entry with stable identity custom:terminal.
+# [entry.terminal]
+# label=Terminal
+# icon=utilities-terminal
+# command=xterm
+# categories=System,Utility
+# description=Command line
