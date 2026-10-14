@@ -64,6 +64,14 @@ static int environment_matches(const char *list)
     free(environments); return found;
 }
 
+// Derive availability from the wrapper's target executable, including cached entries.
+int ui_entry_needs_install(node_t *entry)
+{
+    if (!entry->executable || !*entry->executable) return 0;
+    char *path=ui_executable(entry->executable);
+    int missing=!path; free(path); return missing;
+}
+
 // Parse only the main desktop-entry group, respecting visibility and localization.
 static void desktop_entry(const char *file, const char *id)
 {
@@ -92,6 +100,7 @@ static void desktop_entry(const char *file, const char *id)
         if (!strcmp(key,"NotShowIn")) destination=&not;
         if (!strcmp(key,"Categories")) destination=&entry->categories;
         if (!strcmp(key,"Exec")) destination=&entry->desktop_exec;
+        if (!strcmp(key,"X-Xlunch-Executable")) destination=&entry->executable;
         if (destination) { free(*destination); *destination=desktop_string(value); }
         if (!strcmp(key,"Hidden")) hidden=!strncmp(value,"true",4);
         if (!strcmp(key,"NoDisplay")) no_display=!strncmp(value,"true",4);

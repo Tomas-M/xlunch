@@ -28,7 +28,7 @@ typedef struct node
     int text_cell_width;
     char icon[256];
     char cmd[512];
-    char *id,*name,*categories,*description,*keywords,*desktop_file,*desktop_exec;
+    char *id,*name,*categories,*description,*keywords,*desktop_file,*desktop_exec,*executable;
     int hovered;
     int clicked;
     int hidden;

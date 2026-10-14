@@ -37,6 +37,7 @@ extern char focus_group[256];
 void ui_activate(node_t *entry);
 void ui_action(const char *command, const char *output);
 char *ui_executable(const char *name);
+int ui_entry_needs_install(node_t *entry);
 int ui_command(const char *command);
 void focus_layout(void);
 void focus_positions(void);

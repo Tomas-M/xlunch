@@ -34,6 +34,18 @@ is in logical pixels; `0` disables it. Each fade stays at its viewport edge duri
 scrolling and shrinks away as the first or final row becomes fully visible.
 Sidebar, footer and scrollbar keep their normal appearance.
 
+Installer launchers can declare their target program with
+`X-Xlunch-Executable=program` in the desktop entry, using a command name or an
+absolute path. `grid.uninstalled_icon_transparency` sets how transparent icons
+with a missing executable are, from `0` (opaque) to `100` (invisible), default `50`.
+Hovering restores the full icon. Labels and footer descriptions stay unchanged.
+Availability is checked when rendering, including with cached catalogs, so
+installing or removing the program updates its indication on redraw. Transparency
+is applied while compositing; cached icon pixels retain their original alpha.
+`grid.installed_first=true` places available applications before missing ones,
+preserving the original order within each group, including Favorites. Its default
+is `false`. Ordering follows executable availability, so hovering never moves a tile.
+
 Groups match `.desktop` categories through `[group.<id>] categories=Network`.
 Favorites are an ordered list of desktop IDs in `[favorites] ids=...`.
 With `search.scope=all`, search includes applications from any category, even

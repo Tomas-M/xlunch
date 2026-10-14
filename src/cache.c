@@ -75,8 +75,8 @@ static node_t *cache_catalog(cache_io_t *io)
     for (uint32_t i=0;i<count && io->valid;i++)
     {
         node_t *entry=io->file ? source : calloc(1,sizeof(*entry));
-        char *fields[]={entry->title,entry->icon,entry->id,entry->name,entry->categories,entry->description,entry->keywords,entry->desktop_file,entry->desktop_exec};
-        for (int k=0;k<9;k++) fields[k]=cache_text(io,io->file ? fields[k] : NULL);
+        char *fields[]={entry->title,entry->icon,entry->id,entry->name,entry->categories,entry->description,entry->keywords,entry->desktop_file,entry->desktop_exec,entry->executable};
+        for (int k=0;k<10;k++) fields[k]=cache_text(io,io->file ? fields[k] : NULL);
         if (io->file) { source=source->next; continue; }
         if (!fields[0] || !fields[1] || !fields[2] || !fields[3] || !fields[7]) io->valid=0;
         snprintf(entry->title,sizeof(entry->title),"%s",fields[0] ? fields[0] : "");
@@ -84,6 +84,7 @@ static node_t *cache_catalog(cache_io_t *io)
         free(fields[0]); free(fields[1]);
         entry->id=fields[2]; entry->name=fields[3]; entry->categories=fields[4]; entry->description=fields[5];
         entry->keywords=fields[6]; entry->desktop_file=fields[7]; entry->desktop_exec=fields[8]; entry->text_cell_width=-1;
+        entry->executable=fields[9];
         *tail=entry; tail=&entry->next;
     }
     return catalog;
@@ -101,7 +102,7 @@ int cache_load(int refresh)
     if (!valid) { free(data); return 0; }
     uint32_t hash=2166136261U,expected; memcpy(&expected,data+size-4,4);
     for (size_t i=0;i<size-4 && valid;i++) hash=(hash^data[i])*16777619U;
-    if (!valid || hash!=expected || memcmp(data,"XLCACHE1",8)) { free(data); return 0; }
+    if (!valid || hash!=expected || memcmp(data,"XLCACHE2",8)) { free(data); return 0; }
     cache_io_t io={.position=data+8,.end=data+size-4,.valid=1};
     node_t *catalog=cache_catalog(&io);
     if (io.valid) ui_icons_cache(&io);
@@ -128,7 +129,7 @@ int cache_rebuild(void)
     asprintf(&temporary_file,"%s.%ld.tmp",cache_file,(long)getpid());
     FILE *file=fopen(temporary_file,"wb"); if (!file) { perror(temporary_file); return 0; }
     cache_io_t io={.file=file,.valid=1,.hash=2166136261U};
-    cache_bytes(&io,"XLCACHE1",8); cache_catalog(&io); ui_icons_cache(&io);
+    cache_bytes(&io,"XLCACHE2",8); cache_catalog(&io); ui_icons_cache(&io);
     if (fwrite(&io.hash,1,4,file)!=4) io.valid=0;
     if (fclose(file)) io.valid=0;
     if (io.valid && rename(temporary_file,cache_file)) io.valid=0;

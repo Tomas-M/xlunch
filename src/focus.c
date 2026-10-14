@@ -4,6 +4,7 @@ typedef struct navigation { char *id; const char *label,*icon; int count; ui_rec
 typedef struct shape { int w,h,r,b; color_t fill,border; Imlib_Image image; struct shape *next; } shape_t;
 typedef enum { TEXT_LEFT,TEXT_CENTER,TEXT_RIGHT } text_alignment_t;
 static shape_t *shapes;
+static Imlib_Color_Modifier uninstalled_icon_modifier;
 static navigation_t *navigation;
 static int navigation_count,nav_horizontal,nav_scroll,nav_extent;
 static node_t **view;
@@ -213,14 +214,25 @@ static void sidebar_separator(Imlib_Image buffer, ui_rect_t rect, int y, int ox,
 }
 
 // Draw file or theme icons with aspect ratio preserved and cached theme resolution.
-static void icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int ox, int oy)
+static void icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int ox, int oy, int transparent)
 {
     if (!*name || rect.w<=0 || rect.h<=0) return;
     Imlib_Image image=ui_icon_image(name,rect.w,rect.h); if (!image) return;
     imlib_context_set_image(image); int w=imlib_image_get_width(),h=imlib_image_get_height();
     double scale=fmin((double)rect.w/w,(double)rect.h/h); int dw=lround(w*scale),dh=lround(h*scale);
     imlib_context_set_image(buffer); imlib_context_set_blend(1);
+    // Apply opacity only while blending; cached icon pixels remain unchanged.
+    Imlib_Color_Modifier previous=imlib_context_get_color_modifier();
+    if (transparent && !uninstalled_icon_modifier)
+    {
+        uninstalled_icon_modifier=imlib_create_color_modifier(); imlib_context_set_color_modifier(uninstalled_icon_modifier);
+        unsigned char alpha[256]; double opacity=1-ui_number("grid.uninstalled_icon_transparency")/100.0;
+        for (int i=0;i<256;i++) alpha[i]=lround(i*opacity);
+        imlib_set_color_modifier_tables(NULL,NULL,NULL,alpha);
+    }
+    imlib_context_set_color_modifier(transparent ? uninstalled_icon_modifier : NULL);
     imlib_blend_image_onto_image(image,1,0,0,w,h,rect.x-ox+(rect.w-dw)/2,rect.y-oy+(rect.h-dh)/2,dw,dh);
+    imlib_context_set_color_modifier(previous);
     imlib_context_set_image(buffer);
 }
 
@@ -229,7 +241,7 @@ static void file_icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int 
 {
     if (!*name) return;
     char *path; asprintf(&path,"%s%s",strchr(name,'/') ? "" : "./",name);
-    icon(buffer,path,rect,ox,oy); free(path);
+    icon(buffer,path,rect,ox,oy,0); free(path);
 }
 
 // Count eligible catalog items without allowing the current query to change menu rows.
@@ -410,6 +422,18 @@ void focus_positions(void)
         if (count) memcpy(view+view_count,matches,count*sizeof(*view));
         view_count+=count; free(matches);
     }
+    // Keep each group's original order; hovering never changes availability or ordering.
+    if (ui_bool("grid.installed_first") && view_count>1)
+    {
+        node_t **ordered=malloc(view_count*sizeof(*view)); int installed=0,missing=0;
+        for (int i=0;i<view_count;i++)
+        {
+            node_t *entry=view[i];
+            if (ui_entry_needs_install(entry)) view[missing++]=entry;
+            else ordered[installed++]=entry;
+        }
+        memcpy(ordered+installed,view,missing*sizeof(*view)); free(view); view=ordered;
+    }
     for (int i=0;i<view_count;i++)
     {
         view[i]->x=grid_rect.x+(i%columns)*(cell_width+column_margin);
@@ -455,7 +479,9 @@ void focus_catalog_changed(node_t *catalog)
     free(selection);
     if (selected<0 && view_count) selected=0;
     if (keyboard_target>=10000) keyboard_target=selected<0 ? 5000 : 10000+selected;
-    hovered=-1; pressed_target=0; hovered_entry=0;
+    // Preserve full icon opacity under a stationary pointer after the background refresh.
+    int target=pointer_target(mouse_x,mouse_y); hovered=target>=10000 ? target-10000 : -1;
+    pressed_target=0; hovered_entry=0;
 }
 
 // Render shared component interaction states from global colors and local overrides.
@@ -637,7 +663,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
         int padding=px("header.padding"),size=*ui_value("header.icon") ? px("header.icon_size") : 0;
         box(buffer,header_rect,0,0,ui_color("header.background",transparent),transparent,ox,oy);
         box(buffer,(ui_rect_t){header_rect.x,header_rect.y+header_rect.h-px("header.separator_width"),header_rect.w,px("header.separator_width")},0,0,ui_color("header.separator_color",ui_color("colors.border",muted)),transparent,ox,oy);
-        icon(buffer,ui_value("header.icon"),(ui_rect_t){header_rect.x+padding,header_rect.y+(header_rect.h-size)/2,size,size},ox,oy);
+        icon(buffer,ui_value("header.icon"),(ui_rect_t){header_rect.x+padding,header_rect.y+(header_rect.h-size)/2,size,size},ox,oy,0);
         int start=header_rect.x+padding+(size ? size+px("header.gap") : 0);
         int caption_width=header_rect.w>lround(480*ui_scale()) ? lround(220*ui_scale()) : 0;
         text(buffer,ui_value("header.text"),"fonts.header",(ui_rect_t){start,header_rect.y,header_rect.w-padding*2-(start-header_rect.x)-caption_width,header_rect.h},ui_color("header.text_color",foreground),0,ox,oy);
@@ -661,7 +687,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
                 sidebar_separator(buffer,rect,rect.y+rect.h+px("sidebar.gap")*3/2,ox,oy);
             int active=!session_grid() && !strcmp(focus_group,nav->id),focus=keyboard_target==1000+i;
             item_box(buffer,"sidebar",rect,px("sidebar.item_radius"),px("sidebar.item_border_width"),ui_color("sidebar.item_background",transparent),inside(rect,mouse_x,mouse_y),active,focus,ox,oy);
-            icon(buffer,nav->icon,(ui_rect_t){ui_bool("sidebar.show_labels") ? rect.x+padding : rect.x+(rect.w-size)/2,rect.y+(rect.h-size)/2,size,size},ox,oy);
+            icon(buffer,nav->icon,(ui_rect_t){ui_bool("sidebar.show_labels") ? rect.x+padding : rect.x+(rect.w-size)/2,rect.y+(rect.h-size)/2,size,size},ox,oy,0);
             int count_width=ui_bool("sidebar.show_counts") ? lround(36*ui_scale()) : 0;
             if (ui_bool("sidebar.show_labels")) text(buffer,nav->label,"fonts.sidebar",(ui_rect_t){rect.x+padding+size+gap,rect.y,rect.w-padding*2-size-gap-count_width,rect.h},item_text("sidebar",foreground,inside(rect,mouse_x,mouse_y),active),0,ox,oy);
             if (ui_bool("sidebar.show_counts")) { char count[32]; snprintf(count,sizeof(count),"%d",nav->count); text(buffer,count,"fonts.small",(ui_rect_t){rect.x+rect.w-padding-30,rect.y,30,rect.h},muted,1,ox,oy); }
@@ -674,7 +700,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
             color_t normal=ui_color("session.item_background",ui_color("sidebar.item_background",transparent));
             item_box(buffer,"session",session_rect,px("sidebar.item_radius"),px("session.item_border_width"),normal,inside(session_rect,mouse_x,mouse_y),session_open,keyboard_target==2000,ox,oy);
             int size=px("sidebar.icon_size"),padding=px("sidebar.item_padding");
-            icon(buffer,ui_value("session.icon"),(ui_rect_t){session_rect.x+padding,session_rect.y+(session_rect.h-size)/2,size,size},ox,oy);
+            icon(buffer,ui_value("session.icon"),(ui_rect_t){session_rect.x+padding,session_rect.y+(session_rect.h-size)/2,size,size},ox,oy,0);
             text(buffer,ui_value("session.label"),"fonts.sidebar",(ui_rect_t){session_rect.x+padding+size+gap,session_rect.y,session_rect.w-size-padding*2-gap,session_rect.h},item_text("session",foreground,inside(session_rect,mouse_x,mouse_y),session_open),0,ox,oy);
         }
     }
@@ -683,7 +709,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
         int over=inside(search_rect,mouse_x,mouse_y);
         item_box(buffer,"search",search_rect,px("search.radius"),px("search.border_width"),ui_color("search.background",transparent),over,0,keyboard_target==5000,ox,oy);
         int padding=px("search.padding"),size=line_height("fonts.search");
-        icon(buffer,ui_value("search.icon"),(ui_rect_t){search_rect.x+padding,search_rect.y+(search_rect.h-size)/2,size,size},ox,oy);
+        icon(buffer,ui_value("search.icon"),(ui_rect_t){search_rect.x+padding,search_rect.y+(search_rect.h-size)/2,size,size},ox,oy,0);
         const char *value=*commandline ? commandline : ui_value("search.placeholder");
         ui_rect_t label=query_label();
         query_cursor=fmin(query_cursor,strlen(commandline));
@@ -746,7 +772,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
             // Center the reserved icon/label block so every cell shares the same baseline.
             int top=entry->y+fmax(px("grid.padding"),(cell_height-size-text_gap-label_height)/2);
             ui_rect_t image_rect={entry->x+(cell_width-size)/2,top,size,size};
-            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy);
+            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy,i!=hovered && ui_entry_needs_install(entry));
             else file_icon(buffer,entry->icon,image_rect,ox,oy);
             tile_label(buffer,entry,top+size+text_gap,ox,oy,item_text("grid",foreground,i==hovered,i==selected));
         }
@@ -797,7 +823,7 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
         {
             ui_rect_t rect=action_rect(i); int size=px("session.icon_size"),padding=px("session.padding");
             item_box(buffer,"session",rect,px("session.radius")/2,px("session.item_border_width"),ui_color("session.item_background",transparent),inside(rect,mouse_x,mouse_y),action_selected==i,0,ox,oy);
-            icon(buffer,ui_field("action",actions[i],"icon"),(ui_rect_t){rect.x+padding/2,rect.y+(rect.h-size)/2,size,size},ox,oy);
+            icon(buffer,ui_field("action",actions[i],"icon"),(ui_rect_t){rect.x+padding/2,rect.y+(rect.h-size)/2,size,size},ox,oy,0);
             text(buffer,ui_field("action",actions[i],"label"),"fonts.body",(ui_rect_t){rect.x+size+padding,rect.y,rect.w-size-padding*2,rect.h},item_text("session",foreground,inside(rect,mouse_x,mouse_y),action_selected==i),0,ox,oy);
         }
         imlib_context_set_cliprect(0,0,0,0);
@@ -1183,6 +1209,7 @@ int focus_event(XEvent *event)
 // Free Focus-owned catalogs, navigation and cached shapes before the X11 connection closes.
 void focus_cleanup(void)
 {
+    if (uninstalled_icon_modifier) { imlib_context_set_color_modifier(uninstalled_icon_modifier); imlib_free_color_modifier(); uninstalled_icon_modifier=NULL; }
     clear_action_entries(); free(view); view=NULL;
     ui_list_free(actions,action_count); actions=NULL; action_count=0;
     for (int i=0;i<navigation_count;i++) free(navigation[i].id);

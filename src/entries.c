@@ -72,7 +72,7 @@ void free_entry(node_t *entry)
     for (shortcut_t *shortcut=shortcuts;shortcut;shortcut=shortcut->next)
         if (shortcut->entry==entry) shortcut->entry=NULL;
     free(entry->id); free(entry->name); free(entry->categories);
-    free(entry->description); free(entry->keywords); free(entry->desktop_file); free(entry->desktop_exec);
+    free(entry->description); free(entry->keywords); free(entry->desktop_file); free(entry->desktop_exec); free(entry->executable);
     if (clear_memory) memset(entry,0,sizeof(*entry));
     free(entry);
 }

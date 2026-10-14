@@ -154,6 +154,7 @@ void ui_set(const char *key, const char *value, const char *file, int line)
         if (!*value || *end || !isfinite(number) || number<0 || number>10000) config_error(file,line,"Invalid number",key);
         if (property->type==UI_NUMBER && number!=(int)number) config_error(file,line,"Expected integer",key);
         if (property->type==UI_SCALE && (number<.25 || number>4)) config_error(file,line,"Scale must be between 0.25 and 4",key);
+        if (!strcmp(key,"grid.uninstalled_icon_transparency") && number>100) config_error(file,line,"Transparency must be between 0 and 100",key);
     }
     if (property->type==UI_COLOR && *value)
     {
