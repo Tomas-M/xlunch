@@ -112,6 +112,7 @@
 {"grid.tile_min_height",UI_NUMBER,"128",""},
 {"grid.gap_x",UI_NUMBER,"14",""},
 {"grid.gap_y",UI_NUMBER,"14",""},
+{"grid.fade_height",UI_NUMBER,"0",""},
 {"grid.padding",UI_NUMBER,"12",""},
 {"grid.icon_size",UI_NUMBER,"48",""},
 {"grid.icon_text_gap",UI_NUMBER,"10",""},

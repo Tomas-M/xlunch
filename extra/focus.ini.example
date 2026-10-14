@@ -198,6 +198,8 @@ tile_min_width=140
 tile_min_height=128
 gap_x=14
 gap_y=14
+# Fade the top and bottom edges while tiles extend beyond them; 0 disables fading.
+fade_height=0
 padding=12
 icon_size=64
 icon_text_gap=10

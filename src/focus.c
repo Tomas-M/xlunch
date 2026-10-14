@@ -519,6 +519,40 @@ static void tile_label(Imlib_Image buffer, node_t *entry, int y, int ox, int oy,
     imlib_free_font();
 }
 
+// Fade clipped tiles into the actual background, preserving transparent profiles.
+static void fade_grid_edge(Imlib_Image buffer, int ox, int oy, int upper)
+{
+    if (!view_count) return;
+    int edge=upper ? grid_rect.y : grid_rect.y+grid_rect.h;
+    int remaining=upper ? edge-view[0]->y : view[view_count-1]->y+cell_height-edge;
+    int height=fmin(px("grid.fade_height"),fmin(grid_rect.h,remaining));
+    if (height<=0) return;
+    int start=upper ? edge : edge-height;
+    imlib_context_set_image(buffer);
+    int width=imlib_image_get_width(),left=fmax(0,grid_rect.x-ox),right=fmin(width,grid_rect.x+grid_rect.w-ox);
+    int top=fmax(0,start-oy),end=fmin(imlib_image_get_height(),start+height-oy);
+    if (left>=right || top>=end) return;
+    imlib_context_set_image(background); DATA32 *base=imlib_image_get_data_for_reading_only();
+    imlib_context_set_image(buffer); DATA32 *pixels=imlib_image_get_data();
+    for (int y=top;y<end;y++)
+    {
+        int distance=upper ? start+height-y-oy : y+oy-start+1;
+        double progress=(double)distance/height;
+        unsigned weight=lround(255*progress*progress*(3-2*progress));
+        for (int x=left;x<right;x++)
+        {
+            DATA32 pixel=pixels[y*width+x],back=base[(y+oy)*screen_width+x+ox];
+            if (pixel==back) continue;
+            unsigned front_alpha=(pixel>>24)*(255-weight),back_alpha=(back>>24)*weight,total=front_alpha+back_alpha;
+            DATA32 faded=((total+127)/255)<<24;
+            if (total) for (int shift=0;shift<24;shift+=8)
+                faded|=((((pixel>>shift)&255)*front_alpha+((back>>shift)&255)*back_alpha+total/2)/total)<<shift;
+            pixels[y*width+x]=faded;
+        }
+    }
+    imlib_image_put_back_data(pixels);
+}
+
 // Keep menu actions within the window and scroll long lists.
 static ui_rect_t action_rect(int index)
 {
@@ -718,6 +752,8 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
         }
         if (!view_count) text(buffer,!session_grid() && !strcmp(focus_group,"favorites") ? ui_value("favorites.empty_text") : ui_value("heading.empty_text"),"fonts.body",grid_rect,muted,1,ox,oy);
         imlib_context_set_cliprect(0,0,0,0);
+        fade_grid_edge(buffer,ox,oy,1);
+        fade_grid_edge(buffer,ox,oy,0);
     }
     scrollbar_t bar=focus_scrollbar();
     if (bar.width)

@@ -28,6 +28,11 @@ application area, leaving the space under the sidebar available for image button
 `footer.bottom_margin` overrides the shared window margin at the bottom. Setting
 it to `0` places the footer against the bottom edge and gives the grid the freed
 height. When omitted, it follows `ui.margin` plus `ui.padding`.
+`grid.fade_height` fades tiles, labels and highlights into the background at the
+top and bottom of the grid while content extends beyond either edge. The height
+is in logical pixels; `0` disables it. Each fade stays at its viewport edge during
+scrolling and shrinks away as the first or final row becomes fully visible.
+Sidebar, footer and scrollbar keep their normal appearance.
 
 Groups match `.desktop` categories through `[group.<id>] categories=Network`.
 Favorites are an ordered list of desktop IDs in `[favorites] ids=...`.
