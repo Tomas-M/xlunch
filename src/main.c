@@ -5,8 +5,8 @@
 // Authors: Tomas Matejicek <www.slax.org>
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 5; // Major version, changes when breaking backwards compatability
-const int VERSION_MINOR = 4; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 1; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_MINOR = 5; // Minor version, changes when new functionality is added
+const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 /* open and O_RDWR,O_CREAT */
 /* include X11 stuff */
@@ -91,6 +91,8 @@ struct option long_options[] =
         {"set",                    required_argument, 0, 1031},
         {"check-ui-config",        required_argument, 0, 1032},
         {"rebuild-cache",          no_argument,       0, 1033},
+        {"class",                  required_argument, 0, 1034},
+        {"center-window",          no_argument,       0, 1035},
         {"button",                required_argument, 0, 'A'},
         {"textafter",             no_argument,       0, 'a'},
         {"border",                required_argument, 0, 'b'},
@@ -170,12 +172,14 @@ char * font_name = "";
 char * prompt_font_name = "";
 char * program_name;
 char * window_title;
+char * window_class;
 char * window_icon;
 int bg_fill = 0;
 int no_prompt = 0;
 int no_title = 0;
 int prompt_spacing = 48;
 int windowed = 0;
+int center_window = 0;
 int multiple_instances = 0;
 int uposx = 0;
 int uposy = 0;
@@ -360,6 +364,14 @@ void init(int argc, char **argv)
     if (uposx < 0) uposx = DisplayWidth(disp,screen) + uposx - uwidth;
     if (uposy < 0) uposy = DisplayHeight(disp,screen) + uposy - uheight;
 
+    // Center the requested window within the X screen, overriding explicit coordinates.
+    if (windowed && center_window)
+    {
+        uposx=(DisplayWidth(disp,screen)-screen_width)/2;
+        uposy=(DisplayHeight(disp,screen)-screen_height)/2;
+        force_reposition=1;
+    }
+
     calculate_percentage(screen_height, &uborder);
     calculate_percentage(screen_width, &uside_border);
 }
@@ -484,6 +496,7 @@ int main(int argc, char **argv){
     if (classHint) {
         classHint->res_name = basename(program_name);
         classHint->res_class = (windowed ? "xlunch-windowed" : (desktop_mode ? "xlunch-desktop" : "xlunch-fullscreen"));
+        if (window_class) classHint->res_class=window_class;
     }
     XSetClassHint(disp, win, classHint);
     XFree(classHint);

@@ -5,6 +5,10 @@ Use the mouse wheel for smooth scrolling, or drag the scrollbar on the right.
 Clicking the scrollbar track moves its thumb to the pointer. `--noscroll` disables scrolling.
 Use `--nostretchrows` for fixed row gaps set by `--leastvmargin` (or `--leastmargin`).
 
+Use `--windowed --width 800 --height 600 --center-window` to center a window on
+the X screen. This overrides explicit coordinates; `--center` still centers icons.
+Use `--class Pi-Apps` to set the WM_CLASS class independently of `--name`.
+
 Focus adds an optional interface with an INI profile, category navigation, fixed favorites,
 search, session actions and configurable colors, fonts, spacing and component visibility.
 The default classic interface and existing configurations remain supported.
@@ -61,6 +65,15 @@ For Fedora:
 ```sh
 sudo dnf install imlib2-devel libX11-devel
 ```
+
+Package builders can use `make GENERATE_ENTRIES=0` and
+`make install DESTDIR=/path/to/package GENERATE_ENTRIES=0` to skip generating
+`entries.dsv` from the build host. Generate or supply the target system's entries
+separately, or use a Focus profile with `entries.source=desktop`.
+
+`genentries --theme` expects an **icon theme** from `/usr/share/icons` (or a user
+icon directory), such as `Adwaita`, rather than a GTK theme such as `Adwaita-dark`
+from `/usr/share/themes`. Diagnostics go to stderr so redirected DSV stays clean.
 
 # screenshots
 

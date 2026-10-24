@@ -1,5 +1,8 @@
 #include "ui.h"
 
+// Keep the byte used to distinguish actual stdin data from an already-empty stream.
+static int input_byte=-1;
+
 char* strncpyutf8(char* dst, const char* src, size_t num)
 {
     if(num)
@@ -205,7 +208,12 @@ FILE * determine_input_source(){
             fds.fd = 0; /* this is STDIN */
             fds.events = POLLIN;
             // Give poll a little timeout to make give the piping program some time
-            if (poll(&fds, 1, stdin_poll_timeout) == 0){
+            if (poll(&fds, 1, stdin_poll_timeout)>0)
+            {
+                unsigned char byte;
+                if (read(fd,&byte,1)==1) input_byte=byte;
+            }
+            if (input_byte<0){
                 int flags = fcntl(fd, F_GETFL, 0);
                 flags &= ~O_NONBLOCK;
                 fcntl(fd, F_SETFL, flags);
@@ -344,9 +352,10 @@ int parse_entries(void)
     fds.events = POLLIN;
     node_t * current_entry = NULL;
     char internal_command[128];
-    while(poll(&fds, 1, 0)) {
+    while(input_byte>=0 || poll(&fds, 1, 0)) {
         char b;
-        readstatus = read(fds.fd, &b, 1);
+        if (input_byte>=0) { b=input_byte; input_byte=-1; readstatus=1; }
+        else readstatus = read(fds.fd, &b, 1);
         if(readstatus <= 0){
             break;
         }
@@ -429,6 +438,7 @@ int parse_entries(void)
             changed = 1;
         }
         close(fds.fd);
+        if (input_source==stdin) eventfds[1].fd=-1;
         input_source = NULL;
     }
     if(changed) {

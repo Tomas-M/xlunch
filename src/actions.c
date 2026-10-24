@@ -1,4 +1,20 @@
 #include "ui.h"
+#include <sys/wait.h>
+
+// Reap the short-lived intermediate child; init owns the launched application.
+pid_t fork_detached(void)
+{
+    pid_t child=fork();
+    if (child)
+    {
+        if (child>0) while (waitpid(child,NULL,0)<0 && errno==EINTR) {}
+        return child;
+    }
+    child=fork();
+    if (child<0) { perror("fork"); _exit(EXTERNALERROR); }
+    if (child) _exit(OKAY);
+    return 0;
+}
 
 int starts_with(const char *pre, const char *str)
 {
@@ -120,7 +136,7 @@ void run_command(char * cmd_orig)
 
     if (dont_quit)
     {
-        pid_t pid=fork();
+        pid_t pid=fork_detached();
 
         switch (pid) {
         case 0:   /* Child process */

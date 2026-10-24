@@ -30,7 +30,7 @@ static void launch(const char *launcher, const char *arguments, const char *valu
     restack();
     if (dont_quit)
     {
-        pid_t child=fork();
+        pid_t child=fork_detached();
         if (child<0) { perror("fork"); ui_list_free(argv,count); return; }
         if (child) { ui_list_free(argv,count); reset_prompt(); if (focus_mode) focus_refresh(); return; }
         if (!multiple_instances) close(lock);

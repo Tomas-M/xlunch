@@ -362,6 +362,12 @@ void handle_option(int c, char *optarg) {
         case 1033:
             rebuild_cache=1;
             break;
+        case 1034:
+            window_class=optarg;
+            break;
+        case 1035:
+            center_window=1;
+            break;
 
         case 'a':
             text_after = 1;
@@ -533,6 +539,8 @@ void handle_option(int c, char *optarg) {
                             "        --name                             POSIX-esque way to specify the first part of\n"
                             "                                           WM_CLASS (default: environment variable \n"
                             "                                           RESOURCE_NAME or argv[0])\n"
+                            "        --class [name]                     Set the second part of WM_CLASS\n"
+                            "                                           (default: xlunch-windowed/desktop/fullscreen)\n"
                             "        -N, --notitle                      Do not display any titles under/around icons\n"
                             "        -n, --noprompt                     Hides the prompt, only allowing selection\n"
                             "                                           by icon\n"
@@ -555,6 +563,8 @@ void handle_option(int c, char *optarg) {
                             "                                           previous versions).\n"
                             "        -R, --reverse                      All entries in xlunch as reversly ordered.\n"
                             "        -W, --windowed                     Start in windowed mode\n"
+                            "        --center-window                    Center a window on the X screen, overriding\n"
+                            "                                           --xposition and --yposition (requires -W)\n"
                             "        --title                            Specifies the title to put on the window when\n"
                             "                                           running in windowed mode.\n"
                             "        --icon                             Specifies the icon to put on the window when\n"

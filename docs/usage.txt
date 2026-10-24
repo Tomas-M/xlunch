@@ -27,6 +27,8 @@ usage: xlunch [options]
         --name                             POSIX-esque way to specify the first part of
                                            WM_CLASS (default: environment variable 
                                            RESOURCE_NAME or argv[0])
+        --class [name]                     Set the second part of WM_CLASS
+                                           (default: xlunch-windowed/desktop/fullscreen)
         -N, --notitle                      Do not display any titles under/around icons
         -n, --noprompt                     Hides the prompt, only allowing selection
                                            by icon
@@ -49,6 +51,8 @@ usage: xlunch [options]
                                            previous versions).
         -R, --reverse                      All entries in xlunch as reversly ordered.
         -W, --windowed                     Start in windowed mode
+        --center-window                    Center a window on the X screen, overriding
+                                           --xposition and --yposition (requires -W)
         --title                            Specifies the title to put on the window when
                                            running in windowed mode.
         --icon                             Specifies the icon to put on the window when

@@ -49,7 +49,7 @@ case $key in
     exit 0
     ;;
     *)
-    echo "Unknown option $key"
+    echo "Unknown option $key" >&2
     exit 1
     ;;
 esac
@@ -64,16 +64,16 @@ pixmaps=/usr/share/pixmaps
 if [ -z "$icontheme" ]; then
   icontheme=$(cat $user_home/.gtkrc-2.0 2>/dev/null| sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
   if [ -z "$icontheme" ]; then
-    icontheme=$(cat $user_home/.config/gtk-3.0/settings.ini 2>/dev/null| sed -n 's/^gtk-icon-theme-name="\([^"]*\)"$/\1/p')
+    icontheme=$(sed -n 's/^[[:space:]]*gtk-icon-theme-name[[:space:]]*=[[:space:]]*//p' "$user_home/.config/gtk-3.0/settings.ini" 2>/dev/null | sed 's/^"//; s/"$//')
   fi
   if [ -z "$icontheme" ]; then
     icontheme=$(cat $user_home/.kde4/share/config/kdeglobals 2>/dev/null| grep -A 1 "\[Icons\]" | tail -n1 | sed -n 's/^Theme=//p')
   fi
-  if [ -z "$icontheme" ] && [ $(type xfconf-query >/dev/null 2>&1) ]; then
-    icontheme=$(xfconf-query -c xsettings -p /Net/ThemeName)
+  if [ -z "$icontheme" ] && command -v xfconf-query >/dev/null 2>&1; then
+    icontheme=$(xfconf-query -c xsettings -p /Net/IconThemeName 2>/dev/null)
   fi
-  if [ -z "$icontheme" ] && [ $(type gsettings >/dev/null 2>&1) ]; then
-    icontheme=$(gsettings get org.gnome.desktop.interface gtk-theme)
+  if [ -z "$icontheme" ] && command -v gsettings >/dev/null 2>&1; then
+    icontheme=$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | sed "s/^'//; s/'$//")
   fi
 fi
 cansvg=$(type convert >/dev/null 2>&1 && echo "true" || echo "false")
@@ -108,13 +108,13 @@ else
     indexfile=$(find -L "$user_home/.local/share/icons/$icontheme" -name "index.theme" -print -quit 2>/dev/null)
   fi
   if [ -z "$indexfile" ]; then
-    indexfile=$(find -L "$user_home/.icons/$icontheme" -name "index.theme" -print quit 2>/dev/null)
+    indexfile=$(find -L "$user_home/.icons/$icontheme" -name "index.theme" -print -quit 2>/dev/null)
   fi
   if [ -z "$indexfile" ]; then
     indexfile=$(find -L "/usr/share/icons/$icontheme" -name "index.theme" -print -quit 2>/dev/null)
   fi
   if [ -z "$indexfile" ]; then
-    echo "Could not find index.theme for theme $icontheme"
+    echo "Could not find index.theme for icon theme $icontheme. Use --theme with an icon theme from /usr/share/icons, not a GTK theme from /usr/share/themes." >&2
     exit 1
   fi
   inherits=$(cat "$indexfile" | sed -n "s|^Inherits=\(.*\)$|\1|p" | sed "s|,|\n|g" | grep -v "^hicolor$")

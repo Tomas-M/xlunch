@@ -1,9 +1,13 @@
 CC = gcc
 LDFLAGS = -lImlib2 -lX11 -lm -ldl
 CFLAGS ?= -O2 -s
+GENERATE_ENTRIES ?= 1
 #CFLAGS ?= -ggdb -g3 # For debugging
 
-all: xlunch entries.dsv
+all: xlunch
+ifeq ($(GENERATE_ENTRIES),1)
+all: entries.dsv
+endif
 
 install: xlunch
 	mkdir -p $(DESTDIR)/etc/xlunch/
@@ -20,7 +24,9 @@ install: xlunch
 	cp extra/genentries.desktop.sh $(DESTDIR)/usr/bin
 	cp extra/genentries.desktop $(DESTDIR)/usr/share/applications/
 	cp default.conf $(DESTDIR)/etc/xlunch/default.conf
+ifeq ($(GENERATE_ENTRIES),1)
 	bash extra/genentries --path $(DESTDIR)/usr/share/xlunch/svgicons/ > $(DESTDIR)/etc/xlunch/entries.dsv
+endif
 	cp -r svgicons/ $(DESTDIR)/usr/share/xlunch/ 2>/dev/null || :
 	cp extra/focus.ini.example $(DESTDIR)/usr/share/xlunch/
 	cp -r extra/focus-icons $(DESTDIR)/usr/share/xlunch/
