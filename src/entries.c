@@ -330,7 +330,7 @@ void reset_prompt()
     updates = imlib_update_append_rect(updates, 0, 0, screen_width, screen_height);
 }
 
-int parse_entries()
+int parse_entries(void)
 {
     int changed = 0; // if the list of elements have changed or not
     int parsing = 0; // section currently being read

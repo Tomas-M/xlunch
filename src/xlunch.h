@@ -244,7 +244,7 @@ int starts_with(const char *pre, const char *str);
 void run_internal_command(char * cmd_orig);
 void reset_prompt();
 void run_command(char * cmd_orig);
-int parse_entries();
+int parse_entries(void);
 void parse_button(char *button_spec);
 void set_clicked(node_t * cell, int clicked);
 Imlib_Font load_default_font();
