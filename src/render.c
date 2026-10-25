@@ -182,13 +182,11 @@ void draw_text_with_shadow(int posx, int posy, char * text, color_t color) {
     imlib_text_draw(posx, posy, text);
 }
 
-void renderEntry(Imlib_Image buffer, node_t * current, unsigned int * cursor_shape, int up_x, int up_y) {
+void renderEntry(Imlib_Image buffer, node_t * current, int up_x, int up_y) {
     int h = 0;
     int w = 0;
     if (current->hovered)
     {
-        if (hoverset == MOUSE) *cursor_shape = XC_hand1;
-
         if (highlight)
         {
             imlib_context_set_image(highlight);

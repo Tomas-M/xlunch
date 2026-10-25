@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <X11/cursorfont.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <ctype.h>
@@ -263,5 +262,5 @@ void recheckHover(XEvent ev);
 void handleButtonPress(XEvent ev);
 void handleButtonRelease(XEvent ev);
 void handleKeyPress(XEvent ev);
-void renderEntry(Imlib_Image buffer, node_t * current, unsigned int * cursor_shape, int up_x, int up_y);
+void renderEntry(Imlib_Image buffer, node_t * current, int up_x, int up_y);
 #endif

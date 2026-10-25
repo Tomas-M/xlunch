@@ -17,7 +17,6 @@ const int VERSION_PATCH = 0; // Patch version, changes when something is changed
 /* exit include */
 /* exec include */
 /* long options include*/
-/* cursor */
 /* X utils */
 /* parse commandline arguments */
 /* one instance */
@@ -410,7 +409,7 @@ int main(int argc, char **argv){
         }
     }
 
-    //win = XCreateSimpleWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, 0, 0);
+    // Leave the cursor unset so the window inherits the desktop's cursor.
     win = XCreateWindow(disp, DefaultRootWindow(disp), uposx, uposy, screen_width, screen_height, 0, vinfo.depth, InputOutput, vinfo.visual, CWColormap | CWBorderPixel | CWBackPixel, &attr);
 
     // absolute fullscreen mode by overide redirect
@@ -579,11 +578,6 @@ int main(int argc, char **argv){
         eventfds[1].fd = 0; /* this is STDIN */
         eventfds[1].events = POLLIN;
     }
-
-    // Reuse cursor resources across animation frames and partial repaints.
-    Cursor arrow_cursor=XCreateFontCursor(disp,XC_top_left_arrow);
-    Cursor hand_cursor=XCreateFontCursor(disp,XC_hand1);
-    Cursor text_cursor=focus_mode ? XCreateFontCursor(disp,XC_xterm) : arrow_cursor;
 
     int cache_started=0;
     /* infinite event loop */
@@ -761,12 +755,11 @@ int main(int argc, char **argv){
                 int top, bottom;
                 entry_viewport(&top, &bottom);
                 imlib_context_set_cliprect(0, top-up_y, up_w, bottom-top);
-                unsigned int cursor_shape = XC_top_left_arrow;
 
                 if (focus_mode)
                 {
                     imlib_context_set_cliprect(0,0,0,0);
-                    focus_render(buffer,&cursor_shape,up_x,up_y);
+                    focus_render(buffer,up_x,up_y);
                 }
                 else
                 {
@@ -775,7 +768,7 @@ int main(int argc, char **argv){
                 {
                     if (!current->hidden && current->y+cell_height > top && current->y < bottom)
                     {
-                        renderEntry(buffer, current, &cursor_shape, up_x, up_y);
+                        renderEntry(buffer, current, up_x, up_y);
                     }
                     current = current->next;
                 }
@@ -783,7 +776,6 @@ int main(int argc, char **argv){
 
                 button_t *button = buttons;
                 while (button != NULL) {
-                    if(button->hovered) cursor_shape = XC_hand1;
                     image = imlib_load_image(button->hovered ? (button->icon_highlight[0] == '\0' ? button->icon_normal : button->icon_highlight) : button->icon_normal);
                     if (image)
                     {
@@ -803,8 +795,6 @@ int main(int argc, char **argv){
 
                     button = button->next;
                 }
-
-                XDefineCursor(disp,win,cursor_shape==XC_xterm ? text_cursor : cursor_shape==XC_hand1 ? hand_cursor : arrow_cursor);
 
                 /* set the buffer image as our current image */
                 imlib_context_set_image(buffer);
@@ -836,8 +826,6 @@ int main(int argc, char **argv){
                     imlib_context_set_blend(0);
                 }
                 }
-
-                XDefineCursor(disp,win,cursor_shape==XC_xterm ? text_cursor : cursor_shape==XC_hand1 ? hand_cursor : arrow_cursor);
 
                 render_buffer = imlib_create_image(up_w, up_h);
                 imlib_context_set_image(render_buffer);

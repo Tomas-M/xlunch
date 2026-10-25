@@ -654,7 +654,7 @@ static void query_place(int x)
 }
 
 // Draw the opt-in Focus interface over its cached background.
-void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
+void focus_render(Imlib_Image buffer, int ox, int oy)
 {
     color_t foreground=ui_color("colors.text",text_color),muted=ui_color("colors.muted",foreground),transparent={0};
     int gap=lround(12*ui_scale());
@@ -843,9 +843,6 @@ void focus_render(Imlib_Image buffer, unsigned int *cursor, int ox, int oy)
             text(buffer,ui_value(i ? "labels.confirm_accept" : "labels.confirm_cancel"),"fonts.body",button,foreground,1,ox,oy);
         }
     }
-    int target=pointer_target(mouse_x,mouse_y);
-    if (target==5000) *cursor=XC_xterm;
-    else if (target) *cursor=XC_hand1;
 }
 
 // Build the Focus background once per resize, keeping scrolling frames inexpensive.

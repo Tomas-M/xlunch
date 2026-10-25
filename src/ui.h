@@ -44,7 +44,7 @@ void focus_positions(void);
 void focus_viewport(int *top, int *bottom);
 double focus_max_scroll(void);
 scrollbar_t focus_scrollbar(void);
-void focus_render(Imlib_Image buffer, unsigned int *cursor, int x, int y);
+void focus_render(Imlib_Image buffer, int x, int y);
 int focus_event(XEvent *event);
 void focus_background(void);
 void focus_refresh(void);
