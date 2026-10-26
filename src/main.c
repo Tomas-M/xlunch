@@ -6,7 +6,7 @@
 //          Peter Munch-Ellingsen <www.peterme.net>
 const int VERSION_MAJOR = 5; // Major version, changes when breaking backwards compatability
 const int VERSION_MINOR = 6; // Minor version, changes when new functionality is added
-const int VERSION_PATCH = 0; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
+const int VERSION_PATCH = 1; // Patch version, changes when something is changed without changing deliberate functionality (eg. a bugfix or an optimisation)
 
 /* open and O_RDWR,O_CREAT */
 /* include X11 stuff */
