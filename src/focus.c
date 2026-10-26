@@ -4,7 +4,7 @@ typedef struct navigation { char *id; const char *label,*icon; int count; ui_rec
 typedef struct shape { int w,h,r,b; color_t fill,border; Imlib_Image image; struct shape *next; } shape_t;
 typedef enum { TEXT_LEFT,TEXT_CENTER,TEXT_RIGHT } text_alignment_t;
 static shape_t *shapes;
-static Imlib_Color_Modifier uninstalled_icon_modifier;
+static Imlib_Color_Modifier icon_modifiers[101];
 static navigation_t *navigation;
 static int navigation_count,nav_horizontal,nav_scroll,nav_extent;
 static node_t **view;
@@ -214,7 +214,7 @@ static void sidebar_separator(Imlib_Image buffer, ui_rect_t rect, int y, int ox,
 }
 
 // Draw file or theme icons with aspect ratio preserved and cached theme resolution.
-static void icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int ox, int oy, int transparent)
+static void icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int ox, int oy, int transparency)
 {
     if (!*name || rect.w<=0 || rect.h<=0) return;
     Imlib_Image image=ui_icon_image(name,rect.w,rect.h); if (!image) return;
@@ -223,14 +223,14 @@ static void icon(Imlib_Image buffer, const char *name, ui_rect_t rect, int ox, i
     imlib_context_set_image(buffer); imlib_context_set_blend(1);
     // Apply opacity only while blending; cached icon pixels remain unchanged.
     Imlib_Color_Modifier previous=imlib_context_get_color_modifier();
-    if (transparent && !uninstalled_icon_modifier)
+    if (transparency && !icon_modifiers[transparency])
     {
-        uninstalled_icon_modifier=imlib_create_color_modifier(); imlib_context_set_color_modifier(uninstalled_icon_modifier);
-        unsigned char alpha[256]; double opacity=1-ui_number("grid.uninstalled_icon_transparency")/100.0;
+        icon_modifiers[transparency]=imlib_create_color_modifier(); imlib_context_set_color_modifier(icon_modifiers[transparency]);
+        unsigned char alpha[256]; double opacity=1-transparency/100.0;
         for (int i=0;i<256;i++) alpha[i]=lround(i*opacity);
         imlib_set_color_modifier_tables(NULL,NULL,NULL,alpha);
     }
-    imlib_context_set_color_modifier(transparent ? uninstalled_icon_modifier : NULL);
+    imlib_context_set_color_modifier(icon_modifiers[transparency]);
     imlib_blend_image_onto_image(image,1,0,0,w,h,rect.x-ox+(rect.w-dw)/2,rect.y-oy+(rect.h-dh)/2,dw,dh);
     imlib_context_set_color_modifier(previous);
     imlib_context_set_image(buffer);
@@ -785,14 +785,14 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
             int top=entry->y+fmax(px("grid.padding"),(cell_height-size-text_gap-label_height)/2);
             ui_rect_t image_rect={entry->x+(cell_width-size)/2,top,size,size};
             int needs_install=ui_entry_needs_install(entry);
-            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy,i!=hovered && needs_install);
+            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy,i!=hovered && needs_install ? 100-ui_number("grid.uninstalled_icon_opacity") : 0);
             else file_icon(buffer,entry->icon,image_rect,ox,oy);
             // Reveal the install affordance for mouse hover and keyboard focus alike.
             int active=i==hovered || (hoverset==KEYBOARD && keyboard_target==10000+i);
             if (needs_install && (active || !ui_bool("grid.install_icon_hover_only")))
             {
                 int badge=fmin(px("grid.install_icon_size"),size),inset=px("grid.install_icon_padding");
-                icon(buffer,ui_value("grid.install_icon"),(ui_rect_t){rect.x+rect.w-inset-badge,rect.y+inset,badge,badge},ox,oy,0);
+                icon(buffer,ui_value("grid.install_icon"),(ui_rect_t){rect.x+rect.w-inset-badge,rect.y+inset,badge,badge},ox,oy,active ? 0 : 100-ui_number("grid.install_icon_opacity"));
             }
             tile_label(buffer,entry,top+size+text_gap,ox,oy,item_text("grid",foreground,i==hovered,i==selected));
         }
@@ -1226,7 +1226,8 @@ int focus_event(XEvent *event)
 // Free Focus-owned catalogs, navigation and cached shapes before the X11 connection closes.
 void focus_cleanup(void)
 {
-    if (uninstalled_icon_modifier) { imlib_context_set_color_modifier(uninstalled_icon_modifier); imlib_free_color_modifier(); uninstalled_icon_modifier=NULL; }
+    for (int i=1;i<=100;i++)
+        if (icon_modifiers[i]) { imlib_context_set_color_modifier(icon_modifiers[i]); imlib_free_color_modifier(); icon_modifiers[i]=NULL; }
     clear_action_entries(); free(view); view=NULL;
     ui_list_free(actions,action_count); actions=NULL; action_count=0;
     for (int i=0;i<navigation_count;i++) free(navigation[i].id);

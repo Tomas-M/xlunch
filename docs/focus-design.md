@@ -36,8 +36,8 @@ Sidebar, footer and scrollbar keep their normal appearance.
 
 Installer launchers can declare their target program with
 `X-Xlunch-Executable=program` in the desktop entry, using a command name or an
-absolute path. `grid.uninstalled_icon_transparency` sets how transparent icons
-with a missing executable are, from `0` (opaque) to `100` (invisible), default `50`.
+absolute path. `grid.uninstalled_icon_opacity` sets the opacity of icons
+with a missing executable, from `0` (invisible) to `100` (opaque), default `50`.
 Hovering restores the full icon. Labels and footer descriptions stay unchanged.
 Availability is checked when rendering, including with cached catalogs, so
 installing or removing the program updates its indication on redraw. Transparency
@@ -47,7 +47,10 @@ missing application's tile. `grid.install_icon_size` defaults to `24` and
 `grid.install_icon_padding` to `12` logical pixels, independently of grid padding.
 It appears on hover or keyboard focus by default; set
 `grid.install_icon_hover_only=false` to show it on every missing application.
-Set `grid.uninstalled_icon_transparency=0` to keep application icons fully opaque.
+`grid.install_icon_opacity` controls the indicator outside hover or keyboard
+focus, from `0` (invisible) to `100` (opaque, the default). Hover or keyboard focus
+always restores full opacity; application icon opacity remains independent.
+Set `grid.uninstalled_icon_opacity=100` to keep application icons fully opaque.
 `grid.installed_first=true` places available applications before missing ones,
 preserving the original order within each group, including Favorites. Its default
 is `false`. Ordering follows executable availability, so hovering never moves a tile.
