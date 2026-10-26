@@ -16,7 +16,7 @@ static int session_open,action_selected,confirm_action=-1,confirm_choice;
 static int popup_scroll;
 static char **actions;
 static int action_count;
-static ui_rect_t header_rect,nav_rect,search_rect,heading_rect,grid_rect,footer_rect,session_rect,popup_rect,confirm_rect;
+static ui_rect_t header_rect,header_icon_rect,nav_rect,search_rect,heading_rect,grid_rect,footer_rect,session_rect,popup_rect,confirm_rect;
 static int pointer_target(int x, int y);
 
 // Convert profile dimensions to device pixels.
@@ -332,10 +332,20 @@ void focus_layout(void)
     actions_build();
     int margin=px("ui.margin")+px("ui.padding"),gap=lround(16*ui_scale()),top=margin,bottom=screen_height-margin;
     header_rect=(ui_rect_t){margin,top,screen_width-margin*2,0};
+    header_icon_rect=(ui_rect_t){0};
     if (ui_bool("header.visible") && (*ui_value("header.text") || *ui_value("header.icon") || *ui_value("header.caption")))
     {
         int size=*ui_value("header.icon") ? px("header.icon_size") : 0;
-        header_rect.h=fmax(size,line_height(*ui_value("header.text") ? "fonts.header" : "fonts.small"))+px("header.padding")*2;
+        // Fit the header around the prepared image, including non-square wordmarks.
+        Imlib_Image image=size>0 ? ui_icon_image(ui_value("header.icon"),size,size) : NULL;
+        if (image)
+        {
+            imlib_context_set_image(image);
+            header_icon_rect.w=imlib_image_get_width(); header_icon_rect.h=imlib_image_get_height();
+        }
+        header_rect.h=fmax(header_icon_rect.h,line_height(*ui_value("header.text") ? "fonts.header" : "fonts.small"))+px("header.padding")*2;
+        header_icon_rect.x=header_rect.x+px("header.padding");
+        header_icon_rect.y=header_rect.y+(header_rect.h-header_icon_rect.h)/2;
         top+=header_rect.h+gap;
     }
     footer_rect=(ui_rect_t){margin,bottom,screen_width-margin*2,0};
@@ -660,11 +670,11 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
     int gap=lround(12*ui_scale());
     if (header_rect.h)
     {
-        int padding=px("header.padding"),size=*ui_value("header.icon") ? px("header.icon_size") : 0;
+        int padding=px("header.padding");
         box(buffer,header_rect,0,0,ui_color("header.background",transparent),transparent,ox,oy);
         box(buffer,(ui_rect_t){header_rect.x,header_rect.y+header_rect.h-px("header.separator_width"),header_rect.w,px("header.separator_width")},0,0,ui_color("header.separator_color",ui_color("colors.border",muted)),transparent,ox,oy);
-        icon(buffer,ui_value("header.icon"),(ui_rect_t){header_rect.x+padding,header_rect.y+(header_rect.h-size)/2,size,size},ox,oy,0);
-        int start=header_rect.x+padding+(size ? size+px("header.gap") : 0);
+        icon(buffer,ui_value("header.icon"),header_icon_rect,ox,oy,0);
+        int start=header_rect.x+padding+(header_icon_rect.w ? header_icon_rect.w+px("header.gap") : 0);
         int caption_width=header_rect.w>lround(480*ui_scale()) ? lround(220*ui_scale()) : 0;
         text(buffer,ui_value("header.text"),"fonts.header",(ui_rect_t){start,header_rect.y,header_rect.w-padding*2-(start-header_rect.x)-caption_width,header_rect.h},ui_color("header.text_color",foreground),0,ox,oy);
         if (header_rect.w>lround(480*ui_scale()))

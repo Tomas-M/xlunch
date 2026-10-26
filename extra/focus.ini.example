@@ -61,6 +61,7 @@ blur=0
 visible=true
 text=xlunch
 icon=/usr/share/icons/hicolor/48x48/apps/xlunch.png
+# Maximum image dimension; the header follows its aspect ratio. Leave text empty for an image-only header.
 icon_size=36
 caption=Applications
 gap=12
