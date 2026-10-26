@@ -117,6 +117,8 @@
 {"grid.icon_size",UI_NUMBER,"48",""},
 {"grid.icon_text_gap",UI_NUMBER,"10",""},
 {"grid.uninstalled_icon_transparency",UI_NUMBER,"50",""},
+{"grid.install_icon",UI_ICON,"",""},
+{"grid.install_icon_size",UI_NUMBER,"24",""},
 {"grid.installed_first",UI_BOOL,"false",""},
 {"grid.label_lines",UI_NUMBER,"1",""},
 {"grid.tile_radius",UI_NUMBER,"10",""},

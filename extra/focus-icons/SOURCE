@@ -1,3 +1,5 @@
-Unmodified Lucide SVG icons.
+Unmodified Lucide SVG icons, except install-badge.svg.
 Source: https://github.com/lucide-icons/lucide/tree/dab294f313897bacaa968b725b3259fa37c17bd1/icons
 See LICENSE for ISC and MIT notices.
+
+install-badge.svg is original xlunch artwork under the project's GPLv3 license.

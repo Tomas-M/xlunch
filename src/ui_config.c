@@ -29,6 +29,8 @@ void ui_warm_icons(void)
     int sizes[]={lround(icon_size*ui_scale()),lround(ui_number("sidebar.icon_size")*ui_scale()),
         lround(ui_number("header.icon_size")*ui_scale()),lround(ui_number("session.icon_size")*ui_scale())};
     for (node_t *entry=entries;entry;entry=entry->next) ui_icon_image(entry->icon,sizes[0],sizes[0]);
+    int install_size=lround(fmin(ui_number("grid.install_icon_size"),icon_size)*ui_scale());
+    if (install_size>0) ui_icon_image(ui_value("grid.install_icon"),install_size,install_size);
     for (size_t i=0;i<sizeof(definitions)/sizeof(*definitions);i++)
         if (definitions[i].type==UI_ICON && !strchr(definitions[i].key,'*'))
             for (int k=0;k<4;k++) if (sizes[k]>0) ui_icon_image(ui_value(definitions[i].key),sizes[k],sizes[k]);

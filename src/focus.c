@@ -782,8 +782,16 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
             // Center the reserved icon/label block so every cell shares the same baseline.
             int top=entry->y+fmax(px("grid.padding"),(cell_height-size-text_gap-label_height)/2);
             ui_rect_t image_rect={entry->x+(cell_width-size)/2,top,size,size};
-            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy,i!=hovered && ui_entry_needs_install(entry));
+            int needs_install=ui_entry_needs_install(entry);
+            if (entry->id) icon(buffer,entry->icon,image_rect,ox,oy,i!=hovered && needs_install);
             else file_icon(buffer,entry->icon,image_rect,ox,oy);
+            // Reveal the install affordance for mouse hover and keyboard focus alike.
+            int active=i==hovered || (hoverset==KEYBOARD && keyboard_target==10000+i);
+            if (needs_install && active)
+            {
+                int badge=fmin(px("grid.install_icon_size"),size);
+                icon(buffer,ui_value("grid.install_icon"),(ui_rect_t){image_rect.x+size-badge,top+size-badge,badge,badge},ox,oy,0);
+            }
             tile_label(buffer,entry,top+size+text_gap,ox,oy,item_text("grid",foreground,i==hovered,i==selected));
         }
         if (!view_count) text(buffer,!session_grid() && !strcmp(focus_group,"favorites") ? ui_value("favorites.empty_text") : ui_value("heading.empty_text"),"fonts.body",grid_rect,muted,1,ox,oy);

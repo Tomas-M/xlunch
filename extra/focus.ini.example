@@ -207,6 +207,10 @@ icon_text_gap=10
 # Installer entries declare their target using X-Xlunch-Executable in the desktop file.
 # Percentage: 0 keeps icons opaque, 100 hides them; hover always restores the full icon.
 uninstalled_icon_transparency=50
+# Optional lower-right install badge, shown on hover or keyboard focus for missing apps.
+# Set uninstalled_icon_transparency=0 to indicate installation only with this badge.
+install_icon=
+install_icon_size=24
 # Put available applications first, preserving the order within both groups.
 installed_first=false
 label_lines=1
