@@ -42,6 +42,7 @@ void recheckHover(XEvent ev) {
         if (!over_scrollbar && scrollbar_drag_y < 0 && mouse_over_button(button, ev.xmotion.x, ev.xmotion.y)) {
             if (button->hovered != 1) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
             button->hovered = 1;
+            any_hovered = 1;
         } else {
             if (button->hovered != 0) updates = imlib_update_append_rect(updates, x, y, button->w, button->h);
             button->hovered = 0;
@@ -49,6 +50,7 @@ void recheckHover(XEvent ev) {
         }
         button = button->next;
     }
+    pointer_cursor(any_hovered);
 }
 
 void handleButtonPress(XEvent ev) {

@@ -666,6 +666,8 @@ static void query_place(int x)
 // Draw the opt-in Focus interface over its cached background.
 void focus_render(Imlib_Image buffer, int ox, int oy)
 {
+    int target=pointer_target(mouse_x,mouse_y);
+    pointer_cursor(target!=0 && target!=5000);
     color_t foreground=ui_color("colors.text",text_color),muted=ui_color("colors.muted",foreground),transparent={0};
     int gap=lround(12*ui_scale());
     if (header_rect.h)
@@ -787,10 +789,10 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
             else file_icon(buffer,entry->icon,image_rect,ox,oy);
             // Reveal the install affordance for mouse hover and keyboard focus alike.
             int active=i==hovered || (hoverset==KEYBOARD && keyboard_target==10000+i);
-            if (needs_install && active)
+            if (needs_install && (active || !ui_bool("grid.install_icon_hover_only")))
             {
-                int badge=fmin(px("grid.install_icon_size"),size);
-                icon(buffer,ui_value("grid.install_icon"),(ui_rect_t){image_rect.x+size-badge,top+size-badge,badge,badge},ox,oy,0);
+                int badge=fmin(px("grid.install_icon_size"),size),inset=px("grid.install_icon_padding");
+                icon(buffer,ui_value("grid.install_icon"),(ui_rect_t){rect.x+rect.w-inset-badge,rect.y+inset,badge,badge},ox,oy,0);
             }
             tile_label(buffer,entry,top+size+text_gap,ox,oy,item_text("grid",foreground,i==hovered,i==selected));
         }

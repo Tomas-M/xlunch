@@ -42,6 +42,12 @@ Hovering restores the full icon. Labels and footer descriptions stay unchanged.
 Availability is checked when rendering, including with cached catalogs, so
 installing or removing the program updates its indication on redraw. Transparency
 is applied while compositing; cached icon pixels retain their original alpha.
+`grid.install_icon` optionally adds an indicator in the upper-right corner of a
+missing application's tile. `grid.install_icon_size` defaults to `24` and
+`grid.install_icon_padding` to `12` logical pixels, independently of grid padding.
+It appears on hover or keyboard focus by default; set
+`grid.install_icon_hover_only=false` to show it on every missing application.
+Set `grid.uninstalled_icon_transparency=0` to keep application icons fully opaque.
 `grid.installed_first=true` places available applications before missing ones,
 preserving the original order within each group, including Favorites. Its default
 is `false`. Ordering follows executable availability, so hovering never moves a tile.

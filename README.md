@@ -25,6 +25,9 @@ or the executable and argument list configured under `[desktop]`.
 Use `--input entries.dsv` after the profile to display an existing DSV instead.
 Bundled interface SVGs use librsvg/Cairo at runtime for sharp rendering at the requested size.
 Their license is included in `extra/focus-icons`.
+Clickable items use the system theme's hand cursor through libXcursor when
+available, respecting its configured theme and size. Other areas inherit the
+desktop cursor.
 See [the profile](extra/focus.ini.example) and [configuration documentation](docs/focus-design.md).
 
 Desktop catalogs load from `~/.cache/xlunch` by default (`$XDG_CACHE_HOME/xlunch` when set), including resolved icons and

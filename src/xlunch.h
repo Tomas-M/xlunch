@@ -221,6 +221,7 @@ void clear_entries();
 void free_entry(node_t *entry);
 void cleanup();
 Imlib_Image load_image(char * icon);
+void pointer_cursor(int clickable);
 void push_entry(node_t * new_entry);
 char *strtok_new(char * string, char const * delimiter);
 char* concat(const char *s1, const char *s2);
