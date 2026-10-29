@@ -23,6 +23,14 @@ heading, grid, footer, background, scrollbar, fonts and interaction colors.
 Use `visible=false` to hide a component. Colors are `RRGGBB` or `RRGGBBAA`, sizes
 are pixels multiplied by `ui.scale`, and fonts use names such as `DejaVuSans/12`.
 Icon values can be theme names or file paths, relative to the profile.
+Application icons first use `icons.theme` and its inherited themes, then the
+desktop's selected icon theme and `hicolor`. The desktop theme is read from
+XSettings, or GTK 3 user/system settings when no settings manager is available;
+the default is `Adwaita`. The selected theme is part of the cache key.
+If regular artwork is missing, the same lookup tries the `-symbolic` variant.
+Existing symbolic names are used directly, and explicit file paths stay exact.
+No other installed themes are scanned. Headless cache preparation uses the same
+GTK settings files without requiring an X server.
 Set `footer.align=grid` to place selection details and shortcuts under the
 application area, leaving the space under the sidebar available for image buttons.
 `footer.bottom_margin` overrides the shared window margin at the bottom. Setting

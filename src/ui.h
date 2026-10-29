@@ -24,6 +24,7 @@ char **ui_list(const char *value, int *count);
 void ui_list_free(char **items, int count);
 char **ui_sections(const char *prefix, int *count);
 const char *ui_field(const char *kind, const char *id, const char *field);
+const char *ui_system_icon_theme(void);
 char *ui_icon_path(const char *name, int size);
 Imlib_Image ui_icon_image(const char *name, int width, int height);
 Imlib_Image ui_svg_image(const char *path, int width, int height);

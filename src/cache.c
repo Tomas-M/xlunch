@@ -24,6 +24,7 @@ static void cache_path(void)
     const char *variables[]={"HOME","XDG_DATA_HOME","XDG_DATA_DIRS","XDG_CURRENT_DESKTOP","PATH"};
     for (int i=0;i<5;i++) hash=cache_hash(hash,getenv(variables[i]));
     hash=cache_hash(hash,setlocale(LC_MESSAGES,NULL)); hash=cache_hash(hash,setlocale(LC_COLLATE,NULL));
+    hash=cache_hash(hash,ui_system_icon_theme());
     color_t tint=ui_color("icons.color",ui_color("colors.text",text_color));
     char dimensions[128]; uint32_t endian=1;
     snprintf(dimensions,sizeof(dimensions),"%d:%g:%d:%d:%d:%d:%d:%d:%d:%d",icon_size,ui_scale(),focus_mode,hide_missing,reverse,tint.r,tint.g,tint.b,tint.a,*(unsigned char *)&endian);

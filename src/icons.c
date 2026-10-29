@@ -139,16 +139,26 @@ char *ui_icon_path(const char *name, int size)
     free(folders); free(home);
     char *plain=strdup(name),*extension=strrchr(plain,'.');
     if (extension && (!strcmp(extension,".png") || !strcmp(extension,".svg") || !strcmp(extension,".xpm"))) *extension=0;
-    char *path=theme_icon(roots,ui_value("icons.theme"),plain,size,0);
-    if (!path && strcmp(ui_value("icons.theme"),"hicolor")) path=theme_icon(roots,"hicolor",plain,size,0);
-    if (!path)
+    char *path=NULL;
+    const char *themes[]={ui_value("icons.theme"),ui_system_icon_theme(),"hicolor"};
+    const char *suffix=strrchr(plain,'-'); int symbolic=suffix && !strcmp(suffix,"-symbolic");
+    // Exhaust regular artwork before considering an equivalent symbolic icon.
+    for (int attempt=0;attempt<(symbolic ? 1 : 2) && !path;attempt++)
     {
+        char *lookup; asprintf(&lookup,"%s%s",plain,attempt ? "-symbolic" : "");
+        for (int i=0;i<3 && !path;i++)
+        {
+            if (i && !strcmp(themes[i],themes[0])) continue;
+            if (i==2 && !strcmp(themes[i],themes[1])) continue;
+            path=theme_icon(roots,themes[i],lookup,size,0);
+        }
         const char *extensions[]={"png","svg","xpm"};
         for (int i=0;i<3 && !path;i++)
         {
-            char *candidate; asprintf(&candidate,"/usr/share/pixmaps/%s.%s",plain,extensions[i]);
+            char *candidate; asprintf(&candidate,"/usr/share/pixmaps/%s.%s",lookup,extensions[i]);
             if (!access(candidate,R_OK)) path=candidate; else free(candidate);
         }
+        free(lookup);
     }
     free(plain); free(roots);
     icon_cache_t *item=calloc(1,sizeof(*item)); item->name=strdup(name); item->size=size; item->path=path; item->next=icon_cache; icon_cache=item;
