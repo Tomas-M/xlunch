@@ -32,6 +32,8 @@ allow_commands=true
 padding=10
 show_shortcut=false
 icon=
+background=223344ff
+hover_background=445566ff
 selected_background=3366ccff
 selected_text=ffffffff
 ''')
@@ -52,6 +54,19 @@ selected_text=ffffffff
     xlib.XFree.argtypes=[ctypes.c_void_p]; xlib.XCloseDisplay.argtypes=[ctypes.c_void_p]
     display=xlib.XOpenDisplay(env['DISPLAY'].encode()); assert display
     xfixes.XFixesGetCursorImage.argtypes=[ctypes.c_void_p]; xfixes.XFixesGetCursorImage.restype=ctypes.POINTER(CursorImage)
+    class Crossing(ctypes.Structure):
+        _fields_=[('type',ctypes.c_int),('serial',ctypes.c_ulong),('send_event',ctypes.c_int),('display',ctypes.c_void_p),
+                  ('window',ctypes.c_ulong),('root',ctypes.c_ulong),('subwindow',ctypes.c_ulong),('time',ctypes.c_ulong),
+                  ('x',ctypes.c_int),('y',ctypes.c_int),('x_root',ctypes.c_int),('y_root',ctypes.c_int),
+                  ('mode',ctypes.c_int),('detail',ctypes.c_int),('same_screen',ctypes.c_int),('focus',ctypes.c_int),('state',ctypes.c_uint)]
+    class Event(ctypes.Union):
+        _fields_=[('crossing',Crossing),('pad',ctypes.c_long*24)]
+    xlib.XSendEvent.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.c_int,ctypes.c_long,ctypes.POINTER(Event)]
+    xlib.XFlush.argtypes=[ctypes.c_void_p]
+    xlib.XGetImage.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.c_int,ctypes.c_int,ctypes.c_uint,ctypes.c_uint,ctypes.c_ulong,ctypes.c_int]
+    xlib.XGetImage.restype=ctypes.c_void_p
+    xlib.XGetPixel.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int]; xlib.XGetPixel.restype=ctypes.c_ulong
+    xlib.XDestroyImage.argtypes=[ctypes.c_void_p]
     imlib=ctypes.CDLL('libImlib2.so.1')
     imlib.imlib_add_path_to_font_path.argtypes=[ctypes.c_char_p]
     imlib.imlib_load_font.argtypes=[ctypes.c_char_p]; imlib.imlib_load_font.restype=ctypes.c_void_p
@@ -67,15 +82,35 @@ selected_text=ffffffff
         subprocess.run(['xdotool',*map(str,arguments)],env=env,check=True,stdout=subprocess.DEVNULL)
         time.sleep(.08)
 
+    # Query the actual displayed cursor rather than the window's requested state.
+    def cursor_name():
+        cursor=xfixes.XFixesGetCursorImage(display)
+        name=cursor.contents.name
+        xlib.XFree(cursor)
+        return name
+
     # Place the pointer on a UTF-8 prefix boundary in the actual configured font.
     def pointer(prefix):
         width=ctypes.c_int(); height=ctypes.c_int()
         imlib.imlib_get_text_size(prefix.encode(),ctypes.byref(width),ctypes.byref(height))
         send('mousemove',text_x+width.value,50)
-        cursor=xfixes.XFixesGetCursorImage(display)
-        name=cursor.contents.name
-        xlib.XFree(cursor)
+        name=cursor_name()
         assert name==b'text',('Expected themed text cursor',name)
+
+    # Replay grab crossings with time to render between them, checking both cursor and hover pixels.
+    def grab_crossings():
+        pointer('>alpha ')
+        window=int(subprocess.check_output(['xdotool','getwindowfocus'],env=env,text=True))
+        image=xlib.XGetImage(display,window,700,50,1,1,ctypes.c_ulong(-1).value,2)
+        background=xlib.XGetPixel(image,0,0); xlib.XDestroyImage(image)
+        for event_type,mode,mask in [(8,1,1<<5),(7,2,1<<4)]:
+            event=Event(); event.crossing=Crossing(type=event_type,display=display,window=window,x=100,y=50,mode=mode,same_screen=1)
+            xlib.XSendEvent(display,window,False,mask,ctypes.byref(event)); xlib.XFlush(display)
+            time.sleep(.1)
+            assert cursor_name()==b'text','Pointer grab replaced the text cursor'
+            image=xlib.XGetImage(display,window,700,50,1,1,ctypes.c_ulong(-1).value,2)
+            actual=xlib.XGetPixel(image,0,0); xlib.XDestroyImage(image)
+            assert actual==background,'Pointer grab changed the input hover background'
 
     # Return only the accepted command; --outputonly prevents command execution.
     def case(name,text,actions,expected):
@@ -100,6 +135,7 @@ selected_text=ffffffff
                 process.terminate(); process.wait(timeout=5)
 
     try:
+        case('Pointer grabs preserve the text cursor and input background','>alpha beta',grab_crossings,'alpha beta')
         case('Ctrl+Backspace removes the preceding word','>alpha beta',lambda:send('key','ctrl+BackSpace'),'alpha ')
         case('Word deletion keeps the text after the caret','>alpha beta gamma',lambda:send('key','ctrl+Left','ctrl+BackSpace'),'alpha gamma')
         case('Unicode word deletion preserves complete characters','>žluťoučký 世界',lambda:send('key','ctrl+BackSpace'),'žluťoučký ')

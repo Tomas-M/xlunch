@@ -1278,6 +1278,8 @@ int focus_event(XEvent *event)
     if (event->type==KeyPress) { focus_key(event); return 1; }
     if (event->type==MotionNotify || event->type==EnterNotify || event->type==LeaveNotify)
     {
+        // Pointer grabs generate crossing events without the pointer leaving the control.
+        if (event->type!=MotionNotify && (event->xcrossing.mode==NotifyGrab || event->xcrossing.mode==NotifyUngrab)) return 1;
         mouse_x=event->type==LeaveNotify ? -1 : event->xmotion.x; mouse_y=event->type==LeaveNotify ? -1 : event->xmotion.y;
         if (query_dragging && event->type==MotionNotify)
         {
@@ -1342,6 +1344,7 @@ int focus_event(XEvent *event)
     }
     if (event->type==ButtonRelease)
     {
+        mouse_x=event->xbutton.x; mouse_y=event->xbutton.y;
         if (event->xbutton.button!=1) return 1;
         if (query_dragging)
         {
