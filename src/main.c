@@ -589,7 +589,13 @@ int main(int argc, char **argv){
         // Poll for events, while blocking until one becomes available
         int poll_result;
         if(!XPending(disp)){
-            poll_result = poll(eventfds, 3, scroll_target != scrolled_past ? 16 : -1);
+            int timeout=scroll_target!=scrolled_past ? 16 : -1;
+            if (focus_mode)
+            {
+                int caret_timeout=focus_input_timeout();
+                if (caret_timeout>=0 && (timeout<0 || caret_timeout<timeout)) timeout=caret_timeout;
+            }
+            poll_result = poll(eventfds,3,timeout);
         } else {
             poll_result = 1;
             eventfds[0].revents = 1;
@@ -600,6 +606,7 @@ int main(int argc, char **argv){
             cleanup();
             exit(POLLERROR);
         } else {
+            if (focus_mode) focus_input_refresh();
             if(input_source == stdin && eventfds[1].revents != 0){
                 int changed = parse_entries();
                 if(changed){

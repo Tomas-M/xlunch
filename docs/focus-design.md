@@ -103,3 +103,10 @@ and pasted line breaks or tabs become spaces in this single-line field.
 
 The editable text area uses the system-themed text cursor, including while
 dragging a selection. Clickable controls retain their themed hand cursor.
+
+The input caret alternates between visible and hidden every 500 milliseconds.
+Editing or moving the caret makes it visible immediately and restarts the delay;
+ordinary mouse motion does not. The caret stays hidden while any text is selected.
+Icons and the Ctrl F hint outside the editable viewport retain the inherited
+pointer cursor; clicking them focuses the input without moving the caret or
+starting a text selection. Middle-click paste is limited to the editable viewport.

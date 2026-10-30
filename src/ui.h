@@ -49,6 +49,8 @@ void focus_render(Imlib_Image buffer, int x, int y);
 int focus_event(XEvent *event);
 void focus_background(void);
 void focus_refresh(void);
+int focus_input_timeout(void);
+void focus_input_refresh(void);
 void focus_cleanup(void);
 void focus_select(int index);
 #endif

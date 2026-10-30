@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <wchar.h>
 #include <wctype.h>
+#include <stdint.h>
 
 typedef struct navigation { char *id; const char *label,*icon; int count; ui_rect_t rect; } navigation_t;
 typedef struct shape { int w,h,r,b; color_t fill,border; Imlib_Image image; struct shape *next; } shape_t;
@@ -13,6 +14,8 @@ static node_t **view;
 static node_t *action_entries;
 static int view_count,selected=-1,hovered=-1,pressed_target,keyboard_target=5000,mouse_x,mouse_y,query_dragging;
 static size_t query_cursor,query_anchor;
+static uint64_t query_blink_deadline;
+static int query_caret_visible=1;
 static char *query_primary,*query_clipboard;
 static int query_scroll;
 static int session_open,action_selected,confirm_action=-1,confirm_choice;
@@ -24,6 +27,19 @@ static int pointer_target(int x, int y);
 
 // Convert profile dimensions to device pixels.
 static int px(const char *key) { return (int)lround(ui_number(key)*ui_scale()); }
+
+// Use monotonic time so caret blinking is independent of wall-clock changes.
+static uint64_t query_milliseconds(void)
+{
+    struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);
+    return (uint64_t)now.tv_sec*1000+now.tv_nsec/1000000;
+}
+
+// Editing makes the caret visible immediately and starts a fresh half-second phase.
+static void query_blink_reset(void)
+{
+    query_caret_visible=1; query_blink_deadline=query_milliseconds()+500;
+}
 
 // Grid sessions share the application viewport; menu sessions remain a popup.
 static int session_grid(void) { return session_open && !strcmp(ui_value("session.view"),"grid"); }
@@ -329,6 +345,7 @@ static void navigation_positions(void)
 // Lay out only visible components, collapsing the sidebar to a strip on narrow windows.
 void focus_layout(void)
 {
+    query_blink_reset();
     pressed_target=0; hovered=-1;
     while (shapes) { shape_t *next=shapes->next; imlib_context_set_image(shapes->image); imlib_free_image(); free(shapes); shapes=next; }
     navigation_build();
@@ -480,6 +497,26 @@ scrollbar_t focus_scrollbar(void)
 
 // Queue a complete Focus redraw, including selection details and navigation states.
 void focus_refresh(void) { updates=imlib_update_append_rect(updates,0,0,screen_width,screen_height); }
+
+// Wake only for an active caret, with a 500 ms visible and 500 ms hidden phase.
+int focus_input_timeout(void)
+{
+    int editing=search_rect.h && keyboard_target==5000 && query_anchor==query_cursor;
+    int overlay=confirm_action>=0 || (session_open && !session_grid());
+    if (!editing || overlay) return -1;
+    uint64_t now=query_milliseconds();
+    return query_blink_deadline>now ? query_blink_deadline-now : 0;
+}
+
+// A blink invalidates the input bar without repainting the whole launcher window.
+void focus_input_refresh(void)
+{
+    if (focus_input_timeout()!=0) return;
+    // Start the next phase from this frame; delayed timers must not cause a short flash.
+    query_caret_visible=!query_caret_visible; query_blink_deadline=query_milliseconds()+500;
+    updates=imlib_update_append_rect(updates,search_rect.x,search_rect.y,search_rect.w,search_rect.h);
+}
+
 
 // Replace refreshed metadata while keeping the query, category, scroll and selection identity.
 void focus_catalog_changed(node_t *catalog)
@@ -800,7 +837,7 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
             imlib_text_draw(label.x-query_scroll-ox,label.y+(label.h-height)/2-oy,value);
         }
         imlib_free_font(); imlib_context_set_cliprect(label.x-ox,label.y-oy,label.w,label.h);
-        if (keyboard_target==5000 && start==end)
+        if (focus_input_timeout()>=0 && query_caret_visible)
         {
             box(buffer,(ui_rect_t){label.x+caret-query_scroll,label.y+(label.h-size)/2,fmax(1,lround(ui_scale())),size},0,0,ui_color("colors.accent",foreground),transparent,ox,oy);
         }
@@ -995,7 +1032,9 @@ static void next_target(int backwards)
         if (keyboard_target>=10000) focus_select(keyboard_target-10000+1);
         else if (keyboard_target>=1000 && keyboard_target<2000) reveal_navigation(keyboard_target-1000);
     }
-    free(targets); query_anchor=query_cursor; focus_refresh();
+    free(targets); query_anchor=query_cursor;
+    if (keyboard_target==5000) query_blink_reset();
+    focus_refresh();
 }
 
 // Refresh filtering and selection after editing a query or changing groups.
@@ -1009,6 +1048,7 @@ static void query_changed(void)
 // Clear the input without leaving an invisible search target behind.
 static void clear_query(void)
 {
+    query_blink_reset();
     while (cmdline) pop_key();
     query_anchor=query_cursor=0; query_scroll=0; query_changed();
 }
@@ -1017,6 +1057,7 @@ static void clear_query(void)
 static void query_edit(size_t start, size_t end, const char *input)
 {
     if (strlen(commandline)-(end-start)+strlen(input)>=sizeof(commandline)) return;
+    query_blink_reset();
     keynode_t **position=&cmdline; size_t offset=0;
     while (*position && offset<start) { offset+=strlen((*position)->key); position=&(*position)->next; }
     while (*position && offset<end)
@@ -1150,7 +1191,7 @@ static void focus_key(XEvent *event)
     if ((event->xkey.state&ControlMask) && (key==XK_f || key==XK_F) && ui_bool("search.enabled"))
     {
         keyboard_target=search_rect.h ? 5000 : 0; query_anchor=0; query_cursor=strlen(commandline);
-        query_copy(XA_PRIMARY); free(input); focus_refresh(); return;
+        query_blink_reset(); query_copy(XA_PRIMARY); free(input); focus_refresh(); return;
     }
     int control=!!(event->xkey.state&ControlMask),shift=!!(event->xkey.state&ShiftMask);
     if (control && (key==XK_a || key==XK_A))
@@ -1184,6 +1225,7 @@ static void focus_key(XEvent *event)
     int caret_key=key==XK_Left || key==XK_Right || key==XK_Home || key==XK_End;
     if (keyboard_target==5000 && caret_key)
     {
+        query_blink_reset();
         if (key==XK_Home) query_cursor=0;
         else if (key==XK_End) query_cursor=strlen(commandline);
         else if (!shift && query_anchor!=query_cursor && !control)
@@ -1283,7 +1325,9 @@ int focus_event(XEvent *event)
         mouse_x=event->type==LeaveNotify ? -1 : event->xmotion.x; mouse_y=event->type==LeaveNotify ? -1 : event->xmotion.y;
         if (query_dragging && event->type==MotionNotify)
         {
-            query_cursor=query_place(mouse_x); focus_refresh(); return 1;
+            size_t position=query_place(mouse_x);
+            if (position!=query_cursor) query_blink_reset();
+            query_cursor=position; focus_refresh(); return 1;
         }
         if (scrollbar_drag_y>=0 && event->type==MotionNotify) drag_scrollbar(mouse_y);
         int target=pointer_target(mouse_x,mouse_y); hovered=target>=10000 ? target-10000 : -1;
@@ -1310,7 +1354,7 @@ int focus_event(XEvent *event)
             else if ((!session_open || session_grid()) && confirm_action<0) scroll_wheel(direction);
             return 1;
         }
-        if (event->xbutton.button==2 && inside(search_rect,mouse_x,mouse_y))
+        if (event->xbutton.button==2 && pointer_target(mouse_x,mouse_y)==5000 && inside(query_label(),mouse_x,mouse_y))
         {
             query_anchor=query_cursor=query_place(mouse_x); query_paste(XA_PRIMARY); return 1;
         }
@@ -1333,9 +1377,10 @@ int focus_event(XEvent *event)
         int target=pointer_target(mouse_x,mouse_y);
         if (session_open && !session_grid() && !target) { session_open=0; pressed_target=0; focus_refresh(); return 1; }
         pressed_target=target; if (target) keyboard_target=target;
-        if (target==5000)
+        // Only the editable viewport can place the caret or start text selection.
+        if (target==5000 && inside(query_label(),mouse_x,mouse_y))
         {
-            query_cursor=query_place(mouse_x);
+            query_blink_reset(); query_cursor=query_place(mouse_x);
             if (!(event->xbutton.state&ShiftMask)) query_anchor=query_cursor;
             query_dragging=1;
         }
@@ -1348,6 +1393,7 @@ int focus_event(XEvent *event)
         if (event->xbutton.button!=1) return 1;
         if (query_dragging)
         {
+            query_blink_reset();
             query_cursor=query_place(event->xbutton.x); query_dragging=0; pressed_target=0;
             query_copy(XA_PRIMARY); focus_refresh(); return 1;
         }

@@ -30,7 +30,7 @@ search=DejaVuSansMono/16
 [search]
 allow_commands=true
 padding=10
-show_shortcut=false
+show_shortcut=true
 icon=
 background=223344ff
 hover_background=445566ff
@@ -54,6 +54,8 @@ selected_text=ffffffff
     xlib.XFree.argtypes=[ctypes.c_void_p]; xlib.XCloseDisplay.argtypes=[ctypes.c_void_p]
     display=xlib.XOpenDisplay(env['DISPLAY'].encode()); assert display
     xfixes.XFixesGetCursorImage.argtypes=[ctypes.c_void_p]; xfixes.XFixesGetCursorImage.restype=ctypes.POINTER(CursorImage)
+    xtest=ctypes.CDLL('libXtst.so.6')
+    xtest.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
     class Crossing(ctypes.Structure):
         _fields_=[('type',ctypes.c_int),('serial',ctypes.c_ulong),('send_event',ctypes.c_int),('display',ctypes.c_void_p),
                   ('window',ctypes.c_ulong),('root',ctypes.c_ulong),('subwindow',ctypes.c_ulong),('time',ctypes.c_ulong),
@@ -112,6 +114,77 @@ selected_text=ffffffff
             actual=xlib.XGetPixel(image,0,0); xlib.XDestroyImage(image)
             assert actual==background,'Pointer grab changed the input hover background'
 
+    # Search icons and shortcut hints focus the input without editing it.
+    def outside_text():
+        send('key','ctrl+shift+Left')
+        for x in (40,740):
+            send('mousemove',x,50)
+            arrow=cursor_name()
+            assert arrow!=b'text','Non-editable search chrome has a text cursor'
+            send('mousedown','1')
+            assert cursor_name()==arrow,'Clicking outside the text viewport starts a text drag'
+            send('mouseup','1')
+            assert cursor_name()==arrow,'Releasing outside the text viewport changes the cursor'
+        send('type','gamma')
+
+    # A selection started in the text still extends past the viewport until release.
+    def drag_outside_text():
+        pointer('>alpha '); send('mousedown','1'); send('mousemove',40,50)
+        assert cursor_name()==b'text','Active text drag lost its cursor outside the viewport'
+        send('mouseup','1')
+        assert cursor_name()!=b'text','Released text drag kept its cursor over the icon'
+        send('key','End')
+
+    # Read the insertion-point pixel without including the mouse cursor overlay.
+    def caret_visible(window,prefix):
+        width=ctypes.c_int(); height=ctypes.c_int()
+        imlib.imlib_get_text_size(prefix.encode(),ctypes.byref(width),ctypes.byref(height))
+        image=xlib.XGetImage(display,window,text_x+width.value,50,1,1,ctypes.c_ulong(-1).value,2)
+        pixel=xlib.XGetPixel(image,0,0); xlib.XDestroyImage(image)
+        return pixel&0xffffff==0xffffff
+
+    # Check actual on-screen phase transitions rather than only a timer calculation.
+    def blinking_caret():
+        window=int(subprocess.check_output(['xdotool','getwindowfocus'],env=env,text=True))
+        time.sleep(1); send('key','End')
+        started=time.monotonic(); previous=caret_visible(window,'>alpha beta'); changes=[]
+        assert previous,'Caret must start visible after typing'
+        while time.monotonic()-started<1.7:
+            visible=caret_visible(window,'>alpha beta')
+            if visible!=previous:
+                changes.append(time.monotonic()); previous=visible
+            time.sleep(.015)
+        assert len(changes)>=3,('Caret did not alternate at 500 ms',changes)
+        intervals=[end-start for start,end in zip(changes,changes[1:])]
+        assert all(.35<interval<.65 for interval in intervals),intervals
+
+    # Typing keeps the caret visible; idle pointer motion must not restart a hidden phase.
+    def typing_caret():
+        window=int(subprocess.check_output(['xdotool','getwindowfocus'],env=env,text=True))
+        prefix='>alpha'
+        for character in 'bcde':
+            send('type',character); prefix+=character
+            assert caret_visible(window,prefix),'Caret disappeared while typing'
+            time.sleep(.12)
+        time.sleep(.5)
+        assert not caret_visible(window,prefix),'Caret did not hide after typing stopped'
+        xtest.XTestFakeMotionEvent(display,-1,500,50,0); xlib.XFlush(display)
+        time.sleep(.025)
+        assert not caret_visible(window,prefix),'Ordinary pointer motion reset caret blinking'
+        send('key','Left')
+        assert caret_visible(window,prefix[:-1]),'Moving the caret did not make it visible'
+
+    # A nonempty selection hides the caret through every blink phase until collapsed.
+    def selected_caret():
+        window=int(subprocess.check_output(['xdotool','getwindowfocus'],env=env,text=True))
+        send('key','ctrl+a')
+        assert not caret_visible(window,'>alpha beta'),'Selection left the caret visible'
+        time.sleep(.6)
+        send('mousemove',500,50)
+        assert not caret_visible(window,'>alpha beta'),'Caret blinked while text was selected'
+        send('key','End')
+        assert caret_visible(window,'>alpha beta'),'Collapsed selection did not restore the caret'
+
     # Return only the accepted command; --outputonly prevents command execution.
     def case(name,text,actions,expected):
         process=subprocess.Popen([str(repo/'xlunch'),'--ui-config',str(profile),'--outputonly','-i',str(root/'empty.dsv')],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -135,6 +208,11 @@ selected_text=ffffffff
                 process.terminate(); process.wait(timeout=5)
 
     try:
+        case('Caret blinks with 500 ms phases','>alpha beta',blinking_caret,'alpha beta')
+        case('Typing and caret movement reset blinking; pointer motion does not','>alpha',typing_caret,'alphabcde')
+        case('Caret stays hidden while text is selected','>alpha beta',selected_caret,'alpha beta')
+        case('Icon and shortcut clicks preserve arrow and selection','>alpha beta',outside_text,'alpha gamma')
+        case('Text drag retains its cursor only until release','>alpha beta',drag_outside_text,'alpha beta')
         case('Pointer grabs preserve the text cursor and input background','>alpha beta',grab_crossings,'alpha beta')
         case('Ctrl+Backspace removes the preceding word','>alpha beta',lambda:send('key','ctrl+BackSpace'),'alpha ')
         case('Word deletion keeps the text after the caret','>alpha beta gamma',lambda:send('key','ctrl+Left','ctrl+BackSpace'),'alpha gamma')
