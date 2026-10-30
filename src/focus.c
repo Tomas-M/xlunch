@@ -1,4 +1,6 @@
 #include "ui.h"
+#include <wchar.h>
+#include <wctype.h>
 
 typedef struct navigation { char *id; const char *label,*icon; int count; ui_rect_t rect; } navigation_t;
 typedef struct shape { int w,h,r,b; color_t fill,border; Imlib_Image image; struct shape *next; } shape_t;
@@ -9,8 +11,9 @@ static navigation_t *navigation;
 static int navigation_count,nav_horizontal,nav_scroll,nav_extent;
 static node_t **view;
 static node_t *action_entries;
-static int view_count,selected=-1,hovered=-1,pressed_target,keyboard_target=5000,mouse_x,mouse_y,search_selected;
-static size_t query_cursor;
+static int view_count,selected=-1,hovered=-1,pressed_target,keyboard_target=5000,mouse_x,mouse_y,query_dragging;
+static size_t query_cursor,query_anchor;
+static char *query_primary,*query_clipboard;
 static int query_scroll;
 static int session_open,action_selected,confirm_action=-1,confirm_choice;
 static int popup_scroll;
@@ -650,17 +653,60 @@ static size_t query_step(size_t position, int direction)
     return position;
 }
 
-// Place the caret at the nearest visible character boundary, accounting for text scrolling.
-static void query_place(int x)
+// Classify Unicode letters, numbers, punctuation and whitespace without splitting UTF-8.
+static int query_class(size_t position)
 {
-    int target=x-query_label().x+query_scroll,previous=0; query_cursor=0;
-    while (commandline[query_cursor])
+    wchar_t character; mbstate_t state={0};
+    if (mbrtowc(&character,commandline+position,MB_CUR_MAX,&state)==(size_t)-1) return 2;
+    if (iswspace(character)) return 0;
+    return iswalnum(character) || character==L'_' ? 1 : 2;
+}
+
+// Move over a word and its adjacent whitespace in the requested direction.
+static size_t query_word(size_t position, int direction)
+{
+    if (direction<0)
+        while (position && !query_class(query_step(position,-1))) position=query_step(position,-1);
+    size_t character=direction<0 ? query_step(position,-1) : position;
+    int kind=commandline[character] ? query_class(character) : 0;
+    while (direction<0 ? position>0 : commandline[position]!=0)
     {
-        size_t next=query_step(query_cursor,1); int width=query_width(next);
-        if (target<(previous+width)/2) break;
-        query_cursor=next; previous=width;
+        character=direction<0 ? query_step(position,-1) : position;
+        if (query_class(character)!=kind) break;
+        position=query_step(position,direction);
     }
-    search_selected=0;
+    if (direction>0)
+        while (commandline[position] && !query_class(position)) position=query_step(position,1);
+    return position;
+}
+
+// Preserve a selection snapshot for X11 PRIMARY or explicit clipboard operations.
+static void query_copy(Atom selection)
+{
+    size_t start=query_anchor<query_cursor ? query_anchor : query_cursor,end=query_anchor>query_cursor ? query_anchor : query_cursor;
+    if (start==end) return;
+    char **value=selection==XA_PRIMARY ? &query_primary : &query_clipboard;
+    free(*value); *value=strndup(commandline+start,end-start);
+    XSetSelectionOwner(disp,selection,win,CurrentTime);
+}
+
+// Request UTF-8 text asynchronously, retaining the input's current replacement range.
+static void query_paste(Atom selection)
+{
+    XConvertSelection(disp,selection,XInternAtom(disp,"UTF8_STRING",False),XInternAtom(disp,"XLUNCH_INPUT",False),win,CurrentTime);
+}
+
+// Find the nearest visible character boundary, accounting for text scrolling.
+static size_t query_place(int x)
+{
+    int target=x-query_label().x+query_scroll,previous=0; size_t position=0;
+    while (commandline[position])
+    {
+        size_t next=query_step(position,1); int width=query_width(next);
+        if (target<(previous+width)/2) break;
+        position=next; previous=width;
+    }
+    return position;
 }
 
 // Draw the opt-in Focus interface over its cached background.
@@ -734,17 +780,25 @@ void focus_render(Imlib_Image buffer, int ox, int oy)
             if (caret-query_scroll>=label.w-2) query_scroll=caret-label.w+2;
         }
         imlib_context_set_cliprect(label.x-ox,label.y-oy,label.w,label.h);
-        if (search_selected && *commandline)
-        {
-            box(buffer,(ui_rect_t){label.x,label.y+(label.h-size)/2,fmin(width-query_scroll,label.w),size},px("search.radius")/2,px("search.border_width"),
+        size_t start=query_anchor<query_cursor ? query_anchor : query_cursor,end=query_anchor>query_cursor ? query_anchor : query_cursor;
+        int selection_x=label.x+query_width(start)-query_scroll,selection_width=query_width(end)-query_width(start);
+        if (start!=end)
+            box(buffer,(ui_rect_t){selection_x,label.y+(label.h-size)/2,selection_width,size},px("search.radius")/2,px("search.border_width"),
                 ui_color("search.selected_background",ui_color("colors.selected",transparent)),ui_color("search.selected_border",ui_color("colors.selected_border",transparent)),ox,oy);
-        }
         color_t query_color=*commandline ? ui_color("search.text",foreground) : ui_color("search.placeholder_color",muted);
         if (over) query_color=ui_color("search.hover_text",query_color);
-        if (search_selected) query_color=ui_color("search.selected_text",query_color);
         imlib_context_set_image(buffer); imlib_context_set_font(font); imlib_context_set_color(query_color.r,query_color.g,query_color.b,query_color.a);
-        imlib_text_draw(label.x-query_scroll-ox,label.y+(label.h-height)/2-oy,value); imlib_free_font();
-        if (keyboard_target==5000 && !search_selected)
+        imlib_text_draw(label.x-query_scroll-ox,label.y+(label.h-height)/2-oy,value);
+        int selection_left=fmax(label.x,selection_x),selection_right=fmin(label.x+label.w,selection_x+selection_width);
+        if (selection_right>selection_left)
+        {
+            imlib_context_set_cliprect(selection_left-ox,label.y-oy,selection_right-selection_left,label.h);
+            color_t selected_color=ui_color("search.selected_text",query_color);
+            imlib_context_set_color(selected_color.r,selected_color.g,selected_color.b,selected_color.a);
+            imlib_text_draw(label.x-query_scroll-ox,label.y+(label.h-height)/2-oy,value);
+        }
+        imlib_free_font(); imlib_context_set_cliprect(label.x-ox,label.y-oy,label.w,label.h);
+        if (keyboard_target==5000 && start==end)
         {
             box(buffer,(ui_rect_t){label.x+caret-query_scroll,label.y+(label.h-size)/2,fmax(1,lround(ui_scale())),size},0,0,ui_color("colors.accent",foreground),transparent,ox,oy);
         }
@@ -939,7 +993,7 @@ static void next_target(int backwards)
         if (keyboard_target>=10000) focus_select(keyboard_target-10000+1);
         else if (keyboard_target>=1000 && keyboard_target<2000) reveal_navigation(keyboard_target-1000);
     }
-    free(targets); search_selected=0; focus_refresh();
+    free(targets); query_anchor=query_cursor; focus_refresh();
 }
 
 // Refresh filtering and selection after editing a query or changing groups.
@@ -954,12 +1008,13 @@ static void query_changed(void)
 static void clear_query(void)
 {
     while (cmdline) pop_key();
-    search_selected=0; query_cursor=0; query_scroll=0; query_changed();
+    query_anchor=query_cursor=0; query_scroll=0; query_changed();
 }
 
 // Edit shared input nodes at UTF-8 boundaries without changing the classic append-only path.
 static void query_edit(size_t start, size_t end, const char *input)
 {
+    if (strlen(commandline)-(end-start)+strlen(input)>=sizeof(commandline)) return;
     keynode_t **position=&cmdline; size_t offset=0;
     while (*position && offset<start) { offset+=strlen((*position)->key); position=&(*position)->next; }
     while (*position && offset<end)
@@ -972,7 +1027,7 @@ static void query_edit(size_t start, size_t end, const char *input)
         keynode_t *node=malloc(sizeof(*node)); memcpy(node->key,p,next-p); node->key[next-p]=0;
         node->next=*position; *position=node; position=&node->next; p=next;
     }
-    query_cursor=start+strlen(input); search_selected=0; keyboard_target=search_rect.h ? 5000 : 0; query_changed();
+    query_anchor=query_cursor=start+strlen(input); keyboard_target=search_rect.h ? 5000 : 0; query_changed();
 }
 
 // Apply optional per-action confirmation before execution or stdout selection.
@@ -1058,7 +1113,7 @@ static void activate_target(int target)
         session_open=0;
         query_changed(); return;
     }
-    if (target==5000) { keyboard_target=target; search_selected=0; focus_refresh(); }
+    if (target==5000) { keyboard_target=target; focus_refresh(); }
 }
 
 // Handle Focus keyboard navigation, explicit command entry and UTF-8 editing.
@@ -1092,9 +1147,24 @@ static void focus_key(XEvent *event)
     }
     if ((event->xkey.state&ControlMask) && (key==XK_f || key==XK_F) && ui_bool("search.enabled"))
     {
-        keyboard_target=search_rect.h ? 5000 : 0; search_selected=!!*commandline; free(input); focus_refresh(); return;
+        keyboard_target=search_rect.h ? 5000 : 0; query_anchor=0; query_cursor=strlen(commandline);
+        query_copy(XA_PRIMARY); free(input); focus_refresh(); return;
     }
-    if ((event->xkey.state&ControlMask) && (key==XK_a || key==XK_A)) { search_selected=1; free(input); focus_refresh(); return; }
+    int control=!!(event->xkey.state&ControlMask),shift=!!(event->xkey.state&ShiftMask);
+    if (control && (key==XK_a || key==XK_A))
+    {
+        query_anchor=0; query_cursor=strlen(commandline); query_copy(XA_PRIMARY); free(input); focus_refresh(); return;
+    }
+    if (control && (key==XK_c || key==XK_C || key==XK_x || key==XK_X))
+    {
+        query_copy(XInternAtom(disp,"CLIPBOARD",False));
+        if (key==XK_x || key==XK_X) query_edit(query_anchor<query_cursor ? query_anchor : query_cursor,query_anchor>query_cursor ? query_anchor : query_cursor,"");
+        free(input); return;
+    }
+    if (control && (key==XK_v || key==XK_V))
+    {
+        query_paste(XInternAtom(disp,"CLIPBOARD",False)); free(input); return;
+    }
     if ((event->xkey.state&ControlMask) && (key==XK_u || key==XK_U)) { clear_query(); free(input); return; }
     if (key==XK_Tab || key==XK_ISO_Left_Tab)
     {
@@ -1112,10 +1182,14 @@ static void focus_key(XEvent *event)
     int caret_key=key==XK_Left || key==XK_Right || key==XK_Home || key==XK_End;
     if (keyboard_target==5000 && caret_key)
     {
-        if (key==XK_Home || (search_selected && key==XK_Left)) query_cursor=0;
-        else if (key==XK_End || search_selected) query_cursor=strlen(commandline);
-        else query_cursor=query_step(query_cursor,key==XK_Left ? -1 : 1);
-        search_selected=0; free(input); focus_refresh(); return;
+        if (key==XK_Home) query_cursor=0;
+        else if (key==XK_End) query_cursor=strlen(commandline);
+        else if (!shift && query_anchor!=query_cursor && !control)
+            query_cursor=key==XK_Left ? fmin(query_anchor,query_cursor) : fmax(query_anchor,query_cursor);
+        else query_cursor=control ? query_word(query_cursor,key==XK_Left ? -1 : 1) : query_step(query_cursor,key==XK_Left ? -1 : 1);
+        if (!shift) query_anchor=query_cursor;
+        else query_copy(XA_PRIMARY);
+        free(input); focus_refresh(); return;
     }
     int navigation_key=key==XK_Left || key==XK_Right || key==XK_Up || key==XK_Down || key==XK_Home || key==XK_End || key==XK_Page_Up || key==XK_Page_Down;
     if (navigation_key)
@@ -1145,14 +1219,13 @@ static void focus_key(XEvent *event)
     if (!ui_bool("search.enabled")) { free(input); return; }
     if (key==XK_BackSpace || key==XK_Delete)
     {
-        if (search_selected) clear_query();
-        else if (key==XK_BackSpace) query_edit(query_step(query_cursor,-1),query_cursor,"");
-        else query_edit(query_cursor,query_step(query_cursor,1),"");
+        if (query_anchor!=query_cursor) query_edit(fmin(query_anchor,query_cursor),fmax(query_anchor,query_cursor),"");
+        else if (key==XK_BackSpace) query_edit(control ? query_word(query_cursor,-1) : query_step(query_cursor,-1),query_cursor,"");
+        else query_edit(query_cursor,control ? query_word(query_cursor,1) : query_step(query_cursor,1),"");
     }
     else if (count>0 && !(event->xkey.state&(ControlMask|Mod1Mask)) && (unsigned char)input[0]>=32)
     {
-        if (search_selected) clear_query();
-        if (strlen(commandline)+count<sizeof(commandline)) query_edit(query_cursor,query_cursor,input);
+        query_edit(fmin(query_anchor,query_cursor),fmax(query_anchor,query_cursor),input);
     }
     free(input);
 }
@@ -1160,10 +1233,54 @@ static void focus_key(XEvent *event)
 // Consume Focus interactions before classic handlers while retaining the shared X11 loop.
 int focus_event(XEvent *event)
 {
+    if (event->type==SelectionRequest)
+    {
+        XSelectionRequestEvent *request=&event->xselectionrequest;
+        XEvent response={0}; response.xselection=(XSelectionEvent){.type=SelectionNotify,.display=disp,.requestor=request->requestor,
+            .selection=request->selection,.target=request->target,.time=request->time,.property=None};
+        Atom utf8=XInternAtom(disp,"UTF8_STRING",False),targets=XInternAtom(disp,"TARGETS",False);
+        Atom property=request->property==None ? request->target : request->property;
+        const char *value=request->selection==XA_PRIMARY ? query_primary : query_clipboard;
+        if (value && request->target==targets)
+        {
+            Atom supported[]={targets,utf8}; XChangeProperty(disp,request->requestor,property,XA_ATOM,32,PropModeReplace,(unsigned char *)supported,2);
+            response.xselection.property=property;
+        }
+        else if (value && request->target==utf8)
+        {
+            XChangeProperty(disp,request->requestor,property,utf8,8,PropModeReplace,(unsigned char *)value,strlen(value));
+            response.xselection.property=property;
+        }
+        XSendEvent(disp,request->requestor,False,0,&response); return 1;
+    }
+    if (event->type==SelectionNotify)
+    {
+        Atom property=event->xselection.property,type; int format; unsigned long count,remaining; unsigned char *value=NULL;
+        if (property!=None && XGetWindowProperty(disp,win,property,0,sizeof(commandline)/4+1,True,AnyPropertyType,&type,&format,&count,&remaining,&value)==Success)
+        {
+            if (type==XInternAtom(disp,"UTF8_STRING",False) && format==8 && !remaining)
+            {
+                for (unsigned long i=0;i<count;i++) if (value[i]=='\n' || value[i]=='\r' || value[i]=='\t') value[i]=' ';
+                query_edit(fmin(query_anchor,query_cursor),fmax(query_anchor,query_cursor),(char *)value);
+            }
+            XFree(value); XDeleteProperty(disp,win,property);
+        }
+        return 1;
+    }
+    if (event->type==SelectionClear)
+    {
+        if (event->xselectionclear.selection==XA_PRIMARY) { free(query_primary); query_primary=NULL; query_anchor=query_cursor; focus_refresh(); }
+        else { free(query_clipboard); query_clipboard=NULL; }
+        return 1;
+    }
     if (event->type==KeyPress) { focus_key(event); return 1; }
     if (event->type==MotionNotify || event->type==EnterNotify || event->type==LeaveNotify)
     {
         mouse_x=event->type==LeaveNotify ? -1 : event->xmotion.x; mouse_y=event->type==LeaveNotify ? -1 : event->xmotion.y;
+        if (query_dragging && event->type==MotionNotify)
+        {
+            query_cursor=query_place(mouse_x); focus_refresh(); return 1;
+        }
         if (scrollbar_drag_y>=0 && event->type==MotionNotify) drag_scrollbar(mouse_y);
         int target=pointer_target(mouse_x,mouse_y); hovered=target>=10000 ? target-10000 : -1;
         if (hovered>=0) { selected=hovered; hoverset=MOUSE; }
@@ -1189,6 +1306,10 @@ int focus_event(XEvent *event)
             else if ((!session_open || session_grid()) && confirm_action<0) scroll_wheel(direction);
             return 1;
         }
+        if (event->xbutton.button==2 && inside(search_rect,mouse_x,mouse_y))
+        {
+            query_anchor=query_cursor=query_place(mouse_x); query_paste(XA_PRIMARY); return 1;
+        }
         if (event->xbutton.button==3)
         {
             if (session_open) { session_open=0; query_changed(); }
@@ -1208,13 +1329,23 @@ int focus_event(XEvent *event)
         int target=pointer_target(mouse_x,mouse_y);
         if (session_open && !session_grid() && !target) { session_open=0; pressed_target=0; focus_refresh(); return 1; }
         pressed_target=target; if (target) keyboard_target=target;
-        if (target==5000) query_place(mouse_x);
+        if (target==5000)
+        {
+            query_cursor=query_place(mouse_x);
+            if (!(event->xbutton.state&ShiftMask)) query_anchor=query_cursor;
+            query_dragging=1;
+        }
         if (!target && confirm_action<0 && void_click_terminate) { cleanup(); exit(VOIDCLICK); }
         focus_refresh(); return 1;
     }
     if (event->type==ButtonRelease)
     {
         if (event->xbutton.button!=1) return 1;
+        if (query_dragging)
+        {
+            query_cursor=query_place(event->xbutton.x); query_dragging=0; pressed_target=0;
+            query_copy(XA_PRIMARY); focus_refresh(); return 1;
+        }
         if (scrollbar_drag_y>=0) { drag_scrollbar(event->xbutton.y); scrollbar_drag_y=-1; focus_refresh(); return 1; }
         int target=pointer_target(event->xbutton.x,event->xbutton.y),pressed=pressed_target; pressed_target=0;
         if (pressed && target==pressed) activate_target(target);
@@ -1228,6 +1359,7 @@ void focus_cleanup(void)
 {
     for (int i=1;i<=100;i++)
         if (icon_modifiers[i]) { imlib_context_set_color_modifier(icon_modifiers[i]); imlib_free_color_modifier(); icon_modifiers[i]=NULL; }
+    free(query_primary); query_primary=NULL; free(query_clipboard); query_clipboard=NULL;
     clear_action_entries(); free(view); view=NULL;
     ui_list_free(actions,action_count); actions=NULL; action_count=0;
     for (int i=0;i<navigation_count;i++) free(navigation[i].id);

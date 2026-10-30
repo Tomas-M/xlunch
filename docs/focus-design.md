@@ -85,3 +85,18 @@ path as separate arguments; `command_launcher_args` supplies a comma-separated
 argument list before them. This lets distributions provide terminal or GUI routing
 without embedding it in xlunch. `--outputonly` returns selections without launching
 native entries, custom actions or typed commands.
+
+## Input editing
+
+The Focus search and command field supports UTF-8 caret movement and text ranges.
+Drag with the primary mouse button or hold Shift while pressing Left, Right,
+Home or End to select text. Shift-click extends the current range. Typing,
+Backspace and Delete replace or remove only the selected text.
+
+Ctrl+Left and Ctrl+Right move by words; Ctrl+Shift+Left and Ctrl+Shift+Right
+extend the selection by words. Ctrl+Backspace removes the preceding word and
+Ctrl+Delete removes the following word. Ctrl+A selects all text, Ctrl+C copies,
+Ctrl+X cuts, and Ctrl+V pastes the clipboard over the current selection.
+Selecting text also publishes the X11 PRIMARY selection; middle-click pastes
+PRIMARY at the clicked position. Clipboard text remains on UTF-8 boundaries,
+and pasted line breaks or tabs become spaces in this single-line field.
