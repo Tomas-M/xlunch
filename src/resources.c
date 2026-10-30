@@ -1,21 +1,21 @@
 #include "xlunch.h"
 #include <dlfcn.h>
 
-// Use the desktop's themed hand on clickable controls, inheriting its cursor elsewhere.
-void pointer_cursor(int clickable)
+// Load themed cursors for controls and text; inherit the desktop cursor elsewhere.
+void pointer_cursor(pointer_kind_t kind)
 {
-    static Cursor hand;
-    static int initialized,active;
+    static Cursor cursors[3];
+    static int initialized;
+    static pointer_kind_t active;
     if (!initialized)
     {
         initialized=1;
         void *library=dlopen("libXcursor.so.1",RTLD_LAZY|RTLD_LOCAL);
         Cursor (*load)(Display *,const char *)=library ? dlsym(library,"XcursorLibraryLoadCursor") : NULL;
-        if (load) hand=load(disp,"hand2");
+        if (load) { cursors[POINTER_HAND]=load(disp,"hand2"); cursors[POINTER_TEXT]=load(disp,"text"); }
     }
-    if (!hand || active==clickable) return;
-    XDefineCursor(disp,win,clickable ? hand : None);
-    active=clickable;
+    if (active==kind) return;
+    XDefineCursor(disp,win,cursors[kind]); active=kind;
 }
 
 Imlib_Image load_image(char * icon) {

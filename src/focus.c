@@ -713,7 +713,9 @@ static size_t query_place(int x)
 void focus_render(Imlib_Image buffer, int ox, int oy)
 {
     int target=pointer_target(mouse_x,mouse_y);
-    pointer_cursor(target!=0 && target!=5000);
+    pointer_kind_t cursor=target!=0 && target!=5000 ? POINTER_HAND : POINTER_INHERIT;
+    if (query_dragging || (target==5000 && inside(query_label(),mouse_x,mouse_y))) cursor=POINTER_TEXT;
+    pointer_cursor(cursor);
     color_t foreground=ui_color("colors.text",text_color),muted=ui_color("colors.muted",foreground),transparent={0};
     int gap=lround(12*ui_scale());
     if (header_rect.h)

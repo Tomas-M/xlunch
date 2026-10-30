@@ -42,6 +42,16 @@ selected_text=ffffffff
     assert select.select([read_fd],[],[],5)[0],'Xvfb did not start'
     env=dict(os.environ,DISPLAY=':'+os.read(read_fd,32).decode().strip(),LANG='C.UTF-8',LC_ALL='C.UTF-8',XDG_CACHE_HOME=str(root/'cache'))
     os.close(read_fd)
+    # Inspect the displayed cursor through XFixes, including its theme-assigned name.
+    class CursorImage(ctypes.Structure):
+        _fields_=[('x',ctypes.c_short),('y',ctypes.c_short),('width',ctypes.c_ushort),('height',ctypes.c_ushort),
+                  ('xhot',ctypes.c_ushort),('yhot',ctypes.c_ushort),('serial',ctypes.c_ulong),
+                  ('pixels',ctypes.POINTER(ctypes.c_ulong)),('atom',ctypes.c_ulong),('name',ctypes.c_char_p)]
+    xlib=ctypes.CDLL('libX11.so.6'); xfixes=ctypes.CDLL('libXfixes.so.3')
+    xlib.XOpenDisplay.argtypes=[ctypes.c_char_p]; xlib.XOpenDisplay.restype=ctypes.c_void_p
+    xlib.XFree.argtypes=[ctypes.c_void_p]; xlib.XCloseDisplay.argtypes=[ctypes.c_void_p]
+    display=xlib.XOpenDisplay(env['DISPLAY'].encode()); assert display
+    xfixes.XFixesGetCursorImage.argtypes=[ctypes.c_void_p]; xfixes.XFixesGetCursorImage.restype=ctypes.POINTER(CursorImage)
     imlib=ctypes.CDLL('libImlib2.so.1')
     imlib.imlib_add_path_to_font_path.argtypes=[ctypes.c_char_p]
     imlib.imlib_load_font.argtypes=[ctypes.c_char_p]; imlib.imlib_load_font.restype=ctypes.c_void_p
@@ -62,6 +72,10 @@ selected_text=ffffffff
         width=ctypes.c_int(); height=ctypes.c_int()
         imlib.imlib_get_text_size(prefix.encode(),ctypes.byref(width),ctypes.byref(height))
         send('mousemove',text_x+width.value,50)
+        cursor=xfixes.XFixesGetCursorImage(display)
+        name=cursor.contents.name
+        xlib.XFree(cursor)
+        assert name==b'text',('Expected themed text cursor',name)
 
     # Return only the accepted command; --outputonly prevents command execution.
     def case(name,text,actions,expected):
@@ -105,4 +119,5 @@ selected_text=ffffffff
         case('Middle-click pastes the PRIMARY selection at the pointer','>alpha beta',lambda:(drag('>alpha ','>alpha beta'),pointer('>'),send('click','2')),'betaalpha beta')
         case('Selection remains correct when the input scrolls','>'+('word '*30)+'last',lambda:(send('key','ctrl+shift+Left'),send('type','tail')),'word '*30+'tail')
     finally:
+        xlib.XCloseDisplay(display)
         server.terminate(); server.wait(timeout=5)

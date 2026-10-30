@@ -50,7 +50,7 @@ void recheckHover(XEvent ev) {
         }
         button = button->next;
     }
-    pointer_cursor(any_hovered);
+    pointer_cursor(any_hovered ? POINTER_HAND : POINTER_INHERIT);
 }
 
 void handleButtonPress(XEvent ev) {

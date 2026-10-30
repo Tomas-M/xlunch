@@ -100,3 +100,6 @@ Ctrl+X cuts, and Ctrl+V pastes the clipboard over the current selection.
 Selecting text also publishes the X11 PRIMARY selection; middle-click pastes
 PRIMARY at the clicked position. Clipboard text remains on UTF-8 boundaries,
 and pasted line breaks or tabs become spaces in this single-line field.
+
+The editable text area uses the system-themed text cursor, including while
+dragging a selection. Clickable controls retain their themed hand cursor.
