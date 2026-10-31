@@ -518,6 +518,13 @@ void focus_input_refresh(void)
 }
 
 
+// Snapshot the displayed order, including filtered and installed-first views.
+void focus_cache_positions(void)
+{
+    if (ui_bool("grid.visible"))
+        for (int i=0;i<view_count;i++) cache_remember_position(view[i]);
+}
+
 // Replace refreshed metadata while keeping the query, category, scroll and selection identity.
 void focus_catalog_changed(node_t *catalog)
 {
@@ -1377,6 +1384,7 @@ int focus_event(XEvent *event)
         int target=pointer_target(mouse_x,mouse_y);
         if (session_open && !session_grid() && !target) { session_open=0; pressed_target=0; focus_refresh(); return 1; }
         pressed_target=target; if (target) keyboard_target=target;
+        if (target>=10000 && !cache_click_allowed(view[target-10000],mouse_x,mouse_y)) pressed_target=0;
         // Only the editable viewport can place the caret or start text selection.
         if (target==5000 && inside(query_label(),mouse_x,mouse_y))
         {
@@ -1399,7 +1407,8 @@ int focus_event(XEvent *event)
         }
         if (scrollbar_drag_y>=0) { drag_scrollbar(event->xbutton.y); scrollbar_drag_y=-1; focus_refresh(); return 1; }
         int target=pointer_target(event->xbutton.x,event->xbutton.y),pressed=pressed_target; pressed_target=0;
-        if (pressed && target==pressed) activate_target(target);
+        int allowed=target<10000 || cache_click_allowed(view[target-10000],mouse_x,mouse_y);
+        if (pressed && target==pressed && allowed) activate_target(target);
         focus_refresh(); return 1;
     }
     return 0;

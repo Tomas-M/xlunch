@@ -161,6 +161,7 @@ char commandlinetext[10024];
 int prompt_x;
 int prompt_y;
 int mouse_moves=0;
+unsigned int pointer_buttons;
 char * background_file = "";
 char * highlight_file = "";
 char * input_file = "";
@@ -610,6 +611,9 @@ int main(int argc, char **argv){
                 while (XPending(disp))
                 {
                     XNextEvent(disp, &ev);
+                    // Keep completed cache work pending until the current pointer gesture ends.
+                    if (ev.type==ButtonPress && ev.xbutton.button<=Button3) pointer_buttons|=1U<<ev.xbutton.button;
+                    if (ev.type==ButtonRelease && ev.xbutton.button<=Button3) pointer_buttons&=~(1U<<ev.xbutton.button);
 
                     // allow through only UTF8 events
                     if (XFilterEvent(&ev, win)) continue;

@@ -17,5 +17,8 @@ int cache_rebuild(void);
 void cache_start(void);
 void cache_update(void);
 void cache_cancel(void);
+void cache_remember_position(node_t *entry);
+int cache_click_allowed(node_t *entry, int x, int y);
+void focus_cache_positions(void);
 void focus_catalog_changed(node_t *catalog);
 #endif

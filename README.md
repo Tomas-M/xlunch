@@ -37,6 +37,12 @@ while preserving its query, category, scroll and selected desktop ID. Launching 
 application or closing the menu cancels the refresh; incomplete files never replace
 the previous snapshot. Missing or damaged snapshots fall back to scanning desktop files.
 
+Completed refreshes wait until pointer buttons are released. For one second after
+a refresh, application clicks are accepted only where the same desktop ID was
+previously visible. Unchanged tiles remain clickable; new or moved targets wait
+for that interval to expire. Both press and release are checked, so holding a
+blocked press past the deadline cannot activate it.
+
 Create a snapshot during image preparation without a running X server:
 
 ```sh

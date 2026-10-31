@@ -90,7 +90,7 @@ void handleButtonPress(XEvent ev) {
             while (current != NULL)
             {
                 if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) {
-                    set_clicked(current,1);
+                    set_clicked(current,cache_click_allowed(current,ev.xbutton.x,ev.xbutton.y));
                     voidclicked = 0;
                 }
                 else set_clicked(current,0);
@@ -146,7 +146,7 @@ void handleButtonRelease(XEvent ev) {
 
     while (current != NULL)
     {
-        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1) ui_activate(current);
+        if (mouse_over_cell(current, ev.xmotion.x, ev.xmotion.y)) if (current->clicked==1 && cache_click_allowed(current,ev.xbutton.x,ev.xbutton.y)) ui_activate(current);
         set_clicked(current, 0); // button release means all cells are not clicked
         current = current->next;
     }

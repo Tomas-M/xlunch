@@ -6,6 +6,48 @@
 int rebuild_cache;
 static pid_t worker;
 static char *cache_file,*temporary_file;
+static int pending_refresh;
+typedef struct cached_position { char *id; int x,y,w,h; } cached_position_t;
+static cached_position_t *previous_positions;
+static int previous_count;
+static uint64_t positions_until;
+
+// Measure the click grace period independently of clock adjustments.
+static uint64_t cache_milliseconds(void)
+{
+    struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);
+    return (uint64_t)now.tv_sec*1000+now.tv_nsec/1000000;
+}
+
+// Discard the previous frame's application identities after their grace period.
+static void clear_positions(void)
+{
+    for (int i=0;i<previous_count;i++) free(previous_positions[i].id);
+    free(previous_positions); previous_positions=NULL; previous_count=0; positions_until=0;
+}
+
+// Remember only the visible, clickable part of an application tile.
+void cache_remember_position(node_t *entry)
+{
+    int top,bottom; entry_viewport(&top,&bottom);
+    int y=fmax(top,entry->y),height=fmin(bottom,entry->y+cell_height)-y;
+    if (entry->hidden || height<=0) return;
+    previous_positions=realloc(previous_positions,(previous_count+1)*sizeof(*previous_positions));
+    previous_positions[previous_count++]=(cached_position_t){strdup(entry->id),entry->x,y,cell_width,height};
+}
+
+// During the first second, a click must still refer to the application previously at that point.
+int cache_click_allowed(node_t *entry, int x, int y)
+{
+    if (!positions_until) return 1;
+    if (cache_milliseconds()>=positions_until) { clear_positions(); return 1; }
+    for (int i=0;i<previous_count;i++)
+    {
+        cached_position_t *old=&previous_positions[i];
+        if (x>=old->x && x<old->x+old->w && y>=old->y && y<old->y+old->h) return !strcmp(entry->id,old->id);
+    }
+    return 0;
+}
 
 // Hash effective settings and environment without inspecting every source file at startup.
 uint64_t cache_hash(uint64_t hash, const char *value)
@@ -114,6 +156,12 @@ int cache_load(int refresh)
         while (catalog) { node_t *next=catalog->next; free_entry(catalog); catalog=next; }
         ui_icons_reset(); return 0;
     }
+    if (refresh)
+    {
+        clear_positions();
+        if (focus_mode) focus_cache_positions();
+        else for (node_t *entry=entries;entry;entry=entry->next) cache_remember_position(entry);
+    }
     if (refresh && focus_mode) focus_catalog_changed(catalog);
     else { clear_entries(); entries=catalog; }
     return 1;
@@ -170,20 +218,27 @@ void cache_start(void)
 // Consume a completed refresh only between input events and drawing frames.
 void cache_update(void)
 {
-    if (!worker || !eventfds[2].revents) return;
-    unsigned char result=0; read(eventfds[2].fd,&result,1);
-    close(eventfds[2].fd); eventfds[2].fd=-1;
-    waitpid(worker,NULL,0); worker=0;
+    if (worker && eventfds[2].revents)
+    {
+        unsigned char result=0; read(eventfds[2].fd,&result,1);
+        close(eventfds[2].fd); eventfds[2].fd=-1;
+        waitpid(worker,NULL,0); worker=0; pending_refresh=result;
+    }
+    // Close the ready pipe before deferring, so a held button cannot cause a busy loop.
+    if (!pending_refresh || pointer_buttons) return;
+    pending_refresh=0;
     double position=scrolled_past;
-    if (!result || !cache_load(1)) return;
+    if (!cache_load(1)) return;
     if (!focus_mode) { ui_custom_entries(); filter_entries(); }
     arrange_positions(); set_scroll_level(position); arrange_positions();
+    positions_until=cache_milliseconds()+1000;
     updates=imlib_update_append_rect(updates,0,0,screen_width,screen_height);
 }
 
 // Stop refresh before launching a selection or closing the launcher.
 void cache_cancel(void)
 {
+    pending_refresh=0; clear_positions();
     if (!worker) return;
     kill(worker,SIGTERM); waitpid(worker,NULL,0); worker=0;
     close(eventfds[2].fd); eventfds[2].fd=-1;

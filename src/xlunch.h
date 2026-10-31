@@ -141,6 +141,7 @@ extern char commandlinetext[10024];
 extern int prompt_x;
 extern int prompt_y;
 extern int mouse_moves;
+extern unsigned int pointer_buttons;
 extern char * background_file;
 extern char * highlight_file;
 extern char * input_file;
