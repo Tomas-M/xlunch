@@ -505,6 +505,14 @@ int main(int argc, char **argv){
     }
     XSetClassHint(disp, win, classHint);
     XFree(classHint);
+    // Publish launcher state before mapping so pagers never see an ordinary window.
+    if (!windowed && !desktop_mode)
+    {
+        Atom states[]={XInternAtom(disp,"_NET_WM_STATE_FULLSCREEN",False),
+                       XInternAtom(disp,"_NET_WM_STATE_SKIP_PAGER",False)};
+        XChangeProperty(disp,win,XInternAtom(disp,"_NET_WM_STATE",False),XA_ATOM,
+                        32,PropModeReplace,(unsigned char *)states,2);
+    }
     /* show the window */
     XMapRaised(disp, win);
     /* Force window reposition, can make effect only when windowed is enabled, depending on WM */
@@ -553,28 +561,6 @@ int main(int argc, char **argv){
     // accept delete window notifications from window managers
     Atom wm_delete_window = XInternAtom(disp, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(disp, win, &wm_delete_window, 1);
-
-    // prepare message for window manager that we are requesting fullscreen
-    XClientMessageEvent msg = {
-        .type = ClientMessage,
-        .display = disp,
-        .window = win,
-        .message_type = XInternAtom(disp, "_NET_WM_STATE", True),
-        .format = 32,
-        .data = {
-            .l = {
-                1 /* _NET_WM_STATE_ADD */,
-                XInternAtom(disp, "_NET_WM_STATE_FULLSCREEN", True),
-                None,
-                0,
-                1
-            }
-        }
-    };
-
-    // send the message
-    if (!windowed && !desktop_mode)
-        XSendEvent(disp, DefaultRootWindow(disp), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*)&msg);
 
     // Get the FD of the X11 display
     x11_fd = ConnectionNumber(disp);
