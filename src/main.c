@@ -454,6 +454,12 @@ int main(int argc, char **argv){
 
     /* tell X what events we are interested in */
     XSelectInput(disp, win, StructureNotifyMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | EnterWindowMask | LeaveWindowMask | ExposureMask | KeyPressMask | KeyReleaseMask | KeymapStateMask | FocusChangeMask );
+    // Follow screen geometry and wallpaper updates, including override-redirect mode.
+    Window root=DefaultRootWindow(disp);
+    Atom root_pixmap=XInternAtom(disp,"_XROOTPMAP_ID",False);
+    XWindowAttributes root_attributes;
+    XGetWindowAttributes(disp,root,&root_attributes);
+    XSelectInput(disp,root,root_attributes.your_event_mask|StructureNotifyMask|PropertyChangeMask);
     GC gc = XCreateGC(disp, win, 0, 0);
     /* set our name */
     XClassHint* classHint;
@@ -645,14 +651,30 @@ int main(int argc, char **argv){
                         break;
 
 
+                    case PropertyNotify:
+                        if (use_root_img && ev.xproperty.window==root && ev.xproperty.atom==root_pixmap)
+                        {
+                            update_background_images();
+                            updates=imlib_update_append_rect(updates,0,0,screen_width,screen_height);
+                        }
+                        break;
+
                     case ConfigureNotify:
+                        if (ev.xconfigure.window==root)
+                        {
+                            if (!windowed) XResizeWindow(disp,win,
+                                desktop_mode && uwidth ? uwidth : ev.xconfigure.width,
+                                desktop_mode && uheight ? uheight : ev.xconfigure.height);
+                            break;
+                        }
+                        if (ev.xconfigure.window!=win) break;
                         if (screen_width!=ev.xconfigure.width || screen_height!=ev.xconfigure.height)
                         {
                             screen_width=ev.xconfigure.width;
                             screen_height=ev.xconfigure.height;
                             calculate_percentage(screen_height, &uborder);
                             calculate_percentage(screen_width, &uside_border);
-                            if (!use_root_img) update_background_images();
+                            update_background_images();
                             recalc_cells();
                             scrollbar_drag_y=-1;
                             set_scroll_level(scrolled_past);

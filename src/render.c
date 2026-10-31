@@ -29,7 +29,6 @@ int get_root_image_to_imlib_data(DATA32 * direct)
     int screen;
     Window root;
     Display* display;
-    XWindowAttributes attrs;
     Pixmap bg;
     XImage* img;
 
@@ -38,12 +37,17 @@ int get_root_image_to_imlib_data(DATA32 * direct)
 
     screen = DefaultScreen(display);
     root = RootWindow(display, screen);
-    XGetWindowAttributes(display, root, &attrs);
 
     bg = GetRootPixmap(display, &root);
     if (bg==None) { XCloseDisplay(display); return 0; }
-    int width=screen_width<attrs.width ? screen_width : attrs.width;
-    int height=screen_height<attrs.height ? screen_height : attrs.height;
+    // The wallpaper can still have its previous size while the desktop resizes.
+    Window pixmap_root;
+    int pixmap_x,pixmap_y;
+    unsigned int pixmap_width,pixmap_height,border,depth;
+    if (!XGetGeometry(display,bg,&pixmap_root,&pixmap_x,&pixmap_y,&pixmap_width,&pixmap_height,&border,&depth))
+    { XCloseDisplay(display); return 0; }
+    int width=screen_width<(int)pixmap_width ? screen_width : (int)pixmap_width;
+    int height=screen_height<(int)pixmap_height ? screen_height : (int)pixmap_height;
     img = XGetImage(display, bg, 0, 0, width, height, ~0, ZPixmap);
 
     if (!img) {
@@ -142,7 +146,7 @@ void update_background_images()
                     // But we do not want to use scale, rather we use fill to keep aspect ratio
                     // It gives the same result as feh --bg-fill
                     if (bg_fill) {
-                        if ( (double) (w/h) < (double) (screen_width/screen_height) )
+                        if ( (double)w/h < (double)screen_width/screen_height )
                         {
                            imw = (int) w;
                            imh = (int) (screen_height * w / screen_width);
