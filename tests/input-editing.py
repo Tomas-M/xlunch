@@ -232,6 +232,17 @@ selected_text=ffffffff
         case('Shift-click extends from the existing caret','>alpha beta',lambda:(pointer('>alpha '),send('click','1'),send('keydown','Shift_L'),pointer('>alpha beta'),send('click','1'),send('keyup','Shift_L'),send('type','gamma')),'alpha gamma')
         case('Middle-click pastes the PRIMARY selection at the pointer','>alpha beta',lambda:(drag('>alpha ','>alpha beta'),pointer('>'),send('click','2')),'betaalpha beta')
         case('Selection remains correct when the input scrolls','>'+('word '*30)+'last',lambda:(send('key','ctrl+shift+Left'),send('type','tail')),'word '*30+'tail')
+        # Empty input hands all arrows to the grid, including after clearing a query.
+        profile.write_text(profile.read_text().replace('[grid]\nvisible=false','[grid]\nvisible=true\ncolumns=3\nicon_size=32\ntile_min_width=150\ntile_min_height=90'))
+        (root/'empty.dsv').write_text(''.join(f'App {i:02d};;command-{i:02d}\n' for i in range(9)))
+        case('Empty search: Right selects the next icon','',lambda:send('key','Right'),'command-01')
+        case('Empty search: Down selects the next row','',lambda:send('key','Down'),'command-03')
+        case('Empty search: Left returns to the previous icon','',lambda:send('key','Right','Left'),'command-00')
+        case('Empty search: Up returns to the previous row','',lambda:send('key','Down','Up'),'command-00')
+        case('Cleared search: arrows navigate icons','App',lambda:send('key','ctrl+u','Right'),'command-01')
+        case('Deleted search: arrows navigate icons','App',lambda:send('key','ctrl+a','BackSpace','Right'),'command-01')
+        case('Refocused empty search: arrows navigate icons','',lambda:send('key','Right','ctrl+f','Right'),'command-02')
+        case('Nonempty search: Left still moves the text caret','>alpha beta',lambda:(send('key','Left'),send('type','X')),'alpha betXa')
     finally:
         xlib.XCloseDisplay(display)
         server.terminate(); server.wait(timeout=5)

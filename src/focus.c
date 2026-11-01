@@ -1230,6 +1230,8 @@ static void focus_key(XEvent *event)
         free(input); return;
     }
     int caret_key=key==XK_Left || key==XK_Right || key==XK_Home || key==XK_End;
+    // Empty queries leave horizontal arrows available for icon navigation.
+    if (!*commandline && (key==XK_Left || key==XK_Right)) caret_key=0;
     if (keyboard_target==5000 && caret_key)
     {
         query_blink_reset();
