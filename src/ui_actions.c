@@ -92,7 +92,10 @@ int ui_command(const char *command)
     if (!ui_bool("search.allow_commands") || !*command) return 0;
     const char *prefix=ui_value("search.command_prefix");
     if (*prefix) { if (!starts_with(prefix,command)) return 0; command+=strlen(prefix); }
-    char *word=command_word(command),*program=ui_executable(word); free(word);
+    char *word=command_word(command);
+    // Keep searches such as X Archiver from starting another X server.
+    if (word && !strcmp(word,"X")) { free(word); return 0; }
+    char *program=ui_executable(word); free(word);
     if (!*prefix && !program) return 0;
     if (!*prefix) for (node_t *entry=entries;entry;entry=entry->next)
     {
