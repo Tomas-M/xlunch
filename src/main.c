@@ -633,11 +633,14 @@ int main(int argc, char **argv){
                         break;
 
                     case FocusOut:
-                        restack();
-                        if (focus_lost_terminate) {
+                        if (focus_lost_terminate)
+                        {
+                            // Grabs and focus moves into child windows do not leave the launcher.
+                            if (ev.xfocus.mode==NotifyGrab || ev.xfocus.mode==NotifyUngrab || ev.xfocus.detail==NotifyInferior) break;
                             cleanup();
                             exit(FOCUSLOST);
                         }
+                        restack();
                         break;
 
 

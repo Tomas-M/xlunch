@@ -1,4 +1,17 @@
 #include "ui.h"
+#include <X11/Xproto.h>
+
+static Display *root_image_display;
+static XErrorHandler previous_error_handler;
+
+// A desktop owner may exit or replace its pixmap between wallpaper requests.
+static int root_image_error(Display *display,XErrorEvent *error)
+{
+    int image_request=error->request_code==X_GetGeometry || error->request_code==X_GetImage;
+    int unavailable=error->error_code==BadDrawable || error->error_code==BadMatch;
+    if (display==root_image_display && image_request && unavailable) return 0;
+    return previous_error_handler(display,error);
+}
 
 Pixmap GetRootPixmap(Display* display, Window *root)
 {
@@ -30,7 +43,7 @@ int get_root_image_to_imlib_data(DATA32 * direct)
     Window root;
     Display* display;
     Pixmap bg;
-    XImage* img;
+    XImage* img=NULL;
 
     display = XOpenDisplay(NULL);
     if (display == NULL) return 0;
@@ -44,16 +57,18 @@ int get_root_image_to_imlib_data(DATA32 * direct)
     Window pixmap_root;
     int pixmap_x,pixmap_y;
     unsigned int pixmap_width,pixmap_height,border,depth;
-    if (!XGetGeometry(display,bg,&pixmap_root,&pixmap_x,&pixmap_y,&pixmap_width,&pixmap_height,&border,&depth))
-    { XCloseDisplay(display); return 0; }
-    int width=screen_width<(int)pixmap_width ? screen_width : (int)pixmap_width;
-    int height=screen_height<(int)pixmap_height ? screen_height : (int)pixmap_height;
-    img = XGetImage(display, bg, 0, 0, width, height, ~0, ZPixmap);
-
-    if (!img) {
-        XCloseDisplay(display);
-        return 0;
+    root_image_display=display;
+    previous_error_handler=XSetErrorHandler(root_image_error);
+    if (XGetGeometry(display,bg,&pixmap_root,&pixmap_x,&pixmap_y,&pixmap_width,&pixmap_height,&border,&depth))
+    {
+        int width=screen_width<(int)pixmap_width ? screen_width : (int)pixmap_width;
+        int height=screen_height<(int)pixmap_height ? screen_height : (int)pixmap_height;
+        img=XGetImage(display,bg,0,0,width,height,~0,ZPixmap);
     }
+    XCloseDisplay(display);
+    XSetErrorHandler(previous_error_handler);
+    root_image_display=NULL;
+    if (!img) return 0;
 
     unsigned long pixel;
     int x, y;
@@ -67,7 +82,7 @@ int get_root_image_to_imlib_data(DATA32 * direct)
         }
     }
 
-    XDestroyImage(img); XCloseDisplay(display);
+    XDestroyImage(img);
     return 1;
 }
 
