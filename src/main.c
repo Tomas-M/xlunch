@@ -637,6 +637,10 @@ int main(int argc, char **argv){
                         {
                             // Grabs and focus moves into child windows do not leave the launcher.
                             if (ev.xfocus.mode==NotifyGrab || ev.xfocus.mode==NotifyUngrab || ev.xfocus.detail==NotifyInferior) break;
+                            // Queued focus events may precede a newer focus change back to this window.
+                            Window focused_window; int revert;
+                            XGetInputFocus(disp,&focused_window,&revert);
+                            if (focused_window==win) break;
                             cleanup();
                             exit(FOCUSLOST);
                         }

@@ -4,6 +4,7 @@ import ctypes
 import os
 from pathlib import Path
 import select
+import signal
 import subprocess
 import tempfile
 import time
@@ -50,6 +51,12 @@ with tempfile.TemporaryDirectory() as directory:
                     window=int(result.stdout.splitlines()[0])
                     xlib.XSetInputFocus(display,window,2,0); xlib.XSync(display,False)
                     time.sleep(.1)
+                    # Queue a real focus departure and return before the launcher can consume either event.
+                    process.send_signal(signal.SIGSTOP); os.waitpid(process.pid,os.WUNTRACED)
+                    xlib.XSetInputFocus(display,target,2,0)
+                    xlib.XSetInputFocus(display,window,2,0); xlib.XSync(display,False)
+                    process.send_signal(signal.SIGCONT); time.sleep(.1)
+                    assert process.poll() is None,'A stale focus event closed the focused launcher'
                     assert xlib.XGrabKeyboard(display,target,False,1,1,0)==0
                     xlib.XSync(display,False); time.sleep(.1)
                     assert process.poll() is None,'A keyboard grab closed the launcher'
